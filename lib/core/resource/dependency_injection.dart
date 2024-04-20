@@ -1,12 +1,18 @@
+import 'package:command_center/config/services/firestore_service.dart';
+import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:command_center/feature/Status/controller/status_controller.dart';
+import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
+import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:get/get.dart';
 
-import '../../config/network/network-c.dart';
-import '../../config/network/network-service-c.dart';
-
-class DependencyInjection extends Bindings {
+class AppBindings extends Bindings {
   @override
   void dependencies() {
-    Get.put<NetworkController>(NetworkController(), permanent: true);
-    Get.put<NetworkService>(NetworkService(), permanent: true);
+    Get.putAsync<FirestoreService>(() async => await FirestoreService().init());
+    Get.put<MusicController>(MusicController(), permanent: true);
+    Get.put<NativeCommandsService>(NativeCommandsService(), permanent: true);
+
+    Get.lazyPut<MainMenuController>(() => MainMenuController());
+    Get.lazyPut<StatusController>(() => StatusController());
   }
 }
