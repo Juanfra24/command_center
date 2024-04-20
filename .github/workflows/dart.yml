@@ -1,0 +1,32 @@
+name: Build Flutter Windows Application
+
+on:
+  push:
+    branches:
+      - main  # Set this to your default branch if it's not 'main'
+
+jobs:
+  build:
+    name: Build Windows Executable
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v3
+      with:
+        channel: stable
+
+    - name: Install dependencies
+      run: flutter pub get
+
+    - name: Build Windows executable
+      run: flutter build windows --release
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-executable
+        path: build/windows/runner/Release/**
