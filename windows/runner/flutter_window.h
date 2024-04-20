@@ -14,6 +14,9 @@ class FlutterWindow : public Win32Window {
   // Creates a new FlutterWindow hosting a Flutter view running |project|.
   explicit FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
+  flutter::FlutterViewController* GetFlutterViewController() const {
+    return flutter_controller_.get();
+  }
 
  protected:
   // Win32Window:

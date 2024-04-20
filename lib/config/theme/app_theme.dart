@@ -4,6 +4,7 @@ class AppTheme {
   static final lightTheme = ThemeData.light().copyWith(
     primaryColor: Colors.blue,
     scaffoldBackgroundColor: Colors.white,
+    visualDensity: VisualDensity.adaptivePlatformDensity,
     appBarTheme: AppBarTheme(
       color: Colors.blue,
       iconTheme: const IconThemeData(color: Colors.white),
@@ -16,6 +17,7 @@ class AppTheme {
     ),
     textTheme: _buildTextTheme(lightMode: true),
     colorScheme: ColorScheme.fromSwatch().copyWith(secondary: Colors.orange),
+
     // Add other light mode configurations
   );
 
@@ -34,6 +36,7 @@ class AppTheme {
     ),
     textTheme: _buildTextTheme(lightMode: false),
     colorScheme: ColorScheme.fromSwatch().copyWith(secondary: Colors.amber),
+    visualDensity: VisualDensity.adaptivePlatformDensity,
     // Add other dark mode configurations
   );
 

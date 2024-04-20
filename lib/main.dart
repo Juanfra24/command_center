@@ -1,3 +1,5 @@
+import 'package:command_center/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -27,6 +29,9 @@ void main(List<String> args) async {
 
 Future<void> initApp() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await GetStorage.init();
 }
 
@@ -40,15 +45,15 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       child: GetMaterialApp(
-        title: 'MyApp',
+        title: 'Frieren Bot Command Center',
         navigatorKey: globalNavKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeManage.getThemeMode(),
-        initialBinding: DependencyInjection(),
+        initialBinding: AppBindings(),
         getPages: AppPages.pages,
-        initialRoute: Routes.INITIAL,
+        initialRoute: Routes.initial,
       ),
     );
   }
