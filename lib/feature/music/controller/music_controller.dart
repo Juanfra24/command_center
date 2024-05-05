@@ -25,7 +25,7 @@ class MusicController extends GetxController {
     });
 
     playAudio();
-    audioPlayer.setVolume(0.5);
+    audioPlayer.setVolume(0.3);
   }
 
   void playAudio() async {

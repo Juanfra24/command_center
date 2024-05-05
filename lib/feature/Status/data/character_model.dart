@@ -1,13 +1,14 @@
 import 'package:command_center/feature/Status/data/skills_model.dart';
 import 'package:equatable/equatable.dart';
 
+// ignore: must_be_immutable
 class Character extends Equatable {
-  final bool banned;
-  final String name;
-  final Skills actualSkills;
-  final Skills targetSkills;
+  bool banned = false;
+  String name = 'Default Character';
+  Skills actualSkills = Skills.empty();
+  Skills targetSkills = Skills.empty();
 
-  const Character({
+  Character({
     required this.banned,
     required this.name,
     required this.actualSkills,
@@ -19,17 +20,17 @@ class Character extends Equatable {
       return Character(
         banned: false,
         name: 'Default Character',
-        actualSkills: Skills.defaultSkills(),
-        targetSkills: Skills.defaultSkills(),
+        actualSkills: Skills.empty(),
+        targetSkills: Skills.empty(),
       );
     }
     return Character(
       banned: json['banned'] ?? false,
-      name: json['name'] ?? 'Default Character',
+      name: json['name'] ?? 'Jhon Doe',
       actualSkills:
-          Skills.fromJson(json['actualSkills'] as Map<String, dynamic>?),
+          Skills.fromJson(json['actualSkills'] as Map<String, dynamic>? ?? {}),
       targetSkills:
-          Skills.fromJson(json['targetSkills'] as Map<String, dynamic>?),
+          Skills.fromJson(json['targetSkills'] as Map<String, dynamic>? ?? {}),
     );
   }
 

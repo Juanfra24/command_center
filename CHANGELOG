@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.0] 2024-05-05
+
+### Added
+ - Satus screen
+ - table with all accounts on the db
+ - copy to clipboard username and password
+ - add play, stop and open browser buttons
+ - play start script with the account setted
+ - stop, stop the script if the account already started
+ - put a status indicator if the bot is playing or not
+ - add openbrowser button that launch chrome and give the user 4 min to input whatever on a porxy chrome
+
+
 ## [0.1.0] - 2024-04-20
 
 ### Added

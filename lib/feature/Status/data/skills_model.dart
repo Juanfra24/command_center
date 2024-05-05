@@ -1,31 +1,32 @@
 import 'package:equatable/equatable.dart';
 
+// ignore: must_be_immutable
 class Skills extends Equatable {
-  final int attack,
-      defence,
-      strength,
-      hitpoints,
-      range,
-      prayer,
-      magic,
-      cooking,
-      woodcutting,
-      fletching,
-      fishing,
-      firemaking,
-      crafting,
-      mining,
-      smithing,
-      agility,
-      herblore,
-      thieving,
-      slayer,
-      farming,
-      runecrafting,
-      construction,
-      hunter;
+  int attack = 0,
+      defence = 0,
+      strength = 0,
+      hitpoints = 0,
+      range = 0,
+      prayer = 0,
+      magic = 0,
+      cooking = 0,
+      woodcutting = 0,
+      fletching = 0,
+      fishing = 0,
+      firemaking = 0,
+      crafting = 0,
+      mining = 0,
+      smithing = 0,
+      agility = 0,
+      herblore = 0,
+      thieving = 0,
+      slayer = 0,
+      farming = 0,
+      runecrafting = 0,
+      construction = 0,
+      hunter = 0;
 
-  const Skills({
+  Skills({
     required this.attack,
     required this.defence,
     required this.strength,
@@ -53,7 +54,7 @@ class Skills extends Equatable {
 
   factory Skills.fromJson(Map<String, dynamic>? json) {
     if (json == null) {
-      return Skills.defaultSkills();
+      return Skills.empty();
     }
     return Skills(
       attack: json['Attack'] ?? 0,
@@ -82,8 +83,8 @@ class Skills extends Equatable {
     );
   }
 
-  static Skills defaultSkills() {
-    return const Skills(
+  factory Skills.empty() {
+    return Skills(
       attack: 0,
       defence: 0,
       strength: 0,
