@@ -58,6 +58,32 @@ class Proxy extends Equatable {
     );
   }
 
+  factory Proxy.empty() {
+    return Proxy(
+      asnName: 'Default ASN',
+      asnNumber: 0,
+      cityName: 'Default City',
+      countryCode: 'XX',
+      createdAt: DateTime.now(),
+      highCountryConfidence: false,
+      hostname: 'localhost',
+      id: 'default-id',
+      ipTimezone: 'UTC',
+      lastVerification: DateTime.now(),
+      linkedChars: const [],
+      password: 'defaultPassword',
+      port: 8080,
+      proxyAddress: '0.0.0.0',
+      username: 'defaultUser',
+      valid: false,
+    );
+  }
+
+  // Method to generate a proxy URL
+  String generateProxyUrl() {
+    return "$username:$password@$hostname:$port";
+  }
+
   @override
   List<Object?> get props => [
         asnName,

@@ -12,7 +12,7 @@ class AppBindings extends Bindings {
     Get.put<MusicController>(MusicController(), permanent: true);
     Get.put<NativeCommandsService>(NativeCommandsService(), permanent: true);
 
-    Get.lazyPut<MainMenuController>(() => MainMenuController());
-    Get.lazyPut<StatusController>(() => StatusController());
+    Get.lazyPut<MainMenuController>(() => MainMenuController(), fenix: true);
+    Get.lazyPut<StatusController>(() => StatusController(), fenix: true);
   }
 }

@@ -1,15 +1,16 @@
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:equatable/equatable.dart';
 
+// ignore: must_be_immutable
 class JagexAccount extends Equatable {
-  final String accountName;
-  final String birthday;
-  final String email;
-  final String password;
-  final String proxyAddress;
-  final List<Character> characters;
+  String accountName = "Default Name";
+  String birthday = "01-01-2000";
+  String email = "default@example.com";
+  String password = "defaultPassword123";
+  String proxyAddress = "0.0.0.0";
+  List<Character> characters = const <Character>[];
 
-  const JagexAccount({
+  JagexAccount({
     required this.accountName,
     required this.birthday,
     required this.email,
@@ -20,21 +21,21 @@ class JagexAccount extends Equatable {
 
   factory JagexAccount.fromJson(Map<String, dynamic>? json) {
     if (json == null) {
-      return const JagexAccount(
+      return JagexAccount(
         accountName: 'Default Name',
         birthday: '01-01-2000',
         email: 'default@example.com',
         password: 'defaultPassword123',
         proxyAddress: '0.0.0.0',
-        characters: [],
+        characters: const [],
       );
     }
     return JagexAccount(
-      accountName: json['accountName'] ?? 'Default Name',
-      birthday: json['birthday'] ?? '01-01-2000',
-      email: json['email'] ?? 'default@example.com',
-      password: json['password'] ?? 'defaultPassword123',
-      proxyAddress: json['proxyAddress'] ?? '0.0.0.0',
+      accountName: json['accountName'] ?? "Default Name",
+      birthday: json['birthday'] ?? "01-01-2000",
+      email: json['email'] ?? "default@example.com",
+      password: json['password'] ?? "defaultPassword123",
+      proxyAddress: json['proxyAddress'] ?? "0.0.0.0",
       characters: (json['characters'] as List? ?? [])
           .map((characterJson) => Character.fromJson(characterJson))
           .toList(),

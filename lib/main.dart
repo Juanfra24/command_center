@@ -1,21 +1,32 @@
+import 'package:command_center/feature/app.dart';
 import 'package:command_center/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get_storage/get_storage.dart';
 
-import 'config/routes/app_pages.dart';
-import 'config/routes/app_routes.dart';
-import 'config/theme/app_theme.dart';
-import 'config/theme/theme_manager.dart';
-import 'core/resource/dependency_injection.dart';
 import 'core/resource/widgets/custom_error_widget.dart';
+import 'package:window_manager/window_manager.dart';
 
 final GlobalKey<NavigatorState> globalNavKey = GlobalKey<NavigatorState>();
 
 void main(List<String> args) async {
-  await initApp();
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  // Set window properties
+  windowManager.waitUntilReadyToShow().then(
+    (_) async {
+      await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+      await windowManager.setSize(const Size(1280, 800));
+      await windowManager.setResizable(false);
+      await windowManager.show();
+    },
+  );
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await GetStorage.init();
   FlutterError.onError = (FlutterErrorDetails details) {
     globalNavKey.currentState?.pushReplacement(
       MaterialPageRoute(
@@ -24,37 +35,5 @@ void main(List<String> args) async {
     );
   };
 
-  runApp(const MyApp());
-}
-
-Future<void> initApp() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  await GetStorage.init();
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      designSize: const Size(375, 812),
-      minTextAdapt: true,
-      splitScreenMode: true,
-      child: GetMaterialApp(
-        title: 'Frieren Bot Command Center',
-        navigatorKey: globalNavKey,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeManage.getThemeMode(),
-        initialBinding: AppBindings(),
-        getPages: AppPages.pages,
-        initialRoute: Routes.initial,
-      ),
-    );
-  }
+  runApp(const App());
 }
