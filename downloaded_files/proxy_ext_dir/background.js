@@ -13,7 +13,7 @@ chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
 function callbackFn(details) {
     return {
         authCredentials: {
-            username: "ycdgucum-2",
+            username: "ycdgucum-1",
             password: "jrvhngz56d8n"
         }
     };

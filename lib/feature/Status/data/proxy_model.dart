@@ -38,6 +38,7 @@ class Proxy extends Equatable {
   });
 
   factory Proxy.fromJson(Map<String, dynamic> json) {
+    if (json.isEmpty) return Proxy.empty();
     return Proxy(
       asnName: json['asn_name'],
       asnNumber: json['asn_number'],

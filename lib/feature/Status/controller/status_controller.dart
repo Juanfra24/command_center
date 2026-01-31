@@ -13,6 +13,28 @@ import 'package:get/get.dart' hide Response;
 import '../../../config/services/firestore_service.dart';
 import '../../../core/helper/logger.dart';
 
+Future<void> handleStream(Stream<List<int>> stream, IOSink fileSink) async {
+  StreamSubscription<List<int>>? subscription;
+  try {
+    subscription = stream.listen(
+      (data) {
+        stdout.add(data); // Echo to standard output
+        fileSink.add(data); // Write to file
+      },
+      onDone: () {
+        subscription?.cancel();
+      },
+      onError: (e) {
+        print('Error from stream: $e');
+        subscription?.cancel();
+      },
+      cancelOnError: true,
+    );
+  } catch (e) {
+    print('Failed to handle stream: $e');
+  }
+}
+
 class StatusController extends GetxController {
   var isLoading = true.obs;
   Timer? _processCheckTimer;
@@ -90,40 +112,50 @@ class StatusController extends GetxController {
     }
   }
 
-  Future<void> runPythonScript(String proxyAdress) async {
+  Future<void> runPythonScript(String proxyAddress) async {
     try {
-      Proxy proxy = await getProxyDoc(proxyAdress);
-      // Path to your virtual environment's Python executable
+      Proxy proxy = await getProxyDoc(proxyAddress);
       var pythonExecutable = 'scripts/.venv/Scripts/python.exe';
+      var scriptPath = 'scripts/openChrome.py';
+      var argument = proxyAddress == "none" ? "none" : proxy.generateProxyUrl();
 
-      // Path to your Python script
-      var scriptPath = 'scripts/main.py';
+      // Generating a timestamped filename in the scripts/log folder
+      String fileName =
+          DateTime.now().toString().replaceAll(':', '-').replaceAll(' ', '_');
+      File outputFile = File('scripts/logs/${fileName}_output.txt');
+      IOSink fileSink = outputFile.openWrite(mode: FileMode.append);
 
-      // The single argument to pass to the Python script
-      var argument = proxyAdress == "none" ? "none" : proxy.generateProxyUrl();
-
-      // Activate the virtual environment and install requirements
       var installProcess = await Process.start(pythonExecutable,
           ['-m', 'pip', 'install', '-r', 'scripts/requirements.txt']);
-      await stdout.addStream(installProcess.stdout);
-      await stderr.addStream(installProcess.stderr);
+      installProcess.stdout.asBroadcastStream();
+      installProcess.stderr.asBroadcastStream();
+
+      // Handle process output and errors using the new function
+      handleStream(installProcess.stdout, fileSink);
+      handleStream(installProcess.stderr, fileSink);
+
       var installExitCode = await installProcess.exitCode;
       print('Dependency installation exit code: $installExitCode');
 
       if (installExitCode == 0) {
-        // Running the Python script if installation was successful
         var process =
             await Process.start(pythonExecutable, [scriptPath, argument]);
         processList.add(process.pid);
-        await stdout.addStream(process.stdout);
-        await stderr.addStream(process.stderr);
+        process.stdout.asBroadcastStream();
+        process.stderr.asBroadcastStream();
+
+        // Handle the Python script's output in the same way
+        handleStream(process.stdout, fileSink);
+        handleStream(process.stderr, fileSink);
+
         var exitCode = await process.exitCode;
         processList.remove(process.pid);
-
         print('Python script exit code: $exitCode');
       } else {
         print('Failed to install dependencies.');
       }
+      await fileSink.flush();
+      await fileSink.close();
     } catch (e) {
       print('Failed to run Python script: $e');
     }

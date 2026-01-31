@@ -277,3 +277,4 @@ cython_debug/
 
 # Misc
 temp*.txt
+scripts/logs/*
