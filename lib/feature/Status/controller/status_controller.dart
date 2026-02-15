@@ -2,15 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:command_center/config/services/native_commands_service.dart';
-import 'package:command_center/core/constants/db_collections.dart';
+import 'package:command_center/data/database_service.dart';
+import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
 import 'package:command_center/feature/Status/data/proxy_model.dart';
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide Response;
 
-import '../../../config/services/firestore_service.dart';
 import '../../../core/helper/logger.dart';
 
 Future<void> handleStream(Stream<List<int>> stream, IOSink fileSink) async {
@@ -43,17 +43,27 @@ class StatusController extends GetxController {
   RxMap<String, ProcessClient> processClients =
       <String, ProcessClient>{}.obs; // Maps character names to their processes
 
-  final FirestoreService _firestoreService = Get.find();
+  AccountRepository? _accountRepository;
   final NativeCommandsService _nativeCommandsService = Get.find();
 
   @override
   void onInit() async {
     super.onInit();
+    _initRepositories();
     await getAccountsData().then((_) {
       updateRunningProcesses();
       _startProcessCheckTimer();
     });
     isLoading.value = false;
+  }
+
+  void _initRepositories() {
+    try {
+      final dbService = Get.find<DatabaseService>();
+      _accountRepository = dbService.accountRepository;
+    } catch (e) {
+      logger.e('DatabaseService not initialized: $e');
+    }
   }
 
   void _startProcessCheckTimer() {
@@ -80,36 +90,37 @@ class StatusController extends GetxController {
   }
 
   Future<void> getAccountsData() async {
+    if (_accountRepository == null) return;
+
     try {
-      var accounts = await _firestoreService.getAllDocuments(accountCollection);
+      final accounts = await _accountRepository!.getAllAccounts();
       accountList
         ..clear()
-        ..addAll(
-            [for (var account in accounts) JagexAccount.fromJson(account)]);
+        ..addAll([
+          for (var account in accounts)
+            JagexAccount(
+              accountName: account.accountName,
+              birthday: account.birthday,
+              email: account.email,
+              password: account.password,
+              proxyAddress: '0.0.0.0', // TODO: Resolve from proxySlotId
+              characters: [], // TODO: Convert from AccountEntity
+            )
+        ]);
     } catch (err) {
       logger.e(err);
     }
   }
 
   void copyToClipboard(String text, BuildContext context) {
-    Clipboard.setData(ClipboardData(text: text)).then(
-      (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Copied to Clipboard!')));
-      },
-    );
+    Clipboard.setData(ClipboardData(text: text));
+    // Note: InfoBar display is handled in the UI layer for Fluent UI
   }
 
   Future<Proxy> getProxyDoc(String proxyAddress) async {
-    try {
-      var proxyMap = await _firestoreService.getDocumentById(
-          proxiesCollection, proxyAddress);
-
-      return Proxy.fromJson(proxyMap ?? {});
-    } catch (err) {
-      logger.e(err);
-      return Proxy.empty();
-    }
+    // In the new architecture, we get proxy info from the slot
+    // For now, return empty proxy as this feature will need rework
+    return Proxy.empty();
   }
 
   Future<void> runPythonScript(String proxyAddress) async {

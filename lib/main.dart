@@ -1,39 +1,30 @@
 import 'package:command_center/feature/app.dart';
-import 'package:command_center/firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get_storage/get_storage.dart';
-
-import 'core/resource/widgets/custom_error_widget.dart';
+import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
-
-final GlobalKey<NavigatorState> globalNavKey = GlobalKey<NavigatorState>();
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize system theme for Windows accent color
+  await SystemTheme.accentColor.load();
+
   await windowManager.ensureInitialized();
 
-  // Set window properties
+  // Set window properties with Windows-style configuration
   windowManager.waitUntilReadyToShow().then(
     (_) async {
-      await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
       await windowManager.setSize(const Size(1280, 800));
-      await windowManager.setResizable(false);
+      await windowManager.setMinimumSize(const Size(800, 600));
+      await windowManager.setResizable(true);
+      await windowManager.center();
       await windowManager.show();
     },
   );
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
   await GetStorage.init();
-  FlutterError.onError = (FlutterErrorDetails details) {
-    globalNavKey.currentState?.pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => CustomErrorScreen(errorDetails: details),
-      ),
-    );
-  };
 
   runApp(const App());
 }

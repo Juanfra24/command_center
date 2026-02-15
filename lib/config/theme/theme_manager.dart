@@ -1,15 +1,19 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 import '../../core/resource/local_storage/local_storage.dart';
 
-class ThemeManage {
+class ThemeManage extends GetxController {
   static const _themeKey = "isDarkMode";
+
+  static final Rx<ThemeMode> _themeMode = getThemeMode().obs;
+
+  static ThemeMode get currentThemeMode => _themeMode.value;
 
   static bool isDarkModeActive() {
     var isDarkModeActive = LocalStorage.get(key: _themeKey);
     if (isDarkModeActive == null) {
-      isDarkModeActive = false;
+      isDarkModeActive = true; // Default to dark mode for modern Windows feel
       LocalStorage.set(key: _themeKey, value: isDarkModeActive);
     }
     return isDarkModeActive;
@@ -24,7 +28,18 @@ class ThemeManage {
   }
 
   static void changeThemeMode() {
-    Get.changeThemeMode(isDarkModeActive() ? ThemeMode.light : ThemeMode.dark);
+    final newMode = isDarkModeActive() ? ThemeMode.light : ThemeMode.dark;
+    _themeMode.value = newMode;
     _saveThemeMode(!isDarkModeActive());
+  }
+
+  static void setDarkMode() {
+    _themeMode.value = ThemeMode.dark;
+    _saveThemeMode(true);
+  }
+
+  static void setLightMode() {
+    _themeMode.value = ThemeMode.light;
+    _saveThemeMode(false);
   }
 }

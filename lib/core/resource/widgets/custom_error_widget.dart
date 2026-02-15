@@ -1,8 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
-
-import '../../../config/theme/theme_manager.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 class CustomErrorScreen extends StatelessWidget {
   final FlutterErrorDetails errorDetails;
@@ -11,45 +9,54 @@ class CustomErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Error'),
+    final theme = FluentTheme.of(context);
+
+    return ScaffoldPage(
+      header: const PageHeader(
+        title: Text('Error'),
       ),
-      body: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              'An error occurred:',
-              style: Theme.of(context).textTheme.bodyLarge,
+      content: Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.error,
+                  size: 48,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'An error occurred',
+                  style: theme.typography.subtitle,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    errorDetails.exceptionAsString(),
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontFamily: 'Consolas',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () {
+                    exit(1);
+                  },
+                  child: const Text('Close App'),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              errorDetails.exceptionAsString(),
-              style: const TextStyle(fontSize: 16, color: Colors.red),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                exit(1);
-              },
-              style: ButtonStyle(
-                backgroundColor: ThemeManage.isDarkModeActive()
-                    ? const MaterialStatePropertyAll(
-                        Colors.orange,
-                      )
-                    : const MaterialStatePropertyAll(
-                        Colors.white,
-                      ),
-              ),
-              child: Text(
-                'Close App',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

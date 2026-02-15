@@ -6,7 +6,7 @@ class AppTheme {
     scaffoldBackgroundColor: Colors.white,
     visualDensity: VisualDensity.adaptivePlatformDensity,
     appBarTheme: AppBarTheme(
-      color: Colors.blue,
+      backgroundColor: Colors.blue,
       iconTheme: const IconThemeData(color: Colors.white),
       toolbarTextStyle: const TextTheme(
         titleLarge: TextStyle(color: Colors.white, fontSize: 20),
@@ -25,7 +25,7 @@ class AppTheme {
     primaryColor: Colors.teal,
     scaffoldBackgroundColor: Colors.grey[900],
     appBarTheme: AppBarTheme(
-      color: Colors.teal,
+      backgroundColor: Colors.teal,
       iconTheme: const IconThemeData(color: Colors.white),
       toolbarTextStyle: const TextTheme(
         titleLarge: TextStyle(color: Colors.white, fontSize: 20),

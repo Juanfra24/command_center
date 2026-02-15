@@ -8,6 +8,7 @@ class MusicController extends GetxController {
   var isPlaying = false.obs;
   var currentPosition = '00:00'.obs;
   var completeDuration = '00:00'.obs;
+  var volume = 0.1.obs; // Default to 10% volume
 
   @override
   void onInit() {
@@ -25,7 +26,13 @@ class MusicController extends GetxController {
     });
 
     playAudio();
-    audioPlayer.setVolume(0.3);
+    audioPlayer.setVolume(volume.value);
+  }
+
+  /// Set volume (0.0 to 1.0)
+  void setVolume(double newVolume) {
+    volume.value = newVolume.clamp(0.0, 1.0);
+    audioPlayer.setVolume(volume.value);
   }
 
   void playAudio() async {
