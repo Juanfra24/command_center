@@ -125,48 +125,46 @@ class StatusController extends GetxController {
 
   Future<void> runPythonScript(String proxyAddress) async {
     try {
-      Proxy proxy = await getProxyDoc(proxyAddress);
-      var pythonExecutable = 'scripts/.venv/Scripts/python.exe';
-      var scriptPath = 'scripts/openChrome.py';
-      var argument = proxyAddress == "none" ? "none" : proxy.generateProxyUrl();
+      // TEMP: hard fail if proxyAddress isn't a real proxy string
+      if (!proxyAddress.contains('@') || !proxyAddress.contains(':')) {
+        throw Exception('proxyAddress is not a proxy URL. Got: $proxyAddress');
+      }
 
-      // Generating a timestamped filename in the scripts/log folder
+      var pythonExecutable = 'scripts/.venv/Scripts/python.exe';
+
+      // Use the script you are actually debugging
+      var scriptPath = 'scripts/account_automation.py';
+
+      // EXPECTED IP is NOT the proxyAddress.
+      // You must pass the expected external IP for that slot.
+      // TEMP: just pass a dummy label until you wire it.
+      var expectedIp = '0.0.0.0';
+
+      // Build args for your python CLI:
+      // account_automation.py validate <proxy_url> <expected_ip> --debug
+      var args = [scriptPath, 'validate', proxyAddress, expectedIp, '--debug'];
+
       String fileName =
           DateTime.now().toString().replaceAll(':', '-').replaceAll(' ', '_');
       File outputFile = File('scripts/logs/${fileName}_output.txt');
       IOSink fileSink = outputFile.openWrite(mode: FileMode.append);
 
-      var installProcess = await Process.start(pythonExecutable,
-          ['-m', 'pip', 'install', '-r', 'scripts/requirements.txt']);
-      installProcess.stdout.asBroadcastStream();
-      installProcess.stderr.asBroadcastStream();
+      // DO NOT pip install every time. It adds delay + can break.
+      // Remove this after your setup flow is done.
 
-      // Handle process output and errors using the new function
-      handleStream(installProcess.stdout, fileSink);
-      handleStream(installProcess.stderr, fileSink);
+      var process = await Process.start(pythonExecutable, args);
+      processList.add(process.pid);
 
-      var installExitCode = await installProcess.exitCode;
-      print('Dependency installation exit code: $installExitCode');
+      handleStream(process.stdout, fileSink);
+      handleStream(process.stderr, fileSink);
 
-      if (installExitCode == 0) {
-        var process =
-            await Process.start(pythonExecutable, [scriptPath, argument]);
-        processList.add(process.pid);
-        process.stdout.asBroadcastStream();
-        process.stderr.asBroadcastStream();
+      var exitCode = await process.exitCode;
+      processList.remove(process.pid);
 
-        // Handle the Python script's output in the same way
-        handleStream(process.stdout, fileSink);
-        handleStream(process.stderr, fileSink);
-
-        var exitCode = await process.exitCode;
-        processList.remove(process.pid);
-        print('Python script exit code: $exitCode');
-      } else {
-        print('Failed to install dependencies.');
-      }
       await fileSink.flush();
       await fileSink.close();
+
+      print('Python script exit code: $exitCode');
     } catch (e) {
       print('Failed to run Python script: $e');
     }

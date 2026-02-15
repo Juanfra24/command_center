@@ -163,7 +163,7 @@ class WebshareService extends GetxService {
       while (hasMore) {
         final response = await http.get(
           Uri.parse(
-              '$_baseUrl/proxy/list/?mode=direct&page=$page&page_size=100'),
+              '$_baseUrl/proxy/list/?mode=backbone&page=$page&page_size=100'),
           headers: _headers,
         );
 

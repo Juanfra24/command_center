@@ -5,8 +5,9 @@ A Windows desktop application for managing and orchestrating RuneScape bot autom
 ## Features
 
 - **🎮 Account Management** - Track and manage multiple RuneScape accounts/characters
-- **🌐 Proxy Management** - Integrated Webshare proxy support with IP rotation
-- **📊 Status Monitoring** - Real-time bot status and activity tracking
+- **🌐 Proxy Management** - Integrated Webshare proxy support with IP rotation and quality scoring
+- **🤖 Browser Automation** - Automated account creation with proxy validation using undetected Chrome
+- **📊 Status Monitoring** - Real-time bot status and activity tracking  
 - **🎵 Background Music** - Built-in music player with volume control
 - **🎨 Modern UI** - Windows 11 Fluent Design interface
 - **💾 Local Storage** - SQLite database with Drift ORM for persistent configuration
@@ -21,6 +22,7 @@ A Windows desktop application for managing and orchestrating RuneScape bot autom
 
 - Flutter SDK (3.x or later)
 - Windows 10/11
+- Python 3.8 or higher (for browser automation)
 - Webshare account (for proxy management)
 
 ### Installation
@@ -31,7 +33,7 @@ git clone https://github.com/yourusername/command_center.git
 cd command_center
 ```
 
-2. Install dependencies:
+2. Install Flutter dependencies:
 ```bash
 flutter pub get
 ```
@@ -45,6 +47,17 @@ dart run build_runner build
 ```bash
 flutter run -d windows
 ```
+
+### Python Automation Setup
+
+The application automatically installs Python dependencies on first use. If you need to install them manually:
+
+```bash
+cd scripts
+pip install -r requirements.txt
+```
+
+The automation uses SeleniumBase with undetected Chrome driver, which automatically downloads the appropriate ChromeDriver version.
 
 ## Configuration
 
@@ -71,6 +84,17 @@ The application follows Clean Architecture principles:
 ### Feature Layer (`lib/feature/`)
 - **Controllers** - GetX controllers for state management
 - **Views** - UI widgets and screens
+
+### Services (`lib/config/services/`)
+- **AutomationService** - Bridge between Flutter and Python automation scripts
+- **PythonSetupService** - Manages Python dependencies and Chromium installation
+- **WebshareService** - Handles Webshare API integration
+- **IPQSService** - Proxy quality scoring via IP Quality Score API
+
+### Python Automation (`scripts/`)
+- **account_automation.py** - Browser automation using SeleniumBase with undetected Chrome
+- Proxy validation and IP verification
+- Human-like behavior patterns for anti-bot evasion
 
 ## Project Structure
 

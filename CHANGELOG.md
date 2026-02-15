@@ -8,30 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Custom Windows title bar with minimize, maximize, and close buttons
-- Onboarding flow for first-time setup
-- Create character button in Accounts section
-- Music volume control slider in Settings
-- AppConfigService for Firestore-based configuration persistence
-- Webshare API integration with single "Connect & Sync" button
-- Unlink option for configured Webshare API key
-- Clickable onboarding checklist items
-- Enhanced slot selection UI with visual feedback
-- Custom RuneScape app icon for Windows taskbar
+- **Browser Automation System**
+  - Python-based automation using SeleniumBase with undetected Chrome driver
+  - Automatic Python dependency installation on first use
+  - Automatic Chromium/ChromeDriver installation via SeleniumBase
+  - Proxy IP validation before account creation
+  - Human-like behavior patterns (random delays, typing simulation)
+  - WebRTC leak prevention
+  
+- **Account Creation Flow**
+  - New character creation dialog with proxy slot selection
+  - Real-time proxy validation with progress indicator
+  - Cancel button to abort validation mid-process
+  - 2-minute timeout protection against stuck processes
+  
+- **Proxy Quality Indicators**
+  - Badge tooltips showing what each indicator means (VPN, Datacenter, Tor, Proxy)
+  - Badges only visible when proxy has been scored
+  - Improved badge styling with proper spacing
+
+- **Home Screen Updates**
+  - Character Status section showing running/stopped counts
+  - Removed Quick Actions section for cleaner layout
+  
+- **Settings Improvements**
+  - Redesigned About section with modern styling
+  - App version and build info display
+  - Links to GitHub and documentation
+
+- **System Services**
+  - AutomationService for Flutter-Python bridge
+  - PythonSetupService for dependency management
+  - Setup progress tracking with step-by-step status
 
 ### Changed
-- Consolidated "Test Connection" and "Save & Sync" into single button with progress states
-- Simplified onboarding to single step: "Connect Webshare & Sync Proxies"
-- Merged Sync and Refresh buttons into single "Sync & Refresh" button in Proxy screen
-- "Go to Settings" now navigates to settings tab instead of showing dialog
-- Default music volume lowered to 10%
-- NavigationPane uses auto display mode for better responsiveness
-- Improved async service initialization for proper dependency order
+- GitHub Actions CI/CD updated from v3 to v4 (checkout, upload-artifact)
+- Python requirements simplified to only seleniumbase and requests
+- ComboBox items in dialogs now use single-line layout
 
 ### Fixed
-- API key save failure due to improper async service initialization
-- Duplicate proxy slots created on multiple sync attempts
-- Navigation pane button stacking issue
+- Compilation errors with StatusController.runningProcessMap (now processClients)
+- ProcessClient property access (pid → processId)
+- FluentIcons.chrome_full_logo not found (replaced with globe)
+- Python dependency conflicts in requirements.txt
+- ComboBox overflow in character creation dialog
 
 ## [0.4.0] - 2026-02-15
 

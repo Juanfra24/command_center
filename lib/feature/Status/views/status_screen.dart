@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/automation_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -415,10 +416,6 @@ class StatusScreen extends GetView<StatusController> {
   /// Show dialog to create a new character
   void _showCreateCharacterDialog(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final accountNameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final characterNameController = TextEditingController();
 
     // Get available proxy slots
     List<int?> availableSlots = [];
@@ -465,6 +462,11 @@ class StatusScreen extends GetView<StatusController> {
       return;
     }
 
+    // State for the dialog
+    final isValidating = ValueNotifier<bool>(false);
+    final validationResult = ValueNotifier<AutomationResult?>(null);
+    final selectedSlot = ValueNotifier<int?>(selectedSlotId);
+
     showDialog(
       context: context,
       builder: (context) => ContentDialog(
@@ -473,62 +475,112 @@ class StatusScreen extends GetView<StatusController> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InfoLabel(
-              label: 'Account Name',
-              child: TextBox(
-                controller: accountNameController,
-                placeholder: 'e.g., Main Account',
+            // Info about the process
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.accentColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.accentColor.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(FluentIcons.info, color: theme.accentColor, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Account Creation Process',
+                          style: theme.typography.bodyStrong,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Select a proxy slot. The system will validate the IP '
+                          'and open a browser session connected through that proxy '
+                          'for account registration.',
+                          style: theme.typography.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+
+            // Proxy slot selection
             InfoLabel(
-              label: 'Email',
-              child: TextBox(
-                controller: emailController,
-                placeholder: 'account@example.com',
-              ),
-            ),
-            const SizedBox(height: 16),
-            InfoLabel(
-              label: 'Password',
-              child: TextBox(
-                controller: passwordController,
-                placeholder: 'Account password',
-                obscureText: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-            InfoLabel(
-              label: 'Character Name',
-              child: TextBox(
-                controller: characterNameController,
-                placeholder: 'In-game character name',
-              ),
-            ),
-            const SizedBox(height: 16),
-            InfoLabel(
-              label: 'Assign Proxy Slot',
-              child: StatefulBuilder(
-                builder: (context, setState) {
+              label: 'Select Proxy Slot',
+              child: ValueListenableBuilder<int?>(
+                valueListenable: selectedSlot,
+                builder: (context, value, _) {
                   return ComboBox<int>(
-                    value: selectedSlotId,
+                    value: value,
+                    isExpanded: true,
                     items:
                         availableSlots.where((id) => id != null).map((slotId) {
                       String slotName = 'Slot $slotId';
+                      String ipAddress = 'No IP';
+
                       try {
                         final proxyController = Get.find<ProxyController>();
                         final slot = proxyController.proxySlots
                             .firstWhere((s) => s.id == slotId);
                         slotName = slot.slotName;
+
+                        final currentIp =
+                            proxyController.getCurrentIpForSlot(slot);
+                        if (currentIp != null) {
+                          ipAddress = currentIp.ipAddress;
+                        }
                       } catch (_) {}
 
                       return ComboBoxItem(
                         value: slotId!,
-                        child: Text(slotName),
+                        child: SizedBox(
+                          height: 32,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.accentColor.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '#$slotId',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 9,
+                                      color: theme.accentColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '$slotName - $ipAddress',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.typography.body
+                                      ?.copyWith(fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     }).toList(),
                     onChanged: (value) {
-                      setState(() => selectedSlotId = value);
+                      selectedSlot.value = value;
+                      validationResult.value = null;
                     },
                     placeholder: const Text('Select a proxy slot'),
                   );
@@ -536,24 +588,113 @@ class StatusScreen extends GetView<StatusController> {
               ),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.accentColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  Icon(FluentIcons.info, size: 16, color: theme.accentColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Each character must have a dedicated proxy slot assigned.',
-                      style: theme.typography.caption,
-                    ),
-                  ),
-                ],
-              ),
+
+            // Validation status
+            ValueListenableBuilder<bool>(
+              valueListenable: isValidating,
+              builder: (context, validating, _) {
+                return ValueListenableBuilder<AutomationResult?>(
+                  valueListenable: validationResult,
+                  builder: (context, result, _) {
+                    if (validating) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: ProgressRing(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Validating Proxy Connection...',
+                                    style: theme.typography.bodyStrong,
+                                  ),
+                                  Text(
+                                    'Opening browser and checking IP address',
+                                    style: theme.typography.caption,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            HyperlinkButton(
+                              onPressed: () {
+                                final automationService =
+                                    Get.find<AutomationService>();
+                                automationService.cancelCurrentTask();
+                                isValidating.value = false;
+                                validationResult.value = AutomationResult.error(
+                                    'Validation cancelled');
+                              },
+                              child: const Text('Cancel'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (result != null) {
+                      final isSuccess = result.isSuccess;
+                      final color = isSuccess ? Colors.green : Colors.red;
+                      final icon = isSuccess
+                          ? FluentIcons.check_mark
+                          : FluentIcons.error_badge;
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: color.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(icon, color: color, size: 24),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isSuccess
+                                        ? 'Proxy Validated Successfully'
+                                        : 'Validation Failed',
+                                    style: theme.typography.bodyStrong
+                                        ?.copyWith(color: color),
+                                  ),
+                                  if (result.actualIp != null)
+                                    Text(
+                                      'IP: ${result.actualIp}',
+                                      style: theme.typography.caption,
+                                    ),
+                                  if (!isSuccess)
+                                    Text(
+                                      result.message,
+                                      style: theme.typography.caption
+                                          ?.copyWith(color: color),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return const SizedBox.shrink();
+                  },
+                );
+              },
             ),
           ],
         ),
@@ -562,54 +703,134 @@ class StatusScreen extends GetView<StatusController> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          FilledButton(
-            onPressed: () async {
-              if (accountNameController.text.isEmpty ||
-                  emailController.text.isEmpty ||
-                  passwordController.text.isEmpty ||
-                  characterNameController.text.isEmpty ||
-                  selectedSlotId == null) {
-                displayInfoBar(
-                  context,
-                  builder: (context, close) {
-                    return InfoBar(
-                      title: const Text('Validation Error'),
-                      content: const Text('Please fill in all fields'),
-                      severity: InfoBarSeverity.error,
-                      action: IconButton(
-                        icon: const Icon(FluentIcons.clear),
-                        onPressed: close,
+          ValueListenableBuilder<bool>(
+            valueListenable: isValidating,
+            builder: (context, validating, _) {
+              return ValueListenableBuilder<AutomationResult?>(
+                valueListenable: validationResult,
+                builder: (context, result, _) {
+                  // Show "Start Session" if validated successfully
+                  if (result != null && result.isSuccess) {
+                    return FilledButton(
+                      onPressed: () async {
+                        final slotId = selectedSlot.value;
+                        if (slotId == null) return;
+
+                        try {
+                          final proxyController = Get.find<ProxyController>();
+                          final slot = proxyController.proxySlots
+                              .firstWhere((s) => s.id == slotId);
+
+                          final automationService =
+                              Get.find<AutomationService>();
+
+                          Navigator.pop(context);
+
+                          // Start account session
+                          final sessionResult =
+                              await automationService.createAccountSession(
+                            slot: slot,
+                          );
+
+                          displayInfoBar(
+                            context,
+                            builder: (ctx, close) {
+                              return InfoBar(
+                                title: Text(sessionResult.isSuccess
+                                    ? 'Browser Session Started'
+                                    : 'Session Error'),
+                                content: Text(sessionResult.message),
+                                severity: sessionResult.isSuccess
+                                    ? InfoBarSeverity.success
+                                    : InfoBarSeverity.error,
+                                action: IconButton(
+                                  icon: const Icon(FluentIcons.clear),
+                                  onPressed: close,
+                                ),
+                              );
+                            },
+                          );
+                        } catch (e) {
+                          displayInfoBar(
+                            context,
+                            builder: (ctx, close) {
+                              return InfoBar(
+                                title: const Text('Error'),
+                                content: Text('Failed to start session: $e'),
+                                severity: InfoBarSeverity.error,
+                                action: IconButton(
+                                  icon: const Icon(FluentIcons.clear),
+                                  onPressed: close,
+                                ),
+                              );
+                            },
+                          );
+                        }
+                      },
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(FluentIcons.globe, size: 16),
+                          SizedBox(width: 8),
+                          Text('Start Session'),
+                        ],
                       ),
                     );
-                  },
-                );
-                return;
-              }
+                  }
 
-              // TODO: Implement actual character creation in Firestore
-              // For now, show a success message
-              Navigator.pop(context);
+                  // Show validate button otherwise
+                  return FilledButton(
+                    onPressed: validating || selectedSlot.value == null
+                        ? null
+                        : () async {
+                            final slotId = selectedSlot.value;
+                            if (slotId == null) return;
 
-              displayInfoBar(
-                context,
-                builder: (context, close) {
-                  return InfoBar(
-                    title: const Text('Character Created'),
-                    content: Text(
-                        '${characterNameController.text} has been created'),
-                    severity: InfoBarSeverity.success,
-                    action: IconButton(
-                      icon: const Icon(FluentIcons.clear),
-                      onPressed: close,
+                            isValidating.value = true;
+                            validationResult.value = null;
+
+                            try {
+                              final proxyController =
+                                  Get.find<ProxyController>();
+                              final slot = proxyController.proxySlots
+                                  .firstWhere((s) => s.id == slotId);
+
+                              final automationService =
+                                  Get.find<AutomationService>();
+
+                              final result =
+                                  await automationService.validateProxyIp(
+                                slot: slot,
+                              );
+
+                              validationResult.value = result;
+                            } catch (e) {
+                              validationResult.value = AutomationResult.error(
+                                'Error: $e',
+                              );
+                            } finally {
+                              isValidating.value = false;
+                            }
+                          },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (validating)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: ProgressRing(strokeWidth: 2),
+                          )
+                        else
+                          const Icon(FluentIcons.shield, size: 14),
+                        const SizedBox(width: 8),
+                        Text(validating ? 'Validating...' : 'Validate Proxy'),
+                      ],
                     ),
                   );
                 },
               );
-
-              // Refresh account list
-              await controller.getAccountsData();
             },
-            child: const Text('Create'),
           ),
         ],
       ),

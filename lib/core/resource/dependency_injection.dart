@@ -1,7 +1,9 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/automation_service.dart';
 import 'package:command_center/config/services/ipqs_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
+import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/config/services/webshare_service.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
@@ -46,7 +48,16 @@ class AppBindings extends Bindings {
     final ipqsService = await IpqsService().init();
     Get.put<IpqsService>(ipqsService, permanent: true);
 
-    // 5. OnboardingService (depends on WebshareService, IpqsService)
+    // 5. PythonSetupService (check and install Python dependencies)
+    final pythonSetupService = PythonSetupService();
+    Get.put<PythonSetupService>(pythonSetupService, permanent: true);
+    // Run setup in background (non-blocking)
+    pythonSetupService.initializeSetup();
+
+    // 6. AutomationService (depends on Python setup)
+    Get.put<AutomationService>(AutomationService(), permanent: true);
+
+    // 7. OnboardingService (depends on WebshareService, IpqsService)
     Get.put<OnboardingService>(OnboardingService(), permanent: true);
   }
 }

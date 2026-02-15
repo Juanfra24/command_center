@@ -127,13 +127,8 @@ class ProxyController extends GetxController {
         );
 
         if (existingSlot != null) {
-          // Check if IP changed
-          final currentIp =
-              await _proxyRepository!.getActiveIpForSlot(existingSlot.id!);
-          if (currentIp?.ipAddress != webProxy.proxyAddress) {
-            // IP changed - update the current IP to inactive and create new one
-            await _handleIpChange(existingSlot, webProxy, currentIp);
-          }
+          // Slot exists - always update fields (username, password, etc.) from Webshare
+          await _updateExistingSlot(existingSlot, webProxy);
         } else {
           // New slot - create it
           await _createNewSlot(webProxy);
@@ -155,6 +150,14 @@ class ProxyController extends GetxController {
   Future<void> _createNewSlot(WebshareProxySlot webProxy) async {
     final now = DateTime.now();
 
+    // Log the webProxy data for debugging
+    logger.i('Creating new slot #${webProxy.slotNumber}');
+    logger.i('  Webshare ID: ${webProxy.id}');
+    logger.i('  Username from Webshare: ${webProxy.username}');
+    logger.i('  Password length: ${webProxy.password.length}');
+    logger.i('  Proxy Address: ${webProxy.proxyAddress}');
+    logger.i('  Port: ${webProxy.port}');
+
     // Create the slot
     final slotId = await _proxyRepository!.insertSlot(
       ProxySlotEntity(
@@ -171,6 +174,8 @@ class ProxyController extends GetxController {
         isActive: webProxy.valid,
       ),
     );
+
+    logger.i('  Slot created with ID: $slotId');
 
     // Create the IP address record
     final ipId = await _proxyRepository!.insertIpAddress(
@@ -210,56 +215,85 @@ class ProxyController extends GetxController {
     }
   }
 
-  Future<void> _handleIpChange(
-    ProxySlotEntity slot,
+  Future<void> _updateExistingSlot(
+    ProxySlotEntity existingSlot,
     WebshareProxySlot webProxy,
-    ProxyIpAddressEntity? currentIp,
   ) async {
     final now = DateTime.now();
+    final currentIp =
+        await _proxyRepository!.getActiveIpForSlot(existingSlot.id!);
 
-    // Mark old IP as inactive (this becomes history)
-    if (currentIp != null && currentIp.id != null) {
-      await _proxyRepository!.deactivateIp(currentIp.id!);
+    // Check if critical fields have changed
+    final usernameChanged = existingSlot.username != webProxy.username;
+    final ipChanged = currentIp?.ipAddress != webProxy.proxyAddress;
+
+    if (usernameChanged) {
+      logger.i('Username changed for slot #${webProxy.slotNumber}:');
+      logger.i('  Old: ${existingSlot.username}');
+      logger.i('  New: ${webProxy.username}');
     }
 
-    // Create new IP record (active)
-    final newIpId = await _proxyRepository!.insertIpAddress(
-      ProxyIpAddressEntity(
-        ipAddress: webProxy.proxyAddress,
-        hostname: webProxy.proxyAddress,
-        slotId: slot.id!,
-        isActive: true,
-        countryCode: webProxy.countryCode,
-        cityName: webProxy.cityName,
-        ipTimezone: 'UTC',
-        highCountryConfidence: true,
-        asnName: webProxy.asnName ?? '',
-        asnNumber: webProxy.asnNumber ?? 0,
-        ipScore: 0,
-        scoreLevel: IpScoreLevel.unknown,
-        isVpn: false,
-        isProxy: true,
-        isDatacenter: true,
-        isTor: false,
-        fraudScore: 0,
-        abuseConfidence: 0,
-        assignedAt: now,
-        removedAt: null,
-        lastVerification: webProxy.lastVerification ?? now,
-        lastScoreCheck: null,
-        totalDaysUsed: 0,
-        timesAssigned: 1,
+    // Always update slot with latest data from Webshare
+    await _proxyRepository!.updateSlot(
+      existingSlot.copyWith(
+        webshareId: webProxy.id,
+        username: webProxy.username,
+        password: webProxy.password,
+        port: webProxy.port,
+        isActive: webProxy.valid,
+        lastUpdated: now,
       ),
     );
 
-    // Update slot
-    await _proxyRepository!.updateSlot(
-      slot.copyWith(
-        currentIpAddressId: newIpId,
-        lastUpdated: now,
-        totalIpChanges: slot.totalIpChanges + 1,
-      ),
-    );
+    // Handle IP change if needed
+    if (ipChanged) {
+      logger.i('IP changed for slot #${webProxy.slotNumber}');
+      logger.i('  Old: ${currentIp?.ipAddress}');
+      logger.i('  New: ${webProxy.proxyAddress}');
+
+      // Mark old IP as inactive
+      if (currentIp != null && currentIp.id != null) {
+        await _proxyRepository!.deactivateIp(currentIp.id!);
+      }
+
+      // Create new IP record
+      final newIpId = await _proxyRepository!.insertIpAddress(
+        ProxyIpAddressEntity(
+          ipAddress: webProxy.proxyAddress,
+          hostname: webProxy.proxyAddress,
+          slotId: existingSlot.id!,
+          isActive: true,
+          countryCode: webProxy.countryCode,
+          cityName: webProxy.cityName,
+          ipTimezone: 'UTC',
+          highCountryConfidence: true,
+          asnName: webProxy.asnName ?? '',
+          asnNumber: webProxy.asnNumber ?? 0,
+          ipScore: 0,
+          scoreLevel: IpScoreLevel.unknown,
+          isVpn: false,
+          isProxy: true,
+          isDatacenter: true,
+          isTor: false,
+          fraudScore: 0,
+          abuseConfidence: 0,
+          assignedAt: now,
+          removedAt: null,
+          lastVerification: webProxy.lastVerification ?? now,
+          lastScoreCheck: null,
+          totalDaysUsed: 0,
+          timesAssigned: 1,
+        ),
+      );
+
+      // Update slot with new IP reference and increment change count
+      await _proxyRepository!.updateSlot(
+        existingSlot.copyWith(
+          currentIpAddressId: newIpId,
+          totalIpChanges: existingSlot.totalIpChanges + 1,
+        ),
+      );
+    }
   }
 
   /// Request IP rotation via Webshare API
@@ -283,6 +317,34 @@ class ProxyController extends GetxController {
       logger.e('Error rotating IP: $e');
       lastSyncError.value = 'Failed to rotate IP: ${e.toString()}';
       return false;
+    }
+  }
+
+  /// Clear all proxy data from database
+  /// This is typically called when unlinking Webshare
+  Future<void> clearAllProxyData() async {
+    if (_proxyRepository == null) return;
+
+    try {
+      logger.i('Clearing all proxy data from database...');
+      final allSlots = await _proxyRepository!.getAllSlots();
+
+      for (final slot in allSlots) {
+        if (slot.id != null) {
+          await _proxyRepository!.deleteSlot(slot.id!);
+        }
+      }
+
+      // Clear in-memory state
+      proxySlots.clear();
+      ipAddresses.clear();
+      selectedSlot.value = null;
+      selectedSlotIpHistory.clear();
+
+      logger.i('Successfully cleared ${allSlots.length} proxy slots');
+    } catch (e) {
+      logger.e('Error clearing proxy data: $e');
+      rethrow;
     }
   }
 

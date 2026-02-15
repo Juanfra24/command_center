@@ -278,3 +278,13 @@ cython_debug/
 # Misc
 temp*.txt
 scripts/logs/*
+
+# Automation debug files
+scripts/automation_debug/
+scripts/automation_debug/**/*.log
+scripts/automation_debug/**/profiles/
+scripts/automation_debug/**/profiles/**/
+
+# Sensitive downloaded files (proxy credentials, etc.)
+scripts/downloaded_files/
+scripts/downloaded_files/**/*
