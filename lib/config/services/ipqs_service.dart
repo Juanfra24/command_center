@@ -51,8 +51,9 @@ class IpqsResult {
       isProxy: json['proxy'] == true,
       isVpn: json['vpn'] == true,
       isTor: json['tor'] == true,
-      isDatacenter: json['connection_type']?.toString().toLowerCase() == 'datacenter' || 
-                    json['connection_type']?.toString().toLowerCase() == 'data center',
+      isDatacenter: json['connection_type']?.toString().toLowerCase() ==
+              'datacenter' ||
+          json['connection_type']?.toString().toLowerCase() == 'data center',
       isCrawler: json['is_crawler'] == true,
       recentAbuse: json['recent_abuse'] == true,
       connectionType: json['connection_type'] as String?,
@@ -214,7 +215,8 @@ class IpqsService extends GetxService {
   }
 
   /// Score multiple IP addresses
-  Future<Map<String, IpqsResult>> scoreMultipleIps(List<String> ipAddresses) async {
+  Future<Map<String, IpqsResult>> scoreMultipleIps(
+      List<String> ipAddresses) async {
     final results = <String, IpqsResult>{};
 
     for (final ip in ipAddresses) {
@@ -230,7 +232,7 @@ class IpqsService extends GetxService {
   Future<IpqsResult> _makeRequest(String key, String ipAddress) async {
     try {
       final uri = Uri.parse('$_baseUrl/$key/$ipAddress?strictness=1');
-      
+
       final response = await http.get(
         uri,
         headers: {'Accept': 'application/json'},

@@ -31,7 +31,7 @@ class ProxyScreen extends StatefulWidget {
 class _ProxyScreenState extends State<ProxyScreen> {
   late ProxyController controller;
   final searchController = TextEditingController();
-  
+
   // Slot name editing state
   int? _editingSlotId;
   final _editingNameController = TextEditingController();
@@ -486,9 +486,10 @@ class _ProxyScreenState extends State<ProxyScreen> {
   }
 
   /// Builds the slot name row with optional inline editing
-  Widget _buildSlotNameRow(ProxySlotEntity slot, bool isSelected, FluentThemeData theme) {
+  Widget _buildSlotNameRow(
+      ProxySlotEntity slot, bool isSelected, FluentThemeData theme) {
     final isEditing = _editingSlotId == slot.id;
-    
+
     if (isEditing) {
       return Row(
         children: [
@@ -587,7 +588,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
       _cancelEditing();
       return;
     }
-    
+
     final success = await controller.updateSlotName(slot, newName);
     if (success) {
       setState(() {
@@ -821,7 +822,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
 
   Widget _buildScoreAnalysis(BuildContext context, ProxyIpAddressEntity ip) {
     final theme = FluentTheme.of(context);
-    
+
     // If IP hasn't been scored yet, show a prompt to score it
     if (!ip.hasBeenScored) {
       return Card(
@@ -1356,7 +1357,8 @@ class _ProxyScreenState extends State<ProxyScreen> {
         builder: (ctx, close) {
           return InfoBar(
             title: const Text('Scoring Failed'),
-            content: const Text('Failed to refresh IP score. Please try again.'),
+            content:
+                const Text('Failed to refresh IP score. Please try again.'),
             severity: InfoBarSeverity.error,
             action: IconButton(
               icon: const Icon(FluentIcons.clear),

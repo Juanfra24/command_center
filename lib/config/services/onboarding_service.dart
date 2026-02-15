@@ -20,7 +20,9 @@ class OnboardingService extends GetxService {
 
   // Computed state - is onboarding complete?
   bool get isOnboardingComplete =>
-      isWebshareConfigured.value && isIpqsConfigured.value && isInitialSyncComplete.value;
+      isWebshareConfigured.value &&
+      isIpqsConfigured.value &&
+      isInitialSyncComplete.value;
 
   @override
   void onInit() {

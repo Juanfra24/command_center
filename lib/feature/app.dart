@@ -165,7 +165,8 @@ class _AppState extends State<App> with WindowListener {
           selected: _currentIndex,
           onChanged: (index) => setState(() => _currentIndex = index),
           displayMode: _paneDisplayMode,
-          toggleable: false, // Disable built-in toggle since we have our own in title bar
+          toggleable:
+              false, // Disable built-in toggle since we have our own in title bar
           items: [
             PaneItem(
               icon: const Icon(FluentIcons.home),
@@ -271,7 +272,8 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildSetupChecklist(OnboardingService? onboardingService) {
-    final isWebshareComplete = onboardingService?.isWebshareConfigured.value ?? false;
+    final isWebshareComplete =
+        onboardingService?.isWebshareConfigured.value ?? false;
     final isIpqsComplete = onboardingService?.isIpqsConfigured.value ?? false;
 
     return Builder(
@@ -307,7 +309,8 @@ class _AppState extends State<App> with WindowListener {
     return GestureDetector(
       onTap: isClickable ? onTap : null,
       child: MouseRegion(
-        cursor: isClickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        cursor:
+            isClickable ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: Opacity(
           opacity: isEnabled ? 1.0 : 0.5,
           child: Container(
@@ -327,7 +330,9 @@ class _AppState extends State<App> with WindowListener {
               children: [
                 Icon(
                   isComplete ? FluentIcons.check_mark : FluentIcons.circle_ring,
-                  color: isComplete ? Colors.green : (isEnabled ? theme.accentColor : Colors.grey),
+                  color: isComplete
+                      ? Colors.green
+                      : (isEnabled ? theme.accentColor : Colors.grey),
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -964,8 +969,9 @@ class _AppState extends State<App> with WindowListener {
     showDialog(
       context: context,
       builder: (dialogContext) => ContentDialog(
-        title: Text(
-            isConfigured ? 'IPQualityScore Configuration' : 'Configure IPQualityScore'),
+        title: Text(isConfigured
+            ? 'IPQualityScore Configuration'
+            : 'Configure IPQualityScore'),
         content: Obx(() => Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1300,7 +1306,9 @@ class _AppState extends State<App> with WindowListener {
             )),
         actions: [
           Button(
-            onPressed: isProcessing.value ? null : () => Navigator.of(dialogContext).pop(),
+            onPressed: isProcessing.value
+                ? null
+                : () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           Obx(() => FilledButton(
@@ -1336,15 +1344,18 @@ class _AppState extends State<App> with WindowListener {
                           statusMessage.value = 'Scoring all proxy IPs...';
                           try {
                             final proxyController = Get.find<ProxyController>();
-                            final scored = await proxyController.scoreAllCurrentIps();
-                            statusMessage.value = 'Scored $scored IPs successfully!';
+                            final scored =
+                                await proxyController.scoreAllCurrentIps();
+                            statusMessage.value =
+                                'Scored $scored IPs successfully!';
                           } catch (e) {
                             // Non-fatal - continue anyway
                           }
 
                           // Mark onboarding complete
                           try {
-                            final onboardingService = Get.find<OnboardingService>();
+                            final onboardingService =
+                                Get.find<OnboardingService>();
                             await onboardingService.markInitialSyncComplete();
                           } catch (_) {}
 

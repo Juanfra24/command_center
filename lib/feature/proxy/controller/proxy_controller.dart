@@ -128,7 +128,8 @@ class ProxyController extends GetxController {
 
         if (existingSlot != null) {
           // Check if IP changed
-          final currentIp = await _proxyRepository!.getActiveIpForSlot(existingSlot.id!);
+          final currentIp =
+              await _proxyRepository!.getActiveIpForSlot(existingSlot.id!);
           if (currentIp?.ipAddress != webProxy.proxyAddress) {
             // IP changed - update the current IP to inactive and create new one
             await _handleIpChange(existingSlot, webProxy, currentIp);
@@ -204,7 +205,8 @@ class ProxyController extends GetxController {
     // Update slot with IP reference
     final slot = await _proxyRepository!.getSlotById(slotId);
     if (slot != null) {
-      await _proxyRepository!.updateSlot(slot.copyWith(currentIpAddressId: ipId));
+      await _proxyRepository!
+          .updateSlot(slot.copyWith(currentIpAddressId: ipId));
     }
   }
 
@@ -286,7 +288,7 @@ class ProxyController extends GetxController {
 
   Future<void> loadProxySlots() async {
     if (_proxyRepository == null) return;
-    
+
     try {
       final slots = await _proxyRepository!.getAllSlots();
       proxySlots.value = slots;
@@ -298,7 +300,7 @@ class ProxyController extends GetxController {
 
   Future<void> loadIpAddresses() async {
     if (_proxyRepository == null) return;
-    
+
     try {
       final ips = await _proxyRepository!.getAllIpAddresses();
       ipAddresses.value = ips;
@@ -401,7 +403,7 @@ class ProxyController extends GetxController {
   // Add a new proxy slot manually
   Future<void> addProxySlot(ProxySlotEntity slot) async {
     if (_proxyRepository == null) return;
-    
+
     try {
       await _proxyRepository!.insertSlot(slot);
       await loadProxySlots();
@@ -414,7 +416,7 @@ class ProxyController extends GetxController {
   // Update a proxy slot
   Future<void> updateProxySlot(ProxySlotEntity slot) async {
     if (_proxyRepository == null) return;
-    
+
     try {
       await _proxyRepository!.updateSlot(slot);
       await loadProxySlots();
@@ -427,16 +429,16 @@ class ProxyController extends GetxController {
   /// Update just the slot name
   Future<bool> updateSlotName(ProxySlotEntity slot, String newName) async {
     if (_proxyRepository == null) return false;
-    
+
     try {
       await _proxyRepository!.updateSlot(slot.copyWith(slotName: newName));
       await loadProxySlots();
-      
+
       // Update selectedSlot if it was the one being edited
       if (selectedSlot.value?.id == slot.id) {
         selectedSlot.value = slot.copyWith(slotName: newName);
       }
-      
+
       return true;
     } catch (e) {
       logger.e('Error updating slot name: $e');
@@ -447,7 +449,7 @@ class ProxyController extends GetxController {
   // Update IP score
   Future<void> updateIpScore(ProxyIpAddressEntity ip, double newScore) async {
     if (_proxyRepository == null) return;
-    
+
     try {
       await _proxyRepository!.updateIpAddress(
         ip.copyWith(
@@ -473,11 +475,11 @@ class ProxyController extends GetxController {
     isScoring.value = true;
     try {
       final result = await _ipqsService!.scoreIp(ip.ipAddress);
-      
+
       if (result.success) {
         // Use the normalized score (100 = safest, 0 = riskiest)
         final newScore = result.normalizedScore;
-        
+
         await _proxyRepository!.updateIpAddress(
           ip.copyWith(
             ipScore: newScore,
@@ -490,14 +492,15 @@ class ProxyController extends GetxController {
             lastScoreCheck: DateTime.now(),
           ),
         );
-        
+
         await loadIpAddresses();
-        
+
         // Refresh selected slot history if applicable
         if (selectedSlot.value != null && selectedSlot.value!.id != null) {
-          selectedSlotIpHistory.value = getIpHistoryForSlot(selectedSlot.value!.id!);
+          selectedSlotIpHistory.value =
+              getIpHistoryForSlot(selectedSlot.value!.id!);
         }
-        
+
         return true;
       }
       return false;
@@ -519,7 +522,7 @@ class ProxyController extends GetxController {
 
     isScoring.value = true;
     int successCount = 0;
-    
+
     try {
       for (final slot in proxySlots) {
         final currentIp = getCurrentIpForSlot(slot);
@@ -530,7 +533,7 @@ class ProxyController extends GetxController {
           await Future.delayed(const Duration(milliseconds: 300));
         }
       }
-      
+
       await loadIpAddresses();
       return successCount;
     } catch (e) {
