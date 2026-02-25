@@ -16,6 +16,7 @@ class ProxyController extends GetxController {
   var isLoading = true.obs;
   var isSyncing = false.obs;
   var isScoring = false.obs;
+  var isReplacing = false.obs;
   var proxySlots = <ProxySlotEntity>[].obs;
   var ipAddresses = <ProxyIpAddressEntity>[].obs;
   var selectedSlot = Rxn<ProxySlotEntity>();
@@ -25,6 +26,11 @@ class ProxyController extends GetxController {
   var isWebshareConfigured = false.obs;
   var isIpqsConfigured = false.obs;
   var lastSyncError = Rxn<String>();
+
+  // Subscription plan info
+  var replacementsAvailable = Rxn<int>();
+  var replacementsTotal = Rxn<int>();
+  var replacementsUsed = Rxn<int>();
 
   // Filter states
   var showOnlyActive = true.obs;
@@ -58,8 +64,14 @@ class ProxyController extends GetxController {
         isWebshareConfigured.value = configured;
         if (configured) {
           syncWithWebshare();
+          fetchPlanInfo();
         }
       });
+
+      // Fetch plan info if already configured
+      if (isWebshareConfigured.value) {
+        fetchPlanInfo();
+      }
     } catch (e) {
       logger.w('WebshareService not initialized yet');
     }
@@ -96,6 +108,10 @@ class ProxyController extends GetxController {
   }
 
   /// Sync proxy slots from Webshare API
+  /// Uses webshareId as the stable identifier:
+  /// - If a slot with the same webshareId exists (even soft-deleted), recover/update it
+  /// - If a slot doesn't exist, create a new one
+  /// - If a DB slot's webshareId is not in the API response, soft-delete it
   Future<void> syncWithWebshare() async {
     if (_webshareService == null || !isWebshareConfigured.value) {
       lastSyncError.value =
@@ -114,24 +130,45 @@ class ProxyController extends GetxController {
     try {
       final webshareProxies = await _webshareService!.getProxyList();
 
-      // Reload existing slots from database to get fresh data
-      await loadProxySlots();
-      final existingSlots = proxySlots.toList();
+      // Get ALL existing slots from DB, including soft-deleted ones
+      final allExistingSlots =
+          await _proxyRepository!.getAllSlotsIncludingDeleted();
+
+      // Track which webshareIds we see from the API
+      final apiWebshareIds = <String>{};
 
       for (final webProxy in webshareProxies) {
-        // Check if this slot already exists (by Webshare ID OR slot number)
-        final existingSlot = existingSlots.firstWhereOrNull(
-          (s) =>
-              s.webshareId == webProxy.id ||
-              s.slotNumber == webProxy.slotNumber,
+        apiWebshareIds.add(webProxy.id);
+
+        // Check if this slot already exists by Webshare ID (including deleted)
+        final existingSlot = allExistingSlots.firstWhereOrNull(
+          (s) => s.webshareId == webProxy.id,
         );
 
         if (existingSlot != null) {
-          // Slot exists - always update fields (username, password, etc.) from Webshare
+          if (existingSlot.isDeleted) {
+            // Recover soft-deleted slot
+            logger.i(
+                'Recovering soft-deleted slot #${webProxy.slotNumber} (webshareId: ${webProxy.id})');
+            await _proxyRepository!.recoverSlot(existingSlot.id!);
+          }
+          // Update existing slot (whether it was deleted or not)
           await _updateExistingSlot(existingSlot, webProxy);
         } else {
           // New slot - create it
           await _createNewSlot(webProxy);
+        }
+      }
+
+      // Soft-delete any DB slots whose webshareId is NOT in the API response
+      for (final existingSlot in allExistingSlots) {
+        if (existingSlot.webshareId != null &&
+            existingSlot.webshareId!.isNotEmpty &&
+            !apiWebshareIds.contains(existingSlot.webshareId) &&
+            !existingSlot.isDeleted) {
+          logger.i(
+              'Soft-deleting slot #${existingSlot.slotNumber} (webshareId: ${existingSlot.webshareId}) - not found in API');
+          await _proxyRepository!.softDeleteSlot(existingSlot.id!);
         }
       }
 
@@ -241,6 +278,8 @@ class ProxyController extends GetxController {
         password: webProxy.password,
         port: webProxy.port,
         isActive: webProxy.valid,
+        isDeleted: false,
+        deletedAt: null,
         lastUpdated: now,
       ),
     );
@@ -296,7 +335,7 @@ class ProxyController extends GetxController {
     }
   }
 
-  /// Request IP rotation via Webshare API
+  /// Request IP rotation via Webshare API (legacy v2)
   Future<bool> rotateSlotIp(ProxySlotEntity slot) async {
     if (_webshareService == null ||
         !isWebshareConfigured.value ||
@@ -320,18 +359,104 @@ class ProxyController extends GetxController {
     }
   }
 
-  /// Clear all proxy data from database
+  /// Replace a proxy IP via the Webshare v3 Proxy Replacement API.
+  /// This replaces the IP address of the given slot with a new one.
+  /// Optionally keeps the same country.
+  /// Returns a record with success status and optional error message.
+  Future<({bool success, String? error})> replaceProxyIp(
+    ProxySlotEntity slot, {
+    bool keepSameCountry = false,
+  }) async {
+    if (_webshareService == null || !isWebshareConfigured.value) {
+      return (
+        success: false,
+        error: 'Webshare not configured. Please add your API key in Settings.'
+      );
+    }
+
+    if (_proxyRepository == null) {
+      return (success: false, error: 'Database not initialized');
+    }
+
+    final currentIp = getCurrentIpForSlot(slot);
+    if (currentIp == null) {
+      return (success: false, error: 'No active IP found for this slot');
+    }
+
+    isReplacing.value = true;
+    lastSyncError.value = null;
+
+    try {
+      final countryCode = keepSameCountry ? currentIp.countryCode : null;
+
+      final result = await _webshareService!.replaceProxyIp(
+        currentIp.ipAddress,
+        countryCode: countryCode,
+      );
+
+      if (result.success) {
+        // Sync to get the updated proxy data
+        await syncWithWebshare();
+        // Refresh plan info to update remaining replacements
+        await fetchPlanInfo();
+        return (success: true, error: null);
+      } else {
+        lastSyncError.value = result.error;
+        return result;
+      }
+    } catch (e) {
+      logger.e('Error replacing proxy: $e');
+      final errorMsg = 'Failed to replace proxy: ${e.toString()}';
+      lastSyncError.value = errorMsg;
+      return (success: false, error: errorMsg);
+    } finally {
+      isReplacing.value = false;
+    }
+  }
+
+  /// Fetch plan info from Webshare to get replacement quotas
+  Future<void> fetchPlanInfo() async {
+    if (_webshareService == null || !isWebshareConfigured.value) return;
+
+    try {
+      final plan = await _webshareService!.getActivePlan();
+      if (plan != null) {
+        replacementsAvailable.value = plan.proxyReplacementsAvailable;
+        replacementsTotal.value = plan.proxyReplacementsTotal;
+        replacementsUsed.value = plan.proxyReplacementsUsed;
+        logger.i(
+            'Plan info: ${plan.proxyReplacementsAvailable}/${plan.proxyReplacementsTotal} replacements available');
+      }
+    } catch (e) {
+      logger.w('Error fetching plan info: $e');
+    }
+  }
+
+  /// Get details of low-score proxies for tooltip display
+  List<String> getLowScoreSlotDetails() {
+    final details = <String>[];
+    for (final slot in proxySlots) {
+      final ip = getCurrentIpForSlot(slot);
+      if (ip != null && ip.ipScore > 0 && ip.ipScore < 50) {
+        details.add(
+            '${slot.slotName}: ${ip.ipAddress} (score: ${ip.ipScore.toStringAsFixed(0)})');
+      }
+    }
+    return details;
+  }
+
+  /// Clear all proxy data from database (soft-delete)
   /// This is typically called when unlinking Webshare
   Future<void> clearAllProxyData() async {
     if (_proxyRepository == null) return;
 
     try {
-      logger.i('Clearing all proxy data from database...');
+      logger.i('Soft-deleting all proxy data from database...');
       final allSlots = await _proxyRepository!.getAllSlots();
 
       for (final slot in allSlots) {
         if (slot.id != null) {
-          await _proxyRepository!.deleteSlot(slot.id!);
+          await _proxyRepository!.softDeleteSlot(slot.id!);
         }
       }
 
@@ -341,7 +466,7 @@ class ProxyController extends GetxController {
       selectedSlot.value = null;
       selectedSlotIpHistory.clear();
 
-      logger.i('Successfully cleared ${allSlots.length} proxy slots');
+      logger.i('Successfully soft-deleted ${allSlots.length} proxy slots');
     } catch (e) {
       logger.e('Error clearing proxy data: $e');
       rethrow;

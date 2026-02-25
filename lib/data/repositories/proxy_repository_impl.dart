@@ -15,6 +15,14 @@ class ProxyRepositoryImpl implements ProxyRepository {
 
   @override
   Future<List<ProxySlotEntity>> getAllSlots() async {
+    final query = _db.select(_db.proxySlotsTable)
+      ..where((tbl) => tbl.isDeleted.equals(false));
+    final results = await query.get();
+    return results.map(_mapProxySlotRow).toList();
+  }
+
+  @override
+  Future<List<ProxySlotEntity>> getAllSlotsIncludingDeleted() async {
     final results = await _db.select(_db.proxySlotsTable).get();
     return results.map(_mapProxySlotRow).toList();
   }
@@ -58,6 +66,8 @@ class ProxyRepositoryImpl implements ProxyRepository {
             lastUpdated: Value(slot.lastUpdated),
             totalIpChanges: Value(slot.totalIpChanges),
             isActive: Value(slot.isActive),
+            isDeleted: Value(slot.isDeleted),
+            deletedAt: Value(slot.deletedAt),
           ),
         );
   }
@@ -81,6 +91,31 @@ class ProxyRepositoryImpl implements ProxyRepository {
         lastUpdated: Value(DateTime.now()),
         totalIpChanges: Value(slot.totalIpChanges),
         isActive: Value(slot.isActive),
+        isDeleted: Value(slot.isDeleted),
+        deletedAt: Value(slot.deletedAt),
+      ),
+    );
+  }
+
+  @override
+  Future<void> softDeleteSlot(int id) async {
+    await (_db.update(_db.proxySlotsTable)..where((tbl) => tbl.id.equals(id)))
+        .write(
+      ProxySlotsTableCompanion(
+        isDeleted: const Value(true),
+        deletedAt: Value(DateTime.now()),
+        isActive: const Value(false),
+      ),
+    );
+  }
+
+  @override
+  Future<void> recoverSlot(int id) async {
+    await (_db.update(_db.proxySlotsTable)..where((tbl) => tbl.id.equals(id)))
+        .write(
+      const ProxySlotsTableCompanion(
+        isDeleted: Value(false),
+        deletedAt: Value(null),
       ),
     );
   }
@@ -99,6 +134,7 @@ class ProxyRepositoryImpl implements ProxyRepository {
   @override
   Stream<List<ProxySlotEntity>> watchAllSlots() {
     final query = _db.select(_db.proxySlotsTable)
+      ..where((tbl) => tbl.isDeleted.equals(false))
       ..orderBy([(t) => OrderingTerm.asc(t.slotNumber)]);
     return query.watch().map((rows) => rows.map(_mapProxySlotRow).toList());
   }
@@ -265,6 +301,8 @@ class ProxyRepositoryImpl implements ProxyRepository {
       lastUpdated: row.lastUpdated,
       totalIpChanges: row.totalIpChanges,
       isActive: row.isActive,
+      isDeleted: row.isDeleted,
+      deletedAt: row.deletedAt,
     );
   }
 

@@ -5,7 +5,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class MainMenuScreen extends GetView<MainMenuController> {
-  const MainMenuScreen({super.key});
+  final void Function(int index)? onNavigateToIndex;
+
+  const MainMenuScreen({super.key, this.onNavigateToIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +244,7 @@ class MainMenuScreen extends GetView<MainMenuController> {
             label: 'Total Accounts',
             value: _getAccountCount(),
             color: Colors.blue,
+            onTap: () => onNavigateToIndex?.call(1),
           ),
         ),
         const SizedBox(width: 16),
@@ -252,6 +255,7 @@ class MainMenuScreen extends GetView<MainMenuController> {
             label: 'Proxy Slots',
             value: _getProxyCount(),
             color: Colors.green,
+            onTap: () => onNavigateToIndex?.call(2),
           ),
         ),
         const SizedBox(width: 16),
@@ -262,6 +266,8 @@ class MainMenuScreen extends GetView<MainMenuController> {
             label: 'Issues',
             value: _getIssuesCount(),
             color: Colors.red,
+            onTap: () => onNavigateToIndex?.call(2),
+            tooltip: _getIssuesTooltip(),
           ),
         ),
       ],
@@ -292,6 +298,17 @@ class MainMenuScreen extends GetView<MainMenuController> {
       return controller.lowScoreCount.toString();
     } catch (_) {
       return '0';
+    }
+  }
+
+  String? _getIssuesTooltip() {
+    try {
+      final proxyController = Get.find<ProxyController>();
+      final details = proxyController.getLowScoreSlotDetails();
+      if (details.isEmpty) return null;
+      return 'Low score proxies:\n${details.join('\n')}';
+    } catch (_) {
+      return null;
     }
   }
 
@@ -332,10 +349,12 @@ class MainMenuScreen extends GetView<MainMenuController> {
     required String label,
     required String value,
     required AccentColor color,
+    VoidCallback? onTap,
+    String? tooltip,
   }) {
     final theme = FluentTheme.of(context);
 
-    return Container(
+    Widget card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -359,5 +378,27 @@ class MainMenuScreen extends GetView<MainMenuController> {
         ],
       ),
     );
+
+    if (tooltip != null && tooltip.isNotEmpty) {
+      card = Tooltip(
+        message: tooltip,
+        style: const TooltipThemeData(
+          waitDuration: Duration(milliseconds: 300),
+        ),
+        child: card,
+      );
+    }
+
+    if (onTap != null) {
+      card = MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: card,
+        ),
+      );
+    }
+
+    return card;
   }
 }

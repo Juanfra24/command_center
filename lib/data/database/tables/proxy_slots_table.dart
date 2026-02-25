@@ -38,4 +38,10 @@ class ProxySlotsTable extends Table {
 
   /// Whether this slot is active
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  /// Whether this slot has been soft-deleted
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
+  /// When this slot was soft-deleted
+  DateTimeColumn get deletedAt => dateTime().nullable()();
 }

@@ -381,6 +381,22 @@ class $ProxySlotsTableTable extends ProxySlotsTable
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_active" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -394,7 +410,9 @@ class $ProxySlotsTableTable extends ProxySlotsTable
         createdAt,
         lastUpdated,
         totalIpChanges,
-        isActive
+        isActive,
+        isDeleted,
+        deletedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -472,6 +490,14 @@ class $ProxySlotsTableTable extends ProxySlotsTable
       context.handle(_isActiveMeta,
           isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta));
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
     return context;
   }
 
@@ -505,6 +531,10 @@ class $ProxySlotsTableTable extends ProxySlotsTable
           .read(DriftSqlType.int, data['${effectivePrefix}total_ip_changes'])!,
       isActive: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_active'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
     );
   }
 
@@ -551,6 +581,12 @@ class ProxySlotsTableData extends DataClass
 
   /// Whether this slot is active
   final bool isActive;
+
+  /// Whether this slot has been soft-deleted
+  final bool isDeleted;
+
+  /// When this slot was soft-deleted
+  final DateTime? deletedAt;
   const ProxySlotsTableData(
       {required this.id,
       required this.webshareId,
@@ -563,7 +599,9 @@ class ProxySlotsTableData extends DataClass
       required this.createdAt,
       required this.lastUpdated,
       required this.totalIpChanges,
-      required this.isActive});
+      required this.isActive,
+      required this.isDeleted,
+      this.deletedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -581,6 +619,10 @@ class ProxySlotsTableData extends DataClass
     map['last_updated'] = Variable<DateTime>(lastUpdated);
     map['total_ip_changes'] = Variable<int>(totalIpChanges);
     map['is_active'] = Variable<bool>(isActive);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     return map;
   }
 
@@ -600,6 +642,10 @@ class ProxySlotsTableData extends DataClass
       lastUpdated: Value(lastUpdated),
       totalIpChanges: Value(totalIpChanges),
       isActive: Value(isActive),
+      isDeleted: Value(isDeleted),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -619,6 +665,8 @@ class ProxySlotsTableData extends DataClass
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
       totalIpChanges: serializer.fromJson<int>(json['totalIpChanges']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
     );
   }
   @override
@@ -637,6 +685,8 @@ class ProxySlotsTableData extends DataClass
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
       'totalIpChanges': serializer.toJson<int>(totalIpChanges),
       'isActive': serializer.toJson<bool>(isActive),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
     };
   }
 
@@ -652,7 +702,9 @@ class ProxySlotsTableData extends DataClass
           DateTime? createdAt,
           DateTime? lastUpdated,
           int? totalIpChanges,
-          bool? isActive}) =>
+          bool? isActive,
+          bool? isDeleted,
+          Value<DateTime?> deletedAt = const Value.absent()}) =>
       ProxySlotsTableData(
         id: id ?? this.id,
         webshareId: webshareId ?? this.webshareId,
@@ -668,6 +720,8 @@ class ProxySlotsTableData extends DataClass
         lastUpdated: lastUpdated ?? this.lastUpdated,
         totalIpChanges: totalIpChanges ?? this.totalIpChanges,
         isActive: isActive ?? this.isActive,
+        isDeleted: isDeleted ?? this.isDeleted,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
       );
   ProxySlotsTableData copyWithCompanion(ProxySlotsTableCompanion data) {
     return ProxySlotsTableData(
@@ -690,6 +744,8 @@ class ProxySlotsTableData extends DataClass
           ? data.totalIpChanges.value
           : this.totalIpChanges,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -707,7 +763,9 @@ class ProxySlotsTableData extends DataClass
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('totalIpChanges: $totalIpChanges, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -725,7 +783,9 @@ class ProxySlotsTableData extends DataClass
       createdAt,
       lastUpdated,
       totalIpChanges,
-      isActive);
+      isActive,
+      isDeleted,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -741,7 +801,9 @@ class ProxySlotsTableData extends DataClass
           other.createdAt == this.createdAt &&
           other.lastUpdated == this.lastUpdated &&
           other.totalIpChanges == this.totalIpChanges &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedAt == this.deletedAt);
 }
 
 class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
@@ -757,6 +819,8 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
   final Value<DateTime> lastUpdated;
   final Value<int> totalIpChanges;
   final Value<bool> isActive;
+  final Value<bool> isDeleted;
+  final Value<DateTime?> deletedAt;
   const ProxySlotsTableCompanion({
     this.id = const Value.absent(),
     this.webshareId = const Value.absent(),
@@ -770,6 +834,8 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     this.lastUpdated = const Value.absent(),
     this.totalIpChanges = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
   });
   ProxySlotsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -784,6 +850,8 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     this.lastUpdated = const Value.absent(),
     this.totalIpChanges = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
   })  : webshareId = Value(webshareId),
         slotNumber = Value(slotNumber),
         username = Value(username),
@@ -801,6 +869,8 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     Expression<DateTime>? lastUpdated,
     Expression<int>? totalIpChanges,
     Expression<bool>? isActive,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? deletedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -816,6 +886,8 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
       if (lastUpdated != null) 'last_updated': lastUpdated,
       if (totalIpChanges != null) 'total_ip_changes': totalIpChanges,
       if (isActive != null) 'is_active': isActive,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedAt != null) 'deleted_at': deletedAt,
     });
   }
 
@@ -831,7 +903,9 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
       Value<DateTime>? createdAt,
       Value<DateTime>? lastUpdated,
       Value<int>? totalIpChanges,
-      Value<bool>? isActive}) {
+      Value<bool>? isActive,
+      Value<bool>? isDeleted,
+      Value<DateTime?>? deletedAt}) {
     return ProxySlotsTableCompanion(
       id: id ?? this.id,
       webshareId: webshareId ?? this.webshareId,
@@ -845,6 +919,8 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,
       isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -887,6 +963,12 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
     return map;
   }
 
@@ -904,7 +986,9 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('totalIpChanges: $totalIpChanges, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -3186,6 +3270,8 @@ typedef $$ProxySlotsTableTableCreateCompanionBuilder = ProxySlotsTableCompanion
   Value<DateTime> lastUpdated,
   Value<int> totalIpChanges,
   Value<bool> isActive,
+  Value<bool> isDeleted,
+  Value<DateTime?> deletedAt,
 });
 typedef $$ProxySlotsTableTableUpdateCompanionBuilder = ProxySlotsTableCompanion
     Function({
@@ -3201,6 +3287,8 @@ typedef $$ProxySlotsTableTableUpdateCompanionBuilder = ProxySlotsTableCompanion
   Value<DateTime> lastUpdated,
   Value<int> totalIpChanges,
   Value<bool> isActive,
+  Value<bool> isDeleted,
+  Value<DateTime?> deletedAt,
 });
 
 final class $$ProxySlotsTableTableReferences extends BaseReferences<
@@ -3289,6 +3377,12 @@ class $$ProxySlotsTableTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
       column: $table.isActive, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
 
   Expression<bool> proxyIpAddressesTableRefs(
       Expression<bool> Function($$ProxyIpAddressesTableTableFilterComposer f)
@@ -3381,6 +3475,12 @@ class $$ProxySlotsTableTableOrderingComposer
 
   ColumnOrderings<bool> get isActive => $composableBuilder(
       column: $table.isActive, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ProxySlotsTableTableAnnotationComposer
@@ -3427,6 +3527,12 @@ class $$ProxySlotsTableTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   Expression<T> proxyIpAddressesTableRefs<T extends Object>(
       Expression<T> Function($$ProxyIpAddressesTableTableAnnotationComposer a)
@@ -3510,6 +3616,8 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             Value<DateTime> lastUpdated = const Value.absent(),
             Value<int> totalIpChanges = const Value.absent(),
             Value<bool> isActive = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
           }) =>
               ProxySlotsTableCompanion(
             id: id,
@@ -3524,6 +3632,8 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             lastUpdated: lastUpdated,
             totalIpChanges: totalIpChanges,
             isActive: isActive,
+            isDeleted: isDeleted,
+            deletedAt: deletedAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -3538,6 +3648,8 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             Value<DateTime> lastUpdated = const Value.absent(),
             Value<int> totalIpChanges = const Value.absent(),
             Value<bool> isActive = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
           }) =>
               ProxySlotsTableCompanion.insert(
             id: id,
@@ -3552,6 +3664,8 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             lastUpdated: lastUpdated,
             totalIpChanges: totalIpChanges,
             isActive: isActive,
+            isDeleted: isDeleted,
+            deletedAt: deletedAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

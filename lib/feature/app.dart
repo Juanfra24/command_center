@@ -206,7 +206,7 @@ class _AppState extends State<App> with WindowListener {
     if (needsOnboarding) {
       return _buildOnboardingRequired(onboardingService);
     }
-    return const MainMenuScreen();
+    return MainMenuScreen(onNavigateToIndex: _navigateToIndex);
   }
 
   Widget _buildAccountsWithOnboarding(bool needsOnboarding) {

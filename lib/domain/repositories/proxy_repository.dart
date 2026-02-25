@@ -6,13 +6,16 @@ import 'package:command_center/domain/entities/proxy_ip_address.dart';
 abstract class ProxyRepository {
   // ===== Proxy Slots =====
 
-  /// Get all proxy slots
+  /// Get all proxy slots (excludes soft-deleted by default)
   Future<List<ProxySlotEntity>> getAllSlots();
+
+  /// Get all proxy slots including soft-deleted ones
+  Future<List<ProxySlotEntity>> getAllSlotsIncludingDeleted();
 
   /// Get a single slot by ID
   Future<ProxySlotEntity?> getSlotById(int id);
 
-  /// Get a slot by Webshare ID
+  /// Get a slot by Webshare ID (includes soft-deleted slots for recovery)
   Future<ProxySlotEntity?> getSlotByWebshareId(String webshareId);
 
   /// Get a slot by slot number
@@ -24,10 +27,16 @@ abstract class ProxyRepository {
   /// Update an existing slot
   Future<void> updateSlot(ProxySlotEntity slot);
 
-  /// Delete a slot by ID
+  /// Soft-delete a slot by ID (marks as deleted, preserves data)
+  Future<void> softDeleteSlot(int id);
+
+  /// Recover a soft-deleted slot (marks as not deleted)
+  Future<void> recoverSlot(int id);
+
+  /// Hard delete a slot by ID (permanently removes)
   Future<void> deleteSlot(int id);
 
-  /// Watch all slots (stream)
+  /// Watch all slots (stream, excludes soft-deleted)
   Stream<List<ProxySlotEntity>> watchAllSlots();
 
   // ===== IP Addresses =====

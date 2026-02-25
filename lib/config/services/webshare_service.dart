@@ -194,7 +194,135 @@ class WebshareService extends GetxService {
     }
   }
 
-  /// Rotate/replace IP for a specific proxy
+  /// Replace a proxy IP via the v3 Proxy Replacement API.
+  /// This is an async operation - it creates a replacement request and polls
+  /// until it completes.
+  /// [ipAddress] is the current IP address of the proxy to replace.
+  /// [countryCode] optionally request the replacement to be from a specific country.
+  /// Returns true if the replacement completed successfully.
+  Future<({bool success, String? error})> replaceProxyIp(
+    String ipAddress, {
+    String? countryCode,
+  }) async {
+    if (_apiKey == null) {
+      return (success: false, error: 'Webshare API key not configured');
+    }
+
+    try {
+      // Build to_replace
+      final toReplace = {
+        'type': 'ip_address',
+        'ip_addresses': [ipAddress],
+      };
+
+      // Build replace_with — same country or any
+      final List<Map<String, dynamic>> replaceWith;
+      if (countryCode != null && countryCode.isNotEmpty) {
+        replaceWith = [
+          {'type': 'country', 'country_code': countryCode}
+        ];
+      } else {
+        replaceWith = [
+          {'type': 'any', 'count': 1}
+        ];
+      }
+
+      final body = {
+        'to_replace': toReplace,
+        'replace_with': replaceWith,
+        'dry_run': false,
+      };
+
+      logger.i('Creating proxy replacement for IP: $ipAddress');
+
+      final response = await http.post(
+        Uri.parse('https://proxy.webshare.io/api/v3/proxy/replace/'),
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final replacementId = data['id'];
+        final state = data['state'] as String?;
+
+        logger.i('Replacement created with ID: $replacementId, state: $state');
+
+        // Poll until the replacement is completed or failed
+        final result = await _pollReplacementStatus(replacementId);
+        return result;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMsg = errorBody is Map
+            ? (errorBody['detail'] ??
+                errorBody['error'] ??
+                errorBody.toString())
+            : response.body;
+        logger.e(
+            'Failed to create replacement: ${response.statusCode} - $errorMsg');
+        return (
+          success: false,
+          error: 'Failed to create replacement: $errorMsg'
+        );
+      }
+    } catch (e) {
+      logger.e('Error replacing proxy: $e');
+      return (success: false, error: 'Error replacing proxy: $e');
+    }
+  }
+
+  /// Poll the replacement status until completed or failed
+  Future<({bool success, String? error})> _pollReplacementStatus(
+      dynamic replacementId) async {
+    const maxAttempts = 30;
+    const pollInterval = Duration(seconds: 2);
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      await Future.delayed(pollInterval);
+
+      try {
+        final response = await http.get(
+          Uri.parse(
+              'https://proxy.webshare.io/api/v3/proxy/replace/$replacementId/'),
+          headers: _headers,
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final state = data['state'] as String?;
+
+          logger.i('Replacement $replacementId state: $state');
+
+          if (state == 'completed') {
+            final proxiesRemoved = data['proxies_removed'];
+            final proxiesAdded = data['proxies_added'];
+            logger.i(
+                'Replacement completed: $proxiesRemoved removed, $proxiesAdded added');
+            return (success: true, error: null);
+          } else if (state == 'failed') {
+            final error = data['error'] ?? 'Unknown error';
+            final errorCode = data['error_code'] ?? '';
+            logger.e('Replacement failed: $error ($errorCode)');
+            return (success: false, error: 'Replacement failed: $error');
+          }
+          // States: validating, validated, processing — keep polling
+        } else {
+          logger.w('Error polling replacement status: ${response.statusCode}');
+        }
+      } catch (e) {
+        logger.w('Error polling replacement: $e');
+      }
+    }
+
+    return (
+      success: false,
+      error:
+          'Replacement timed out after ${maxAttempts * pollInterval.inSeconds}s'
+    );
+  }
+
+  /// Legacy: Rotate/replace IP for a specific proxy using v2 API
+  /// Kept for backward compatibility
   Future<WebshareProxySlot?> replaceProxy(String proxyId) async {
     if (_apiKey == null) {
       throw Exception('Webshare API key not configured');
@@ -240,6 +368,35 @@ class WebshareService extends GetxService {
       }
     } catch (e) {
       logger.e('Error fetching proxy config: $e');
+      return null;
+    }
+  }
+
+  /// Fetch the active subscription plan to get replacement quotas
+  Future<WebsharePlanInfo?> getActivePlan() async {
+    if (_apiKey == null) return null;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/subscription/plan/'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final results = data['results'] as List<dynamic>?;
+        if (results != null && results.isNotEmpty) {
+          // Find the active plan
+          final activePlan = results.firstWhere(
+            (p) => p['status'] == 'active',
+            orElse: () => results.first,
+          );
+          return WebsharePlanInfo.fromJson(activePlan);
+        }
+      }
+      return null;
+    } catch (e) {
+      logger.e('Error fetching subscription plan: $e');
       return null;
     }
   }
@@ -323,6 +480,45 @@ class WebshareProxyConfig {
       proxyListDownloadTokenDefaultTimeoutSeconds:
           json['proxy_list_download_token_default_timeout_seconds'] ?? 0,
       proxyListDownloadToken: json['proxy_list_download_token'] ?? '',
+    );
+  }
+}
+
+/// Subscription plan info with replacement quotas
+class WebsharePlanInfo {
+  final int id;
+  final String status;
+  final int proxyCount;
+  final int proxyReplacementsTotal;
+  final int proxyReplacementsUsed;
+  final int proxyReplacementsAvailable;
+  final int onDemandRefreshesTotal;
+  final int onDemandRefreshesUsed;
+  final int onDemandRefreshesAvailable;
+
+  WebsharePlanInfo({
+    required this.id,
+    required this.status,
+    required this.proxyCount,
+    required this.proxyReplacementsTotal,
+    required this.proxyReplacementsUsed,
+    required this.proxyReplacementsAvailable,
+    required this.onDemandRefreshesTotal,
+    required this.onDemandRefreshesUsed,
+    required this.onDemandRefreshesAvailable,
+  });
+
+  factory WebsharePlanInfo.fromJson(Map<String, dynamic> json) {
+    return WebsharePlanInfo(
+      id: json['id'] ?? 0,
+      status: json['status'] ?? '',
+      proxyCount: json['proxy_count'] ?? 0,
+      proxyReplacementsTotal: json['proxy_replacements_total'] ?? 0,
+      proxyReplacementsUsed: json['proxy_replacements_used'] ?? 0,
+      proxyReplacementsAvailable: json['proxy_replacements_available'] ?? 0,
+      onDemandRefreshesTotal: json['on_demand_refreshes_total'] ?? 0,
+      onDemandRefreshesUsed: json['on_demand_refreshes_used'] ?? 0,
+      onDemandRefreshesAvailable: json['on_demand_refreshes_available'] ?? 0,
     );
   }
 }

@@ -15,6 +15,8 @@ class ProxySlotEntity extends Equatable {
   final DateTime lastUpdated;
   final int totalIpChanges;
   final bool isActive;
+  final bool isDeleted;
+  final DateTime? deletedAt;
 
   const ProxySlotEntity({
     this.id,
@@ -29,6 +31,8 @@ class ProxySlotEntity extends Equatable {
     required this.lastUpdated,
     required this.totalIpChanges,
     required this.isActive,
+    this.isDeleted = false,
+    this.deletedAt,
   });
 
   factory ProxySlotEntity.empty() {
@@ -45,6 +49,8 @@ class ProxySlotEntity extends Equatable {
       lastUpdated: DateTime.now(),
       totalIpChanges: 0,
       isActive: false,
+      isDeleted: false,
+      deletedAt: null,
     );
   }
 
@@ -61,6 +67,8 @@ class ProxySlotEntity extends Equatable {
     DateTime? lastUpdated,
     int? totalIpChanges,
     bool? isActive,
+    bool? isDeleted,
+    DateTime? deletedAt,
   }) {
     return ProxySlotEntity(
       id: id ?? this.id,
@@ -75,6 +83,8 @@ class ProxySlotEntity extends Equatable {
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,
       isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -96,5 +106,7 @@ class ProxySlotEntity extends Equatable {
         lastUpdated,
         totalIpChanges,
         isActive,
+        isDeleted,
+        deletedAt,
       ];
 }

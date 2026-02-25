@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -35,11 +35,11 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Handle future schema migrations here
-        // Example:
-        // if (from < 2) {
-        //   await m.addColumn(proxySlots, proxySlots.newColumn);
-        // }
+        if (from < 2) {
+          // Add soft delete columns to proxy_slots_table
+          await m.addColumn(proxySlotsTable, proxySlotsTable.isDeleted);
+          await m.addColumn(proxySlotsTable, proxySlotsTable.deletedAt);
+        }
       },
       beforeOpen: (details) async {
         // Enable foreign keys

@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Proxy Management Enhancements**
+  - Automatic low-score proxy replacement feature (proxies with score < 50%)
+  - Real-time display of remaining proxy replacements from Webshare subscription plan API
+  - Proxy replacement counter showing available/total replacements in dialog
+  - Soft delete mechanism for proxies with webshareId-based upsert to prevent duplicates
+  - Proxy details display showing all low-score slots and their scores
+  
+- **Improved Proxy Replacement UX**
+  - Replace buttons now show loading spinner during replacement operation
+  - Replace buttons are disabled while replacement is in progress (both slot header and score card)
+  - Persistent "Replacing Proxy..." info bar removed - only final result is shown
+  
+- **Interactive Home Page Stats**
+  - All home page stat cards (Total Accounts, Proxy Slots, Issues) are now clickable for quick navigation
+  - Pointer cursor indicates clickable stat cards
+  - Issues stat card shows detailed tooltip with list of low-score proxies on hover
+  - Tooltip displays slot name, IP address, and score for each low-score proxy
+
 - **Browser Automation System**
   - Python-based automation using SeleniumBase with undetected Chrome driver
   - Automatic Python dependency installation on first use
@@ -45,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD updated from v3 to v4 (checkout, upload-artifact)
 - Python requirements simplified to only seleniumbase and requests
 - ComboBox items in dialogs now use single-line layout
+- ProxyController now tracks and manages proxy replacement state separately from sync state
 
 ### Fixed
 - Compilation errors with StatusController.runningProcessMap (now processClients)
@@ -52,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FluentIcons.chrome_full_logo not found (replaced with globe)
 - Python dependency conflicts in requirements.txt
 - ComboBox overflow in character creation dialog
+- Proxy duplication during sync operations (now uses webshareId for idempotent upsert)
+- Replace button feedback during long-running replacement operations
 
 ## [0.4.0] - 2026-02-15
 
