@@ -4,9 +4,12 @@ import 'dart:io';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
+import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
 import 'package:command_center/feature/Status/data/proxy_model.dart';
+import 'package:command_center/feature/Status/data/skills_model.dart';
+import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide Response;
@@ -94,6 +97,13 @@ class StatusController extends GetxController {
 
     try {
       final accounts = await _accountRepository!.getAllAccounts();
+
+      // Resolve proxy addresses
+      ProxyController? proxyController;
+      try {
+        proxyController = Get.find<ProxyController>();
+      } catch (_) {}
+
       accountList
         ..clear()
         ..addAll([
@@ -103,13 +113,58 @@ class StatusController extends GetxController {
               birthday: account.birthday,
               email: account.email,
               password: account.password,
-              proxyAddress: '0.0.0.0', // TODO: Resolve from proxySlotId
-              characters: [], // TODO: Convert from AccountEntity
+              proxyAddress: _resolveProxyAddress(account.proxySlotId, proxyController),
+              characters: account.characters.map((c) => Character(
+                banned: c.banned,
+                name: c.name,
+                actualSkills: _mapSkills(c.actualSkills),
+                targetSkills: _mapSkills(c.targetSkills),
+              )).toList(),
             )
         ]);
     } catch (err) {
       logger.e(err);
     }
+  }
+
+  String _resolveProxyAddress(int? proxySlotId, ProxyController? proxyController) {
+    if (proxySlotId == null || proxyController == null) return 'No proxy';
+    try {
+      final slot = proxyController.proxySlots.firstWhereOrNull((s) => s.id == proxySlotId);
+      if (slot == null) return 'No proxy';
+      final currentIp = proxyController.getCurrentIpForSlot(slot);
+      return currentIp?.ipAddress ?? 'No IP';
+    } catch (_) {
+      return 'No proxy';
+    }
+  }
+
+  Skills _mapSkills(dynamic skillsEntity) {
+    return Skills(
+      attack: skillsEntity.attack,
+      defence: skillsEntity.defence,
+      strength: skillsEntity.strength,
+      hitpoints: skillsEntity.hitpoints,
+      range: skillsEntity.range,
+      prayer: skillsEntity.prayer,
+      magic: skillsEntity.magic,
+      cooking: skillsEntity.cooking,
+      woodcutting: skillsEntity.woodcutting,
+      fletching: skillsEntity.fletching,
+      fishing: skillsEntity.fishing,
+      firemaking: skillsEntity.firemaking,
+      crafting: skillsEntity.crafting,
+      mining: skillsEntity.mining,
+      smithing: skillsEntity.smithing,
+      agility: skillsEntity.agility,
+      herblore: skillsEntity.herblore,
+      thieving: skillsEntity.thieving,
+      slayer: skillsEntity.slayer,
+      farming: skillsEntity.farming,
+      runecrafting: skillsEntity.runecrafting,
+      construction: skillsEntity.construction,
+      hunter: skillsEntity.hunter,
+    );
   }
 
   void copyToClipboard(String text, BuildContext context) {

@@ -247,6 +247,22 @@ class StatusScreen extends GetView<StatusController> {
         ),
         // Data Rows
         ...controller.accountList.expand((account) {
+          if (account.characters.isEmpty) {
+            // Show account row even without characters
+            return [
+              TableRow(
+                children: [
+                  _buildTableCell(account.accountName),
+                  _buildTableCellWithCopy(context, account.email),
+                  _buildTableCellWithCopy(context, account.password),
+                  _buildTableCell('—'),
+                  _buildTableCell(account.proxyAddress),
+                  _buildStatusCell(context, false),
+                  _buildTableCell(''),
+                ],
+              ),
+            ];
+          }
           return account.characters.map((character) {
             final isRunning =
                 controller.processClients.containsKey(character.name);
@@ -644,10 +660,20 @@ class StatusScreen extends GetView<StatusController> {
 
                     if (result != null) {
                       final isSuccess = result.isSuccess;
+                      final isAccountCreated = result.isAccountCreated;
                       final color = isSuccess ? Colors.green : Colors.red;
                       final icon = isSuccess
                           ? FluentIcons.check_mark
                           : FluentIcons.error_badge;
+
+                      String title;
+                      if (isAccountCreated) {
+                        title = 'Account Created Successfully';
+                      } else if (isSuccess) {
+                        title = 'Proxy Validated Successfully';
+                      } else {
+                        title = 'Operation Failed';
+                      }
 
                       return Container(
                         padding: const EdgeInsets.all(16),
@@ -666,9 +692,7 @@ class StatusScreen extends GetView<StatusController> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    isSuccess
-                                        ? 'Proxy Validated Successfully'
-                                        : 'Validation Failed',
+                                    title,
                                     style: theme.typography.bodyStrong
                                         ?.copyWith(color: color),
                                   ),
@@ -677,6 +701,24 @@ class StatusScreen extends GetView<StatusController> {
                                       'IP: ${result.actualIp}',
                                       style: theme.typography.caption,
                                     ),
+                                  if (isAccountCreated &&
+                                      result.data != null) ...[
+                                    if (result.data!['accountName'] != null)
+                                      Text(
+                                        'Name: ${result.data!['accountName']}',
+                                        style: theme.typography.caption,
+                                      ),
+                                    if (result.data!['email'] != null)
+                                      Text(
+                                        'Email: ${result.data!['email']}',
+                                        style: theme.typography.caption,
+                                      ),
+                                    if (result.data!['password'] != null)
+                                      Text(
+                                        'Password: ${result.data!['password']}',
+                                        style: theme.typography.caption,
+                                      ),
+                                  ],
                                   if (!isSuccess)
                                     Text(
                                       result.message,
@@ -709,76 +751,7 @@ class StatusScreen extends GetView<StatusController> {
               return ValueListenableBuilder<AutomationResult?>(
                 valueListenable: validationResult,
                 builder: (context, result, _) {
-                  // Show "Start Session" if validated successfully
-                  if (result != null && result.isSuccess) {
-                    return FilledButton(
-                      onPressed: () async {
-                        final slotId = selectedSlot.value;
-                        if (slotId == null) return;
-
-                        try {
-                          final proxyController = Get.find<ProxyController>();
-                          final slot = proxyController.proxySlots
-                              .firstWhere((s) => s.id == slotId);
-
-                          final automationService =
-                              Get.find<AutomationService>();
-
-                          Navigator.pop(context);
-
-                          // Start account session
-                          final sessionResult =
-                              await automationService.createAccountSession(
-                            slot: slot,
-                          );
-
-                          displayInfoBar(
-                            context,
-                            builder: (ctx, close) {
-                              return InfoBar(
-                                title: Text(sessionResult.isSuccess
-                                    ? 'Browser Session Started'
-                                    : 'Session Error'),
-                                content: Text(sessionResult.message),
-                                severity: sessionResult.isSuccess
-                                    ? InfoBarSeverity.success
-                                    : InfoBarSeverity.error,
-                                action: IconButton(
-                                  icon: const Icon(FluentIcons.clear),
-                                  onPressed: close,
-                                ),
-                              );
-                            },
-                          );
-                        } catch (e) {
-                          displayInfoBar(
-                            context,
-                            builder: (ctx, close) {
-                              return InfoBar(
-                                title: const Text('Error'),
-                                content: Text('Failed to start session: $e'),
-                                severity: InfoBarSeverity.error,
-                                action: IconButton(
-                                  icon: const Icon(FluentIcons.clear),
-                                  onPressed: close,
-                                ),
-                              );
-                            },
-                          );
-                        }
-                      },
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(FluentIcons.globe, size: 16),
-                          SizedBox(width: 8),
-                          Text('Start Session'),
-                        ],
-                      ),
-                    );
-                  }
-
-                  // Show validate button otherwise
+                  // Single "Create Account" button — does proxy validation + account creation
                   return FilledButton(
                     onPressed: validating || selectedSlot.value == null
                         ? null
@@ -798,18 +771,49 @@ class StatusScreen extends GetView<StatusController> {
                               final automationService =
                                   Get.find<AutomationService>();
 
-                              final result =
-                                  await automationService.validateProxyIp(
+                              final createResult =
+                                  await automationService.createAccount(
                                 slot: slot,
                               );
 
-                              validationResult.value = result;
+                              validationResult.value = createResult;
+                              isValidating.value = false;
+
+                              if (createResult.isAccountCreated) {
+                                // Refresh accounts list
+                                await controller.getAccountsData();
+
+                                // ignore: use_build_context_synchronously
+                                Navigator.pop(context);
+
+                                final data = createResult.data ?? {};
+                                final accountName = data['accountName'] ?? 'Unknown';
+                                final createdEmail = data['email'] ?? 'Unknown';
+                                final password = data['password'] ?? '';
+                                // ignore: use_build_context_synchronously
+                                displayInfoBar(
+                                  context,
+                                  duration: const Duration(seconds: 10),
+                                  builder: (ctx, close) {
+                                    return InfoBar(
+                                      title: Text('Account Created: $accountName'),
+                                      content: Text(
+                                          'Email: $createdEmail\nPassword: $password'),
+                                      severity: InfoBarSeverity.success,
+                                      isLong: true,
+                                      action: IconButton(
+                                        icon: const Icon(FluentIcons.clear),
+                                        onPressed: close,
+                                      ),
+                                    );
+                                  },
+                                );
+                              }
                             } catch (e) {
+                              isValidating.value = false;
                               validationResult.value = AutomationResult.error(
                                 'Error: $e',
                               );
-                            } finally {
-                              isValidating.value = false;
                             }
                           },
                     child: Row(
@@ -822,9 +826,9 @@ class StatusScreen extends GetView<StatusController> {
                             child: ProgressRing(strokeWidth: 2),
                           )
                         else
-                          const Icon(FluentIcons.shield, size: 14),
+                          const Icon(FluentIcons.add_friend, size: 14),
                         const SizedBox(width: 8),
-                        Text(validating ? 'Validating...' : 'Validate Proxy'),
+                        Text(validating ? 'Creating...' : 'Create Account'),
                       ],
                     ),
                   );

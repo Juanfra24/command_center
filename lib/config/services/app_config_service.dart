@@ -11,6 +11,9 @@ class AppConfigService extends GetxService {
   static const String _keyWebshareApiKey = 'webshare_api_key';
   static const String _keyIsWebshareSetup = 'is_webshare_setup';
   static const String _keyThemeMode = 'theme_mode';
+  static const String _keyImapHost = 'imap_host';
+  static const String _keyImapUser = 'imap_user';
+  static const String _keyImapPass = 'imap_pass';
 
   ConfigRepository? _configRepository;
 
@@ -23,11 +26,28 @@ class AppConfigService extends GetxService {
   Future<AppConfigService> init() async {
     try {
       _configRepository = Get.find<DatabaseService>().configRepository;
+      await _seedDefaults();
       await loadConfig();
     } catch (e) {
       logger.e('Error initializing AppConfigService: $e');
     }
     return this;
+  }
+
+  /// Seed default values for IMAP config if not already set
+  Future<void> _seedDefaults() async {
+    if (_configRepository == null) return;
+    final defaults = {
+      _keyImapHost: 'mail.privateemail.com',
+      _keyImapUser: 'contact@onemanco.org',
+      _keyImapPass: '}7FWKb/*u/7Hj:z',
+    };
+    for (final entry in defaults.entries) {
+      final existing = await _configRepository!.getValue(entry.key);
+      if (existing == null) {
+        await _configRepository!.setValue(entry.key, entry.value);
+      }
+    }
   }
 
   /// Load configuration from SQLite
@@ -98,6 +118,21 @@ class AppConfigService extends GetxService {
       logger.e('Error saving theme mode: $e');
       return false;
     }
+  }
+
+  /// Get IMAP host
+  Future<String?> getImapHost() async {
+    return _configRepository?.getValue(_keyImapHost);
+  }
+
+  /// Get IMAP user
+  Future<String?> getImapUser() async {
+    return _configRepository?.getValue(_keyImapUser);
+  }
+
+  /// Get IMAP password
+  Future<String?> getImapPass() async {
+    return _configRepository?.getValue(_keyImapPass);
   }
 
   /// Get ThemeMode from string

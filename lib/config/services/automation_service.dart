@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/core/constants/app_values.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/data/database_service.dart';
+import 'package:command_center/domain/entities/account.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:get/get.dart';
@@ -17,6 +20,7 @@ enum AutomationStatus {
   browserError,
   timeout,
   captchaRequired,
+  accountCreated,
   unknownError;
 
   factory AutomationStatus.fromString(String value) {
@@ -31,6 +35,8 @@ enum AutomationStatus {
         return AutomationStatus.timeout;
       case 'captcha_required':
         return AutomationStatus.captchaRequired;
+      case 'account_created':
+        return AutomationStatus.accountCreated;
       default:
         return AutomationStatus.unknownError;
     }
@@ -70,7 +76,8 @@ class AutomationResult {
     );
   }
 
-  bool get isSuccess => status == AutomationStatus.success;
+  bool get isSuccess => status == AutomationStatus.success || status == AutomationStatus.accountCreated;
+  bool get isAccountCreated => status == AutomationStatus.accountCreated;
   bool get needsCaptcha => status == AutomationStatus.captchaRequired;
   bool get proxyFailed => status == AutomationStatus.proxyValidationFailed;
 }
@@ -86,6 +93,9 @@ class AutomationService extends GetxService {
 
   /// Default timeout for automation tasks (2 minutes)
   static const Duration defaultTimeout = Duration(minutes: 2);
+
+  /// Longer timeout for account creation (10 minutes — email verification takes time)
+  static const Duration accountCreationTimeout = Duration(minutes: 10);
 
   /// Currently running process (for cancellation)
   Process? _currentProcess;
@@ -174,16 +184,24 @@ class AutomationService extends GetxService {
     final stdout = StringBuffer();
     final stderr = StringBuffer();
 
+    // -u flag disables Python's stdout/stderr buffering so we get logs in real-time
     _currentProcess =
-        await Process.start('python', args, workingDirectory: _scriptsPath);
+        await Process.start('python', ['-u', ...args], workingDirectory: _scriptsPath);
 
-    // Listen to stdout/stderr
-    _currentProcess!.stdout.listen((data) {
-      stdout.write(String.fromCharCodes(data));
+    // Listen to stdout/stderr and forward to logs in real-time
+    _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
+      stdout.write(data);
+      // Forward each line to the log for real-time visibility
+      for (final line in data.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty && !trimmed.startsWith('===')) {
+          _log('[py] $trimmed');
+        }
+      }
     });
 
-    _currentProcess!.stderr.listen((data) {
-      stderr.write(String.fromCharCodes(data));
+    _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
+      stderr.write(data);
     });
 
     // Wait for process with timeout
@@ -386,6 +404,175 @@ class AutomationService extends GetxService {
     }
   }
 
+  /// Create a new Jagex account through the proxy
+  /// This runs the create-account command which:
+  /// 1. Validates proxy IP
+  /// 2. Navigates to account.jagex.com
+  /// 3. Handles captcha & cookie consent
+  /// 4. Fills registration form with random email @onemanco.org
+  /// 5. Submits the form
+  Future<AutomationResult> createAccount({
+    required ProxySlotEntity slot,
+  }) async {
+    if (isRunning.value) {
+      return AutomationResult.error('Another automation task is running');
+    }
+
+    // Check Python setup
+    final pythonSetup = Get.find<PythonSetupService>();
+    if (!pythonSetup.isSetupComplete.value) {
+      _log('Python dependencies not installed, installing now...');
+      final success = await pythonSetup.installDependencies();
+      if (!success) {
+        return AutomationResult.error(
+          'Python setup failed: ${pythonSetup.setupError.value ?? "Unknown error"}',
+        );
+      }
+      _log('Verifying Python dependency installation...');
+      final verified = await pythonSetup.checkDependenciesInstalled();
+      if (!verified) {
+        return AutomationResult.error(
+          'Python dependencies verification failed.',
+        );
+      }
+      _log('Python dependencies verified successfully');
+    }
+
+    isRunning.value = true;
+    currentTask.value = 'Creating Jagex account';
+    _log('Starting account creation for slot #${slot.slotNumber}');
+
+    try {
+      final proxyController = Get.find<ProxyController>();
+      final currentIp = proxyController.getCurrentIpForSlot(slot);
+
+      if (currentIp == null) {
+        final result = AutomationResult.error(
+          'No IP assigned to slot #${slot.slotNumber}',
+        );
+        lastResult.value = result;
+        return result;
+      }
+
+      final expectedIp = currentIp.ipAddress;
+      final proxyUrl = _buildProxyUrl(slot);
+
+      if (proxyUrl == null) {
+        final result = AutomationResult.error(
+          'Could not build proxy URL for slot #${slot.slotNumber}',
+        );
+        lastResult.value = result;
+        return result;
+      }
+
+      _log('Expected IP: $expectedIp');
+
+      // Fetch IMAP credentials from config
+      final appConfig = Get.find<AppConfigService>();
+      final imapHost = await appConfig.getImapHost();
+      final imapUser = await appConfig.getImapUser();
+      final imapPass = await appConfig.getImapPass();
+
+      final scriptPath = path.join(_scriptsPath, 'account_automation.py');
+      _log('Running script: $scriptPath create-account');
+
+      final args = [
+        scriptPath,
+        'create-account',
+        proxyUrl,
+        expectedIp,
+        '--debug',
+        if (imapHost != null) ...['--imap-host', imapHost],
+        if (imapUser != null) ...['--imap-user', imapUser],
+        if (imapPass != null) ...['--imap-pass', imapPass],
+      ];
+
+      _log('Full Python command:');
+      _log('  python ${args.join(' ')}'
+          .replaceAll(RegExp(r':[^:@]+@'), ':***@'));
+
+      final result = await _runPythonScript(
+        args,
+        timeout: accountCreationTimeout,
+      );
+
+      _log('Script exit code: ${result.exitCode}');
+
+      final output = result.stdout;
+      final stderr = result.stderr;
+
+      if (stderr.isNotEmpty) {
+        _log('Script errors: $stderr');
+        if (stderr.contains('ModuleNotFoundError') ||
+            stderr.contains('No module named')) {
+          return AutomationResult.error('Python dependency error: $stderr');
+        }
+      }
+
+      final resultJson = _extractJsonResult(output);
+
+      if (resultJson != null) {
+        final automationResult = AutomationResult.fromJson(resultJson);
+        lastResult.value = automationResult;
+        _log(
+            'Result: ${automationResult.status.name} - ${automationResult.message}');
+        if (automationResult.data != null) {
+          _log('Account email: ${automationResult.data!['email'] ?? 'N/A'}');
+        }
+
+        // Persist created account to database
+        if (automationResult.isAccountCreated && automationResult.data != null) {
+          try {
+            final dbService = Get.find<DatabaseService>();
+            final accountRepo = dbService.accountRepository;
+            final data = automationResult.data!;
+
+            final account = AccountEntity(
+              accountName: data['accountName'] ?? '',
+              email: data['email'] ?? '',
+              password: data['password'] ?? '',
+              birthday: data['dob'] ?? '',
+              proxySlotId: slot.id,
+              characters: const [],
+            );
+
+            final insertedId = await accountRepo.insertAccount(account);
+            _log('Account persisted to database with ID: $insertedId');
+          } catch (e) {
+            _log('Warning: Failed to persist account to database: $e');
+          }
+        }
+
+        return automationResult;
+      } else {
+        final automationResult = AutomationResult.error(
+          'Could not parse script output: $output',
+        );
+        lastResult.value = automationResult;
+        return automationResult;
+      }
+    } on TimeoutException catch (e) {
+      _log('Timeout: $e');
+      final result = AutomationResult(
+        status: AutomationStatus.timeout,
+        message:
+            'Account creation timed out. The browser may be stuck on captcha or loading.',
+      );
+      lastResult.value = result;
+      return result;
+    } catch (e) {
+      _log('Error: $e');
+      final result =
+          AutomationResult.error('Failed to create account: $e');
+      lastResult.value = result;
+      return result;
+    } finally {
+      isRunning.value = false;
+      currentTask.value = null;
+      _currentProcess = null;
+    }
+  }
+
   /// Create RuneScape session with validated proxy
   Future<AutomationResult> createAccountSession({
     required ProxySlotEntity slot,
@@ -461,27 +648,30 @@ class AutomationService extends GetxService {
         '--debug', // Enable verbose logging
       ];
 
-      // Start process without waiting (browser stays open)
-      _currentProcess = await Process.start('python', args);
+      // Start process — browser stays open until user closes it.
+      // -u flag disables Python's stdout buffering.
+      _currentProcess = await Process.start('python', ['-u', ...args],
+          workingDirectory: _scriptsPath);
 
-      // Capture output for a bit to check for immediate errors
+      // Capture output to check for immediate errors (e.g. proxy unreachable)
       final outputBuffer = StringBuffer();
-      final subscription =
-          _currentProcess!.stdout.transform(utf8.decoder).listen(
+      _currentProcess!.stdout.transform(utf8.decoder).listen(
         (data) {
           outputBuffer.write(data);
           _log(data.trim());
         },
       );
+      _currentProcess!.stderr.transform(utf8.decoder).listen(
+        (data) {
+          _log('[stderr] ${data.trim()}');
+        },
+      );
 
-      // Wait a few seconds for initial setup
-      await Future.delayed(const Duration(seconds: 5));
-      await subscription.cancel();
+      // Wait a bit for the browser to start and proxy to connect
+      await Future.delayed(const Duration(seconds: 8));
 
-      // If process exited quickly, it might have failed
-      // Try to get result from output
+      // If process exited quickly, it failed
       final output = outputBuffer.toString();
-
       if (output.contains('RESULT')) {
         final resultJson = _extractJsonResult(output);
         if (resultJson != null) {
@@ -491,10 +681,10 @@ class AutomationService extends GetxService {
         }
       }
 
-      // Process is still running, which means browser is open
+      // Process is still running = browser is open and working
       final result = AutomationResult(
         status: AutomationStatus.success,
-        message: 'Browser session started - check browser window',
+        message: 'Browser launched with proxy - close browser window when done',
         expectedIp: expectedIp,
       );
       lastResult.value = result;

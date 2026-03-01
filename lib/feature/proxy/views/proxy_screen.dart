@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/automation_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -811,6 +812,31 @@ class _ProxyScreenState extends State<ProxyScreen> {
                   },
                 );
               }),
+              Obx(() {
+                final automationService = Get.find<AutomationService>();
+                final isRunning = automationService.isRunning.value;
+                return Button(
+                  onPressed: isRunning
+                      ? null
+                      : () => _launchBrowserWithProxy(context, slot),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isRunning)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: ProgressRing(strokeWidth: 2),
+                        )
+                      else
+                        const Icon(FluentIcons.globe, size: 16),
+                      const SizedBox(width: 8),
+                      Text(isRunning ? 'Launching...' : 'Launch Browser'),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(width: 8),
               FilledButton(
                 onPressed: () => _showChangeIpDialog(context, slot),
                 child: const Row(
@@ -1405,6 +1431,48 @@ class _ProxyScreenState extends State<ProxyScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _launchBrowserWithProxy(
+    BuildContext context,
+    ProxySlotEntity slot,
+  ) async {
+    final automationService = Get.find<AutomationService>();
+    final currentIp = controller.getCurrentIpForSlot(slot);
+
+    if (currentIp == null) {
+      if (mounted) {
+        displayInfoBar(context, builder: (context, close) {
+          return InfoBar(
+            title: const Text('No IP assigned'),
+            content: Text('Slot #${slot.slotNumber} has no IP address assigned.'),
+            severity: InfoBarSeverity.warning,
+            action: IconButton(
+              icon: const Icon(FluentIcons.clear),
+              onPressed: close,
+            ),
+          );
+        });
+      }
+      return;
+    }
+
+    final result = await automationService.createAccountSession(slot: slot);
+
+    if (mounted) {
+      displayInfoBar(context, builder: (context, close) {
+        return InfoBar(
+          title: Text(result.isSuccess ? 'Browser launched' : 'Launch failed'),
+          content: Text(result.message),
+          severity:
+              result.isSuccess ? InfoBarSeverity.success : InfoBarSeverity.error,
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+        );
+      });
+    }
   }
 
   void _showChangeIpDialog(BuildContext context, ProxySlotEntity slot) {
