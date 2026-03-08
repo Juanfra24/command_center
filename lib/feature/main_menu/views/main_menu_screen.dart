@@ -1,5 +1,6 @@
 import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -294,8 +295,8 @@ class MainMenuScreen extends GetView<MainMenuController> {
 
   String _getIssuesCount() {
     try {
-      final controller = Get.find<ProxyController>();
-      return controller.lowScoreCount.toString();
+      final scoringController = Get.find<ProxyScoringController>();
+      return scoringController.lowScoreCount.toString();
     } catch (_) {
       return '0';
     }
@@ -303,8 +304,8 @@ class MainMenuScreen extends GetView<MainMenuController> {
 
   String? _getIssuesTooltip() {
     try {
-      final proxyController = Get.find<ProxyController>();
-      final details = proxyController.getLowScoreSlotDetails();
+      final scoringController = Get.find<ProxyScoringController>();
+      final details = scoringController.getLowScoreSlotDetails();
       if (details.isEmpty) return null;
       return 'Low score proxies:\n${details.join('\n')}';
     } catch (_) {

@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:command_center/config/services/ipqs_service.dart';
-import 'package:command_center/config/services/webshare_service.dart';
+import 'package:command_center/config/services/ipqs/ipqs_service.dart';
+import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 

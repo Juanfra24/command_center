@@ -6,7 +6,15 @@
       "Bash(where python:*)",
       "Bash(pip install:*)",
       "Bash(python:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(find lib:*)",
+      "Bash(grep -E \"^class .*\\(Service|Controller|Repository\\)\" /c/Users/Juanfra/projects/command_center/lib/config/services/*.dart)",
+      "Bash(grep -E \"^class .*\\(Controller\\)\" /c/Users/Juanfra/projects/command_center/lib/feature/*/*controller*.dart)",
+      "Bash(grep:*)",
+      "Bash(/tmp/lib_tree.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(flutter pub:*)",
+      "Bash(dart run:*)"
     ]
   }
 }
