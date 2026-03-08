@@ -179,53 +179,53 @@ class PythonSetupService extends GetxService {
     }
   }
 
-  /// Install Chromium driver using seleniumbase
+  /// Install Chromium via Patchright
   Future<bool> installChromiumDriver() async {
     try {
-      logger.i('Installing Chromium driver via sbase...');
+      logger.i('Installing Chromium via patchright...');
 
       final result = await Process.run(
         'python',
-        ['-m', 'sbase', 'install', 'chromedriver', 'latest'],
+        ['-m', 'patchright', 'install', 'chromium'],
         workingDirectory: _scriptsPath,
       );
 
       if (result.exitCode == 0) {
-        logger.i('Chromium driver installed successfully');
+        logger.i('Patchright Chromium installed successfully');
         isChromiumInstalled.value = true;
-        // Proceed to run the visual check
         return await _verifyChromiumWorks();
       } else {
-        logger.w('Chromium driver install returned: ${result.stderr}');
+        logger.w('Patchright Chromium install returned: ${result.stderr}');
         return await _verifyChromiumWorks();
       }
     } catch (e) {
-      logger.w('Error installing Chromium driver: $e');
+      logger.w('Error installing Patchright Chromium: $e');
       return false;
     }
   }
 
-  /// Verify Chromium works by running a simple test (NOW VISIBLE)
+  /// Verify Patchright Chromium works by launching headless
   Future<bool> _verifyChromiumWorks() async {
     try {
-      logger.i('Opening browser to verify installation...');
-      // Run a quick VISIBLE test (headless=False)
+      logger.i('Opening browser to verify Patchright installation...');
       final result = await Process.run(
         'python',
         [
           '-c',
           '''
-from seleniumbase import SB
-import sys
-try:
-    # Changed headless to False so you can see it open on Windows!
-    with SB(uc=True, headless=False) as sb:
-        sb.open("about:blank")
-        print("CHROMIUM_OK")
-        sys.exit(0)
-except Exception as e:
-    print(f"CHROMIUM_ERROR: {e}")
-    sys.exit(1)
+import asyncio
+from patchright.async_api import async_playwright
+
+async def verify():
+    pw = await async_playwright().start()
+    browser = await pw.chromium.launch(headless=True)
+    page = await browser.new_page()
+    await page.goto("about:blank")
+    print("CHROMIUM_OK")
+    await browser.close()
+    await pw.stop()
+
+asyncio.run(verify())
 '''
         ],
         workingDirectory: _scriptsPath,
@@ -233,7 +233,7 @@ except Exception as e:
 
       final output = result.stdout.toString();
       if (output.contains('CHROMIUM_OK')) {
-        logger.i('Chromium verification successful - Browser works!');
+        logger.i('Patchright Chromium verification successful');
         isChromiumInstalled.value = true;
         return true;
       }
@@ -250,7 +250,7 @@ except Exception as e:
     try {
       final result = await Process.run(
         'python',
-        ['-c', 'import seleniumbase; print("OK")'],
+        ['-c', 'import patchright; print("OK")'],
       );
 
       if (result.exitCode == 0 &&

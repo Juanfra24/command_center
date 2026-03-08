@@ -1,0 +1,96 @@
+# scripts/automation/commands/session.py
+import asyncio
+from typing import Optional, Callable
+
+from ..models import AutomationResult, AutomationStatus
+from ..proxy import preflight_proxy
+from ..browser import launch_browser, close_browser
+from ..helpers import extract_ip_from_response, human_delay
+
+IP_CHECK_URLS = [
+    "https://api.ipify.org?format=json",
+    "https://httpbin.org/ip",
+    "https://api.myip.com",
+]
+
+
+async def launch_session(
+    proxy_url: Optional[str],
+    expected_ip: str,
+    keep_open: bool = False,
+    debug: bool = False,
+    log_fn: Callable[[str], None] = print,
+) -> AutomationResult:
+    """Launch a browser session with proxy for manual use.
+    Blocks until the user closes the browser window."""
+    log_fn("[INFO] ===== Browser Session =====")
+
+    err, cleaned_proxy = preflight_proxy(proxy_url, expected_ip, log_fn)
+    if err:
+        return err
+
+    pw = browser = None
+    try:
+        pw, browser, context, page = await launch_browser(
+            proxy_url=cleaned_proxy,
+            headless=False,  # Always headed for sessions
+        )
+        log_fn("[INFO] Browser started for session")
+
+        # Validate proxy IP
+        log_fn("[INFO] Validating proxy IP...")
+        actual_ip = None
+        for i, url in enumerate(IP_CHECK_URLS):
+            try:
+                await page.goto(url, wait_until="domcontentloaded")
+                human_delay(0.5, 1.0)
+                body = await page.text_content("body") or ""
+                actual_ip = extract_ip_from_response(body)
+                if actual_ip:
+                    log_fn(f"[INFO] Got IP: {actual_ip}")
+                    break
+            except Exception as e:
+                log_fn(f"[WARNING] IP check failed: {e}")
+
+        if actual_ip:
+            ip_matches = (expected_ip in actual_ip) or (actual_ip in expected_ip)
+            if ip_matches:
+                log_fn(f"[INFO] Proxy IP validated: {actual_ip}")
+            else:
+                log_fn(f"[WARNING] IP mismatch: expected {expected_ip}, got {actual_ip}")
+
+        # Navigate to Jagex
+        log_fn("[INFO] Navigating to account.jagex.com...")
+        await page.goto("https://account.jagex.com/", wait_until="domcontentloaded")
+        human_delay(2.0, 3.0)
+
+        log_fn("[INFO] Browser is ready. Close the browser window when done.")
+
+        # Block until browser is closed by user
+        try:
+            while True:
+                await asyncio.sleep(2)
+                try:
+                    await page.title()
+                except Exception:
+                    log_fn("[INFO] Browser closed by user")
+                    break
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            log_fn("[INFO] Session ended by signal")
+
+        return AutomationResult(
+            status=AutomationStatus.SUCCESS.value,
+            message="Browser session ended",
+            expected_ip=expected_ip,
+            actual_ip=actual_ip,
+        )
+
+    except Exception as e:
+        return AutomationResult(
+            status=AutomationStatus.BROWSER_ERROR.value,
+            message=f"Session launch failed: {type(e).__name__}: {e}",
+            expected_ip=expected_ip,
+        )
+    finally:
+        if browser and pw:
+            await close_browser(pw, browser)
