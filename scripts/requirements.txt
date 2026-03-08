@@ -1,5 +1,5 @@
 # Core automation dependencies
-seleniumbase>=4.46.5
+patchright>=1.49.0
 
-# HTTP requests for IP validation  
+# HTTP requests for IP validation
 requests>=2.32.0
