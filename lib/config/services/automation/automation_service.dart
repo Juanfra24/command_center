@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/automation/automation_result.dart';
+import 'package:command_center/config/services/automation/python_runner.dart';
+import 'package:command_center/config/services/automation/result_parser.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/core/constants/app_values.dart';
 import 'package:command_center/core/helper/logger.dart';
@@ -13,75 +16,6 @@ import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
-/// Status codes for automation operations (matches Python enum)
-enum AutomationStatus {
-  success,
-  proxyValidationFailed,
-  browserError,
-  timeout,
-  captchaRequired,
-  accountCreated,
-  unknownError;
-
-  factory AutomationStatus.fromString(String value) {
-    switch (value) {
-      case 'success':
-        return AutomationStatus.success;
-      case 'proxy_validation_failed':
-        return AutomationStatus.proxyValidationFailed;
-      case 'browser_error':
-        return AutomationStatus.browserError;
-      case 'timeout':
-        return AutomationStatus.timeout;
-      case 'captcha_required':
-        return AutomationStatus.captchaRequired;
-      case 'account_created':
-        return AutomationStatus.accountCreated;
-      default:
-        return AutomationStatus.unknownError;
-    }
-  }
-}
-
-/// Result of an automation operation
-class AutomationResult {
-  final AutomationStatus status;
-  final String message;
-  final String? expectedIp;
-  final String? actualIp;
-  final Map<String, dynamic>? data;
-
-  AutomationResult({
-    required this.status,
-    required this.message,
-    this.expectedIp,
-    this.actualIp,
-    this.data,
-  });
-
-  factory AutomationResult.fromJson(Map<String, dynamic> json) {
-    return AutomationResult(
-      status: AutomationStatus.fromString(json['status'] ?? 'unknown_error'),
-      message: json['message'] ?? 'Unknown error',
-      expectedIp: json['expected_ip'],
-      actualIp: json['actual_ip'],
-      data: json['data'],
-    );
-  }
-
-  factory AutomationResult.error(String message) {
-    return AutomationResult(
-      status: AutomationStatus.unknownError,
-      message: message,
-    );
-  }
-
-  bool get isSuccess => status == AutomationStatus.success || status == AutomationStatus.accountCreated;
-  bool get isAccountCreated => status == AutomationStatus.accountCreated;
-  bool get needsCaptcha => status == AutomationStatus.captchaRequired;
-  bool get proxyFailed => status == AutomationStatus.proxyValidationFailed;
-}
-
 /// Service for managing browser automation tasks
 class AutomationService extends GetxService {
   /// Observable states
@@ -89,7 +23,6 @@ class AutomationService extends GetxService {
   final currentTask = Rxn<String>();
   final lastResult = Rxn<AutomationResult>();
   final logs = <String>[].obs;
-  final isCancelling = false.obs;
 
   /// Default timeout for automation tasks (2 minutes)
   static const Duration defaultTimeout = Duration(minutes: 2);
@@ -97,8 +30,11 @@ class AutomationService extends GetxService {
   /// Longer timeout for account creation (10 minutes — email verification takes time)
   static const Duration accountCreationTimeout = Duration(minutes: 10);
 
-  /// Currently running process (for cancellation)
-  Process? _currentProcess;
+  /// Python process runner
+  late final PythonRunner _runner = PythonRunner(onLog: _log);
+
+  /// Forwarded from PythonRunner
+  RxBool get isCancelling => _runner.isCancelling;
 
   /// Get the scripts directory path
   String get _scriptsPath {
@@ -147,28 +83,20 @@ class AutomationService extends GetxService {
 
   /// Cancel the currently running automation task
   Future<void> cancelCurrentTask() async {
-    if (!isRunning.value || _currentProcess == null) {
+    if (!isRunning.value || !_runner.isProcessRunning) {
       _log('No task to cancel');
       return;
     }
 
-    isCancelling.value = true;
     _log('Cancelling current task...');
 
     try {
-      // Kill the process and any child processes
-      final killed = _currentProcess!.kill(ProcessSignal.sigterm);
-      if (!killed) {
-        // Force kill if graceful termination fails
-        _currentProcess!.kill(ProcessSignal.sigkill);
-      }
+      await _runner.cancel();
       _log('Task cancelled');
     } catch (e) {
       _log('Error cancelling task: $e');
     } finally {
-      _currentProcess = null;
       isRunning.value = false;
-      isCancelling.value = false;
       currentTask.value = null;
     }
   }
@@ -178,53 +106,11 @@ class AutomationService extends GetxService {
     List<String> args, {
     Duration? timeout,
   }) async {
-    final effectiveTimeout = timeout ?? defaultTimeout;
-    _log('Running Python with timeout: ${effectiveTimeout.inSeconds}s');
-
-    final stdout = StringBuffer();
-    final stderr = StringBuffer();
-
-    // -u flag disables Python's stdout/stderr buffering so we get logs in real-time
-    _currentProcess =
-        await Process.start('python', ['-u', ...args], workingDirectory: _scriptsPath);
-
-    // Listen to stdout/stderr and forward to logs in real-time
-    _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
-      stdout.write(data);
-      // Forward each line to the log for real-time visibility
-      for (final line in data.split('\n')) {
-        final trimmed = line.trim();
-        if (trimmed.isNotEmpty && !trimmed.startsWith('===')) {
-          _log('[py] $trimmed');
-        }
-      }
-    });
-
-    _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
-      stderr.write(data);
-    });
-
-    // Wait for process with timeout
-    try {
-      final exitCode = await _currentProcess!.exitCode.timeout(
-        effectiveTimeout,
-        onTimeout: () {
-          _log('Script timed out after ${effectiveTimeout.inSeconds}s');
-          _currentProcess?.kill(ProcessSignal.sigterm);
-          throw TimeoutException('Script timed out', effectiveTimeout);
-        },
-      );
-      return (
-        exitCode: exitCode,
-        stdout: stdout.toString(),
-        stderr: stderr.toString()
-      );
-    } on TimeoutException {
-      _currentProcess?.kill(ProcessSignal.sigkill);
-      rethrow;
-    } finally {
-      _currentProcess = null;
-    }
+    return _runner.run(
+      args,
+      workingDirectory: _scriptsPath,
+      timeout: timeout ?? defaultTimeout,
+    );
   }
 
   /// Build proxy URL from slot entity
@@ -368,7 +254,7 @@ class AutomationService extends GetxService {
       }
 
       // Find JSON result in output
-      final resultJson = _extractJsonResult(output);
+      final resultJson = ResultParser.extractJsonResult(output);
 
       if (resultJson != null) {
         final automationResult = AutomationResult.fromJson(resultJson);
@@ -400,7 +286,6 @@ class AutomationService extends GetxService {
     } finally {
       isRunning.value = false;
       currentTask.value = null;
-      _currentProcess = null;
     }
   }
 
@@ -509,7 +394,7 @@ class AutomationService extends GetxService {
         }
       }
 
-      final resultJson = _extractJsonResult(output);
+      final resultJson = ResultParser.extractJsonResult(output);
 
       if (resultJson != null) {
         final automationResult = AutomationResult.fromJson(resultJson);
@@ -569,7 +454,6 @@ class AutomationService extends GetxService {
     } finally {
       isRunning.value = false;
       currentTask.value = null;
-      _currentProcess = null;
     }
   }
 
@@ -650,18 +534,18 @@ class AutomationService extends GetxService {
 
       // Start process — browser stays open until user closes it.
       // -u flag disables Python's stdout buffering.
-      _currentProcess = await Process.start('python', ['-u', ...args],
+      final sessionProcess = await Process.start('python', ['-u', ...args],
           workingDirectory: _scriptsPath);
 
       // Capture output to check for immediate errors (e.g. proxy unreachable)
       final outputBuffer = StringBuffer();
-      _currentProcess!.stdout.transform(utf8.decoder).listen(
+      sessionProcess.stdout.transform(utf8.decoder).listen(
         (data) {
           outputBuffer.write(data);
           _log(data.trim());
         },
       );
-      _currentProcess!.stderr.transform(utf8.decoder).listen(
+      sessionProcess.stderr.transform(utf8.decoder).listen(
         (data) {
           _log('[stderr] ${data.trim()}');
         },
@@ -673,7 +557,7 @@ class AutomationService extends GetxService {
       // If process exited quickly, it failed
       final output = outputBuffer.toString();
       if (output.contains('RESULT')) {
-        final resultJson = _extractJsonResult(output);
+        final resultJson = ResultParser.extractJsonResult(output);
         if (resultJson != null) {
           final automationResult = AutomationResult.fromJson(resultJson);
           lastResult.value = automationResult;
@@ -698,41 +582,5 @@ class AutomationService extends GetxService {
       isRunning.value = false;
       currentTask.value = null;
     }
-  }
-
-  /// Extract JSON result from script output
-  Map<String, dynamic>? _extractJsonResult(String output) {
-    try {
-      // Look for the result marker
-      final resultMarker = '=== RESULT ===';
-      final markerIndex = output.indexOf(resultMarker);
-
-      if (markerIndex != -1) {
-        final jsonStart = markerIndex + resultMarker.length;
-        final jsonStr = output.substring(jsonStart).trim();
-
-        // Find the JSON object
-        final openBrace = jsonStr.indexOf('{');
-        if (openBrace != -1) {
-          var braceCount = 0;
-          var closeBrace = openBrace;
-
-          for (var i = openBrace; i < jsonStr.length; i++) {
-            if (jsonStr[i] == '{') braceCount++;
-            if (jsonStr[i] == '}') braceCount--;
-            if (braceCount == 0) {
-              closeBrace = i;
-              break;
-            }
-          }
-
-          final jsonObject = jsonStr.substring(openBrace, closeBrace + 1);
-          return json.decode(jsonObject);
-        }
-      }
-    } catch (e) {
-      logger.e('Error parsing JSON result: $e');
-    }
-    return null;
   }
 }

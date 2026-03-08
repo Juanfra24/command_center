@@ -1,5 +1,7 @@
-import 'package:command_center/config/services/ipqs_service.dart';
-import 'package:command_center/config/services/webshare_service.dart';
+import 'package:command_center/config/services/ipqs/ipqs_service.dart';
+import 'package:command_center/config/services/proxy/proxy_replacement_service.dart';
+import 'package:command_center/config/services/proxy/proxy_sync_service.dart';
+import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
@@ -11,11 +13,12 @@ class ProxyController extends GetxController {
   ProxyRepository? _proxyRepository;
   WebshareService? _webshareService;
   IpqsService? _ipqsService;
+  ProxySyncService? _syncService;
+  ProxyReplacementService? _replacementService;
 
   // Observable states
   var isLoading = true.obs;
   var isSyncing = false.obs;
-  var isScoring = false.obs;
   var isReplacing = false.obs;
   var proxySlots = <ProxySlotEntity>[].obs;
   var ipAddresses = <ProxyIpAddressEntity>[].obs;
@@ -43,7 +46,17 @@ class ProxyController extends GetxController {
     _initRepository();
     _initWebshare();
     _initIpqs();
+    _initSyncService();
     loadData();
+  }
+
+  void _initSyncService() {
+    if (_proxyRepository != null && _webshareService != null) {
+      _syncService = ProxySyncService(_proxyRepository!, _webshareService!);
+    }
+    if (_webshareService != null) {
+      _replacementService = ProxyReplacementService(_webshareService!);
+    }
   }
 
   void _initRepository() {
@@ -108,12 +121,8 @@ class ProxyController extends GetxController {
   }
 
   /// Sync proxy slots from Webshare API
-  /// Uses webshareId as the stable identifier:
-  /// - If a slot with the same webshareId exists (even soft-deleted), recover/update it
-  /// - If a slot doesn't exist, create a new one
-  /// - If a DB slot's webshareId is not in the API response, soft-delete it
   Future<void> syncWithWebshare() async {
-    if (_webshareService == null || !isWebshareConfigured.value) {
+    if (_syncService == null || !isWebshareConfigured.value) {
       lastSyncError.value =
           'Webshare not configured. Please add your API key in Settings.';
       return;
@@ -128,54 +137,9 @@ class ProxyController extends GetxController {
     lastSyncError.value = null;
 
     try {
-      final webshareProxies = await _webshareService!.getProxyList();
-
-      // Get ALL existing slots from DB, including soft-deleted ones
-      final allExistingSlots =
-          await _proxyRepository!.getAllSlotsIncludingDeleted();
-
-      // Track which webshareIds we see from the API
-      final apiWebshareIds = <String>{};
-
-      for (final webProxy in webshareProxies) {
-        apiWebshareIds.add(webProxy.id);
-
-        // Check if this slot already exists by Webshare ID (including deleted)
-        final existingSlot = allExistingSlots.firstWhereOrNull(
-          (s) => s.webshareId == webProxy.id,
-        );
-
-        if (existingSlot != null) {
-          if (existingSlot.isDeleted) {
-            // Recover soft-deleted slot
-            logger.i(
-                'Recovering soft-deleted slot #${webProxy.slotNumber} (webshareId: ${webProxy.id})');
-            await _proxyRepository!.recoverSlot(existingSlot.id!);
-          }
-          // Update existing slot (whether it was deleted or not)
-          await _updateExistingSlot(existingSlot, webProxy);
-        } else {
-          // New slot - create it
-          await _createNewSlot(webProxy);
-        }
-      }
-
-      // Soft-delete any DB slots whose webshareId is NOT in the API response
-      for (final existingSlot in allExistingSlots) {
-        if (existingSlot.webshareId != null &&
-            existingSlot.webshareId!.isNotEmpty &&
-            !apiWebshareIds.contains(existingSlot.webshareId) &&
-            !existingSlot.isDeleted) {
-          logger.i(
-              'Soft-deleting slot #${existingSlot.slotNumber} (webshareId: ${existingSlot.webshareId}) - not found in API');
-          await _proxyRepository!.softDeleteSlot(existingSlot.id!);
-        }
-      }
-
+      await _syncService!.syncWithWebshare();
       // Reload data after sync
       await loadData();
-      logger.i(
-          'Successfully synced ${webshareProxies.length} proxies from Webshare');
     } catch (e) {
       logger.e('Error syncing with Webshare: $e');
       lastSyncError.value = 'Failed to sync: ${e.toString()}';
@@ -184,160 +148,9 @@ class ProxyController extends GetxController {
     }
   }
 
-  Future<void> _createNewSlot(WebshareProxySlot webProxy) async {
-    final now = DateTime.now();
-
-    // Log the webProxy data for debugging
-    logger.i('Creating new slot #${webProxy.slotNumber}');
-    logger.i('  Webshare ID: ${webProxy.id}');
-    logger.i('  Username from Webshare: ${webProxy.username}');
-    logger.i('  Password length: ${webProxy.password.length}');
-    logger.i('  Proxy Address: ${webProxy.proxyAddress}');
-    logger.i('  Port: ${webProxy.port}');
-
-    // Create the slot
-    final slotId = await _proxyRepository!.insertSlot(
-      ProxySlotEntity(
-        webshareId: webProxy.id,
-        slotName: 'Slot ${webProxy.slotNumber}',
-        slotNumber: webProxy.slotNumber,
-        currentIpAddressId: null,
-        username: webProxy.username,
-        password: webProxy.password,
-        port: webProxy.port,
-        createdAt: webProxy.createdAt,
-        lastUpdated: now,
-        totalIpChanges: 0,
-        isActive: webProxy.valid,
-      ),
-    );
-
-    logger.i('  Slot created with ID: $slotId');
-
-    // Create the IP address record
-    final ipId = await _proxyRepository!.insertIpAddress(
-      ProxyIpAddressEntity(
-        ipAddress: webProxy.proxyAddress,
-        hostname: webProxy.proxyAddress,
-        slotId: slotId,
-        isActive: true,
-        countryCode: webProxy.countryCode,
-        cityName: webProxy.cityName,
-        ipTimezone: 'UTC',
-        highCountryConfidence: true,
-        asnName: webProxy.asnName ?? '',
-        asnNumber: webProxy.asnNumber ?? 0,
-        ipScore: 0,
-        scoreLevel: IpScoreLevel.unknown,
-        isVpn: false,
-        isProxy: true,
-        isDatacenter: true,
-        isTor: false,
-        fraudScore: 0,
-        abuseConfidence: 0,
-        assignedAt: now,
-        removedAt: null,
-        lastVerification: webProxy.lastVerification ?? now,
-        lastScoreCheck: null,
-        totalDaysUsed: 0,
-        timesAssigned: 1,
-      ),
-    );
-
-    // Update slot with IP reference
-    final slot = await _proxyRepository!.getSlotById(slotId);
-    if (slot != null) {
-      await _proxyRepository!
-          .updateSlot(slot.copyWith(currentIpAddressId: ipId));
-    }
-  }
-
-  Future<void> _updateExistingSlot(
-    ProxySlotEntity existingSlot,
-    WebshareProxySlot webProxy,
-  ) async {
-    final now = DateTime.now();
-    final currentIp =
-        await _proxyRepository!.getActiveIpForSlot(existingSlot.id!);
-
-    // Check if critical fields have changed
-    final usernameChanged = existingSlot.username != webProxy.username;
-    final ipChanged = currentIp?.ipAddress != webProxy.proxyAddress;
-
-    if (usernameChanged) {
-      logger.i('Username changed for slot #${webProxy.slotNumber}:');
-      logger.i('  Old: ${existingSlot.username}');
-      logger.i('  New: ${webProxy.username}');
-    }
-
-    // Always update slot with latest data from Webshare
-    await _proxyRepository!.updateSlot(
-      existingSlot.copyWith(
-        webshareId: webProxy.id,
-        username: webProxy.username,
-        password: webProxy.password,
-        port: webProxy.port,
-        isActive: webProxy.valid,
-        isDeleted: false,
-        deletedAt: null,
-        lastUpdated: now,
-      ),
-    );
-
-    // Handle IP change if needed
-    if (ipChanged) {
-      logger.i('IP changed for slot #${webProxy.slotNumber}');
-      logger.i('  Old: ${currentIp?.ipAddress}');
-      logger.i('  New: ${webProxy.proxyAddress}');
-
-      // Mark old IP as inactive
-      if (currentIp != null && currentIp.id != null) {
-        await _proxyRepository!.deactivateIp(currentIp.id!);
-      }
-
-      // Create new IP record
-      final newIpId = await _proxyRepository!.insertIpAddress(
-        ProxyIpAddressEntity(
-          ipAddress: webProxy.proxyAddress,
-          hostname: webProxy.proxyAddress,
-          slotId: existingSlot.id!,
-          isActive: true,
-          countryCode: webProxy.countryCode,
-          cityName: webProxy.cityName,
-          ipTimezone: 'UTC',
-          highCountryConfidence: true,
-          asnName: webProxy.asnName ?? '',
-          asnNumber: webProxy.asnNumber ?? 0,
-          ipScore: 0,
-          scoreLevel: IpScoreLevel.unknown,
-          isVpn: false,
-          isProxy: true,
-          isDatacenter: true,
-          isTor: false,
-          fraudScore: 0,
-          abuseConfidence: 0,
-          assignedAt: now,
-          removedAt: null,
-          lastVerification: webProxy.lastVerification ?? now,
-          lastScoreCheck: null,
-          totalDaysUsed: 0,
-          timesAssigned: 1,
-        ),
-      );
-
-      // Update slot with new IP reference and increment change count
-      await _proxyRepository!.updateSlot(
-        existingSlot.copyWith(
-          currentIpAddressId: newIpId,
-          totalIpChanges: existingSlot.totalIpChanges + 1,
-        ),
-      );
-    }
-  }
-
   /// Request IP rotation via Webshare API (legacy v2)
   Future<bool> rotateSlotIp(ProxySlotEntity slot) async {
-    if (_webshareService == null ||
+    if (_replacementService == null ||
         !isWebshareConfigured.value ||
         slot.webshareId == null) {
       lastSyncError.value =
@@ -346,8 +159,8 @@ class ProxyController extends GetxController {
     }
 
     try {
-      final newProxy = await _webshareService!.replaceProxy(slot.webshareId!);
-      if (newProxy != null) {
+      final success = await _replacementService!.rotateSlotIp(slot);
+      if (success) {
         await syncWithWebshare();
         return true;
       }
@@ -360,14 +173,11 @@ class ProxyController extends GetxController {
   }
 
   /// Replace a proxy IP via the Webshare v3 Proxy Replacement API.
-  /// This replaces the IP address of the given slot with a new one.
-  /// Optionally keeps the same country.
-  /// Returns a record with success status and optional error message.
   Future<({bool success, String? error})> replaceProxyIp(
     ProxySlotEntity slot, {
     bool keepSameCountry = false,
   }) async {
-    if (_webshareService == null || !isWebshareConfigured.value) {
+    if (_replacementService == null || !isWebshareConfigured.value) {
       return (
         success: false,
         error: 'Webshare not configured. Please add your API key in Settings.'
@@ -387,11 +197,9 @@ class ProxyController extends GetxController {
     lastSyncError.value = null;
 
     try {
-      final countryCode = keepSameCountry ? currentIp.countryCode : null;
-
-      final result = await _webshareService!.replaceProxyIp(
-        currentIp.ipAddress,
-        countryCode: countryCode,
+      final result = await _replacementService!.replaceProxyIp(
+        currentIp,
+        keepSameCountry: keepSameCountry,
       );
 
       if (result.success) {
@@ -416,10 +224,10 @@ class ProxyController extends GetxController {
 
   /// Fetch plan info from Webshare to get replacement quotas
   Future<void> fetchPlanInfo() async {
-    if (_webshareService == null || !isWebshareConfigured.value) return;
+    if (_replacementService == null || !isWebshareConfigured.value) return;
 
     try {
-      final plan = await _webshareService!.getActivePlan();
+      final plan = await _replacementService!.fetchPlanInfo();
       if (plan != null) {
         replacementsAvailable.value = plan.proxyReplacementsAvailable;
         replacementsTotal.value = plan.proxyReplacementsTotal;
@@ -648,86 +456,6 @@ class ProxyController extends GetxController {
     } catch (e) {
       logger.e('Error updating IP score: $e');
       rethrow;
-    }
-  }
-
-  /// Score a single IP address using IPQualityScore
-  Future<bool> scoreIpWithIpqs(ProxyIpAddressEntity ip) async {
-    if (_ipqsService == null || !_ipqsService!.isConfigured.value) {
-      logger.w('IPQS not configured');
-      return false;
-    }
-    if (_proxyRepository == null) return false;
-
-    isScoring.value = true;
-    try {
-      final result = await _ipqsService!.scoreIp(ip.ipAddress);
-
-      if (result.success) {
-        // Use the normalized score (100 = safest, 0 = riskiest)
-        final newScore = result.normalizedScore;
-
-        await _proxyRepository!.updateIpAddress(
-          ip.copyWith(
-            ipScore: newScore,
-            fraudScore: result.fraudScore,
-            isVpn: result.isVpn,
-            isProxy: result.isProxy,
-            isDatacenter: result.isDatacenter,
-            isTor: result.isTor,
-            abuseConfidence: result.recentAbuse ? 100 : 0,
-            lastScoreCheck: DateTime.now(),
-          ),
-        );
-
-        await loadIpAddresses();
-
-        // Refresh selected slot history if applicable
-        if (selectedSlot.value != null && selectedSlot.value!.id != null) {
-          selectedSlotIpHistory.value =
-              getIpHistoryForSlot(selectedSlot.value!.id!);
-        }
-
-        return true;
-      }
-      return false;
-    } catch (e) {
-      logger.e('Error scoring IP with IPQS: $e');
-      return false;
-    } finally {
-      isScoring.value = false;
-    }
-  }
-
-  /// Score all current IPs for all slots
-  Future<int> scoreAllCurrentIps() async {
-    if (_ipqsService == null || !_ipqsService!.isConfigured.value) {
-      logger.w('IPQS not configured');
-      return 0;
-    }
-    if (_proxyRepository == null) return 0;
-
-    isScoring.value = true;
-    int successCount = 0;
-
-    try {
-      for (final slot in proxySlots) {
-        final currentIp = getCurrentIpForSlot(slot);
-        if (currentIp != null) {
-          final success = await scoreIpWithIpqs(currentIp);
-          if (success) successCount++;
-          // Small delay to avoid rate limiting
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
-
-      await loadIpAddresses();
-      return successCount;
-    } catch (e) {
-      logger.e('Error scoring all IPs: $e');
-      return successCount;
-    } finally {
-      isScoring.value = false;
     }
   }
 }

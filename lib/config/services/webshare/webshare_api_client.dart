@@ -1,115 +1,27 @@
 import 'dart:convert';
-import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:command_center/core/helper/logger.dart';
-import 'package:command_center/config/services/app_config_service.dart';
 
-/// Service for interacting with Webshare API
-/// API Documentation: https://proxy.webshare.io/docs/
-class WebshareService extends GetxService {
-  static const String _baseUrl = 'https://proxy.webshare.io/api/v2';
+/// HTTP transport layer for Webshare API.
+/// All methods receive the API key as a parameter.
+class WebshareApiClient {
+  static const String _baseUrlV2 = 'https://proxy.webshare.io/api/v2';
 
-  var isConfigured = false.obs;
-  var isLoading = false.obs;
-  var isSyncing = false.obs;
-  var lastSyncTime = Rxn<DateTime>();
-  var lastError = Rxn<String>();
-
-  String? _apiKey;
-  AppConfigService? _configService;
-
-  Future<WebshareService> init() async {
-    await _loadApiKey();
-    return this;
-  }
-
-  Future<void> _loadApiKey() async {
-    try {
-      // Try to get from AppConfigService first (Firestore)
-      try {
-        _configService = Get.find<AppConfigService>();
-        if (_configService!.webshareApiKey.value != null) {
-          _apiKey = _configService!.webshareApiKey.value;
-          isConfigured.value = true;
-          return;
-        }
-      } catch (_) {
-        // AppConfigService not available yet
-      }
-
-      isConfigured.value = _apiKey != null && _apiKey!.isNotEmpty;
-    } catch (e) {
-      logger.e('Error loading Webshare API key: $e');
-    }
-  }
-
-  /// Reload configuration from AppConfigService
-  Future<void> reloadConfig() async {
-    try {
-      _configService ??= Get.find<AppConfigService>();
-      _apiKey = _configService!.webshareApiKey.value;
-      isConfigured.value = _apiKey != null && _apiKey!.isNotEmpty;
-    } catch (e) {
-      logger.e('Error reloading Webshare config: $e');
-    }
-  }
-
-  /// Save API key to Firestore via AppConfigService
-  Future<bool> saveApiKey(String apiKey) async {
-    try {
-      _configService ??= Get.find<AppConfigService>();
-      final success = await _configService!.saveWebshareApiKey(apiKey);
-      if (success) {
-        _apiKey = apiKey;
-        isConfigured.value = true;
-      }
-      return success;
-    } catch (e) {
-      logger.e('Error saving Webshare API key: $e');
-      lastError.value = 'Failed to save API key: $e';
-      return false;
-    }
-  }
-
-  /// Clear API key (unlink)
-  Future<bool> clearApiKey() async {
-    try {
-      _configService ??= Get.find<AppConfigService>();
-      final success = await _configService!.clearWebshareApiKey();
-      if (success) {
-        _apiKey = null;
-        isConfigured.value = false;
-      }
-      return success;
-    } catch (e) {
-      logger.e('Error clearing Webshare API key: $e');
-      lastError.value = 'Failed to unlink: $e';
-      return false;
-    }
-  }
-
-  Map<String, String> get _headers => {
-        'Authorization': 'Token $_apiKey',
-        'Content-Type': 'application/json',
-      };
-
-  Map<String, String> _headersWithKey(String apiKey) => {
+  Map<String, String> _headers(String apiKey) => {
         'Authorization': 'Token $apiKey',
         'Content-Type': 'application/json',
       };
 
   /// Test API connection and return detailed error message
   Future<({bool success, String? error})> testAndConnect(String apiKey) async {
-    lastError.value = null;
-
     if (apiKey.isEmpty) {
       return (success: false, error: 'API key cannot be empty');
     }
 
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/profile/'),
-        headers: _headersWithKey(apiKey),
+        Uri.parse('$_baseUrlV2/profile/'),
+        headers: _headers(apiKey),
       );
 
       if (response.statusCode == 200) {
@@ -142,80 +54,51 @@ class WebshareService extends GetxService {
     }
   }
 
-  /// Test API connection with current key (legacy method)
-  Future<bool> testConnection([String? tempApiKey]) async {
-    final result = await testAndConnect(tempApiKey ?? _apiKey ?? '');
-    return result.success;
-  }
-
   /// Get all proxy slots from Webshare
-  Future<List<WebshareProxySlot>> getProxyList() async {
-    if (_apiKey == null) {
-      throw Exception('Webshare API key not configured');
-    }
+  Future<List<WebshareProxySlot>> getProxyList(String apiKey) async {
+    final allProxies = <WebshareProxySlot>[];
+    int page = 1;
+    bool hasMore = true;
 
-    isLoading.value = true;
-    try {
-      final allProxies = <WebshareProxySlot>[];
-      int page = 1;
-      bool hasMore = true;
+    while (hasMore) {
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrlV2/proxy/list/?mode=backbone&page=$page&page_size=100'),
+        headers: _headers(apiKey),
+      );
 
-      while (hasMore) {
-        final response = await http.get(
-          Uri.parse(
-              '$_baseUrl/proxy/list/?mode=backbone&page=$page&page_size=100'),
-          headers: _headers,
-        );
-
-        if (response.statusCode != 200) {
-          throw Exception('Failed to fetch proxies: ${response.statusCode}');
-        }
-
-        final data = jsonDecode(response.body);
-        final results = data['results'] as List<dynamic>;
-
-        for (var i = 0; i < results.length; i++) {
-          allProxies.add(WebshareProxySlot.fromJson(results[i],
-              index: allProxies.length + 1));
-        }
-
-        // Check if there's a next page
-        hasMore = data['next'] != null;
-        page++;
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch proxies: ${response.statusCode}');
       }
 
-      lastSyncTime.value = DateTime.now();
-      return allProxies;
-    } catch (e) {
-      logger.e('Error fetching Webshare proxies: $e');
-      rethrow;
-    } finally {
-      isLoading.value = false;
+      final data = jsonDecode(response.body);
+      final results = data['results'] as List<dynamic>;
+
+      for (var i = 0; i < results.length; i++) {
+        allProxies.add(WebshareProxySlot.fromJson(results[i],
+            index: allProxies.length + 1));
+      }
+
+      // Check if there's a next page
+      hasMore = data['next'] != null;
+      page++;
     }
+
+    return allProxies;
   }
 
   /// Replace a proxy IP via the v3 Proxy Replacement API.
-  /// This is an async operation - it creates a replacement request and polls
-  /// until it completes.
-  /// [ipAddress] is the current IP address of the proxy to replace.
-  /// [countryCode] optionally request the replacement to be from a specific country.
-  /// Returns true if the replacement completed successfully.
   Future<({bool success, String? error})> replaceProxyIp(
+    String apiKey,
     String ipAddress, {
     String? countryCode,
   }) async {
-    if (_apiKey == null) {
-      return (success: false, error: 'Webshare API key not configured');
-    }
-
     try {
-      // Build to_replace
       final toReplace = {
         'type': 'ip_address',
         'ip_addresses': [ipAddress],
       };
 
-      // Build replace_with — same country or any
       final List<Map<String, dynamic>> replaceWith;
       if (countryCode != null && countryCode.isNotEmpty) {
         replaceWith = [
@@ -237,7 +120,7 @@ class WebshareService extends GetxService {
 
       final response = await http.post(
         Uri.parse('https://proxy.webshare.io/api/v3/proxy/replace/'),
-        headers: _headers,
+        headers: _headers(apiKey),
         body: jsonEncode(body),
       );
 
@@ -249,7 +132,7 @@ class WebshareService extends GetxService {
         logger.i('Replacement created with ID: $replacementId, state: $state');
 
         // Poll until the replacement is completed or failed
-        final result = await _pollReplacementStatus(replacementId);
+        final result = await _pollReplacementStatus(apiKey, replacementId);
         return result;
       } else {
         final errorBody = jsonDecode(response.body);
@@ -273,7 +156,7 @@ class WebshareService extends GetxService {
 
   /// Poll the replacement status until completed or failed
   Future<({bool success, String? error})> _pollReplacementStatus(
-      dynamic replacementId) async {
+      String apiKey, dynamic replacementId) async {
     const maxAttempts = 30;
     const pollInterval = Duration(seconds: 2);
 
@@ -284,7 +167,7 @@ class WebshareService extends GetxService {
         final response = await http.get(
           Uri.parse(
               'https://proxy.webshare.io/api/v3/proxy/replace/$replacementId/'),
-          headers: _headers,
+          headers: _headers(apiKey),
         );
 
         if (response.statusCode == 200) {
@@ -322,16 +205,11 @@ class WebshareService extends GetxService {
   }
 
   /// Legacy: Rotate/replace IP for a specific proxy using v2 API
-  /// Kept for backward compatibility
-  Future<WebshareProxySlot?> replaceProxy(String proxyId) async {
-    if (_apiKey == null) {
-      throw Exception('Webshare API key not configured');
-    }
-
+  Future<WebshareProxySlot?> replaceProxy(String apiKey, String proxyId) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/proxy/list/$proxyId/replace/'),
-        headers: _headers,
+        Uri.parse('$_baseUrlV2/proxy/list/$proxyId/replace/'),
+        headers: _headers(apiKey),
       );
 
       if (response.statusCode == 200) {
@@ -349,15 +227,12 @@ class WebshareService extends GetxService {
   }
 
   /// Get proxy configuration for a specific proxy
-  Future<WebshareProxyConfig?> getProxyConfig(String proxyId) async {
-    if (_apiKey == null) {
-      throw Exception('Webshare API key not configured');
-    }
-
+  Future<WebshareProxyConfig?> getProxyConfig(
+      String apiKey, String proxyId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/proxy/list/$proxyId/'),
-        headers: _headers,
+        Uri.parse('$_baseUrlV2/proxy/list/$proxyId/'),
+        headers: _headers(apiKey),
       );
 
       if (response.statusCode == 200) {
@@ -373,20 +248,17 @@ class WebshareService extends GetxService {
   }
 
   /// Fetch the active subscription plan to get replacement quotas
-  Future<WebsharePlanInfo?> getActivePlan() async {
-    if (_apiKey == null) return null;
-
+  Future<WebsharePlanInfo?> getActivePlan(String apiKey) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/subscription/plan/'),
-        headers: _headers,
+        Uri.parse('$_baseUrlV2/subscription/plan/'),
+        headers: _headers(apiKey),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final results = data['results'] as List<dynamic>?;
         if (results != null && results.isNotEmpty) {
-          // Find the active plan
           final activePlan = results.firstWhere(
             (p) => p['status'] == 'active',
             orElse: () => results.first,

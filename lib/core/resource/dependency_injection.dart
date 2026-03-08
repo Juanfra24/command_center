@@ -1,15 +1,16 @@
 import 'package:command_center/config/services/app_config_service.dart';
-import 'package:command_center/config/services/automation_service.dart';
-import 'package:command_center/config/services/ipqs_service.dart';
+import 'package:command_center/config/services/automation/automation_service.dart';
+import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
-import 'package:command_center/config/services/webshare_service.dart';
+import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:get/get.dart';
 
 class AppBindings extends Bindings {
@@ -28,6 +29,14 @@ class AppBindings extends Bindings {
     Get.lazyPut<MainMenuController>(() => MainMenuController(), fenix: true);
     Get.lazyPut<StatusController>(() => StatusController(), fenix: true);
     Get.lazyPut<ProxyController>(() => ProxyController(), fenix: true);
+    Get.lazyPut<ProxyScoringController>(
+      () => ProxyScoringController(
+        Get.find<DatabaseService>().proxyRepository,
+        Get.find<IpqsService>(),
+        Get.find<ProxyController>(),
+      ),
+      fenix: true,
+    );
   }
 
   /// Initialize async services in proper order
