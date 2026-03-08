@@ -2,6 +2,7 @@ import 'package:command_center/config/services/automation/automation_service.dar
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:command_center/feature/proxy/views/dialogs/add_slot_dialog.dart';
 import 'package:command_center/feature/proxy/views/dialogs/change_ip_dialog.dart';
@@ -25,12 +26,14 @@ class _ProxyScreenState extends State<ProxyScreen> {
   final searchController = TextEditingController();
 
   late final ProxyScoringController scoringController;
+  late final ProxyReplacementController replacementController;
 
   @override
   void initState() {
     super.initState();
     controller = Get.put(ProxyController());
     scoringController = Get.find<ProxyScoringController>();
+    replacementController = Get.find<ProxyReplacementController>();
   }
 
   @override
@@ -61,6 +64,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
               flex: 2,
               child: ProxyListSection(
                 controller: controller,
+                scoringController: scoringController,
                 searchController: searchController,
                 onAddSlot: () => _showAddSlotDialog(context),
               ),
@@ -69,6 +73,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
               flex: 3,
               child: ProxyDetailSection(
                 controller: controller,
+                isReplacing: replacementController.isReplacing,
                 onShowReplaceDialog: _showReplaceProxyDialog,
                 onLaunchBrowser: _launchBrowserWithProxy,
                 onShowChangeIpDialog: _showChangeIpDialog,
@@ -85,7 +90,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
     return Obx(() => CommandBar(
           mainAxisAlignment: MainAxisAlignment.end,
           primaryItems: [
-            if (controller.isIpqsConfigured.value)
+            if (scoringController.isIpqsConfigured.value)
               CommandBarButton(
                 icon: scoringController.isScoring.value
                     ? const SizedBox(
@@ -201,7 +206,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
   }
 
   void _showChangeIpDialog(BuildContext context, ProxySlotEntity slot) {
-    ChangeIpDialog.show(context, slot: slot, controller: controller);
+    ChangeIpDialog.show(context, slot: slot, controller: replacementController);
   }
 
   void _showReplaceProxyDialog(
@@ -213,7 +218,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
       context,
       slot: slot,
       currentIp: currentIp,
-      controller: controller,
+      controller: replacementController,
     );
   }
 
@@ -262,7 +267,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
   }
 
   Future<void> _refreshIpScore(ProxyIpAddressEntity ip) async {
-    if (!controller.isIpqsConfigured.value) {
+    if (!scoringController.isIpqsConfigured.value) {
       displayInfoBar(
         context,
         builder: (ctx, close) {

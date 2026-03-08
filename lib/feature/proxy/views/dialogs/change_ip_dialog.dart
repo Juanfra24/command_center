@@ -1,10 +1,12 @@
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:get/get.dart';
 
 class ChangeIpDialog extends StatelessWidget {
   final ProxySlotEntity slot;
-  final ProxyController controller;
+  final ProxyReplacementController controller;
 
   const ChangeIpDialog({
     super.key,
@@ -15,7 +17,7 @@ class ChangeIpDialog extends StatelessWidget {
   static Future<void> show(
     BuildContext context, {
     required ProxySlotEntity slot,
-    required ProxyController controller,
+    required ProxyReplacementController controller,
   }) {
     return showDialog(
       context: context,
@@ -64,7 +66,7 @@ class ChangeIpDialog extends StatelessWidget {
                     content: Text(
                       success
                           ? 'IP rotation initiated. Syncing...'
-                          : controller.lastSyncError.value ??
+                          : Get.find<ProxyController>().lastSyncError.value ??
                               'Failed to rotate IP',
                     ),
                     severity: success

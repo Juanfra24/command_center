@@ -10,6 +10,7 @@ import 'package:command_center/feature/Status/controller/status_controller.dart'
 import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:get/get.dart';
 
@@ -35,6 +36,10 @@ class AppBindings extends Bindings {
         Get.find<IpqsService>(),
         Get.find<ProxyController>(),
       ),
+      fenix: true,
+    );
+    Get.lazyPut<ProxyReplacementController>(
+      () => ProxyReplacementController(Get.find<ProxyController>()),
       fenix: true,
     );
   }

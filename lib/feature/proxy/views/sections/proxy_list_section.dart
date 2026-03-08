@@ -1,4 +1,5 @@
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:command_center/feature/proxy/views/components/ip_score_indicator.dart';
 import 'package:command_center/feature/proxy/views/components/proxy_slot_card.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -6,12 +7,14 @@ import 'package:get/get.dart';
 
 class ProxyListSection extends StatelessWidget {
   final ProxyController controller;
+  final ProxyScoringController scoringController;
   final TextEditingController searchController;
   final VoidCallback onAddSlot;
 
   const ProxyListSection({
     super.key,
     required this.controller,
+    required this.scoringController,
     required this.searchController,
     required this.onAddSlot,
   });
@@ -74,14 +77,14 @@ class ProxyListSection extends StatelessWidget {
             _buildStatChip(
               context,
               label: 'Avg Score',
-              value: controller.averageIpScore.toStringAsFixed(1),
-              color: getScoreColor(controller.averageIpScore),
+              value: scoringController.averageIpScore.toStringAsFixed(1),
+              color: getScoreColor(scoringController.averageIpScore),
             ),
-            if (controller.lowScoreCount > 0)
+            if (scoringController.lowScoreCount > 0)
               _buildStatChip(
                 context,
                 label: 'Low Score',
-                value: controller.lowScoreCount.toString(),
+                value: scoringController.lowScoreCount.toString(),
                 color: Colors.red,
                 isWarning: true,
               ),
@@ -148,9 +151,9 @@ class ProxyListSection extends StatelessWidget {
                 )),
             const SizedBox(width: 16),
             Obx(() => Checkbox(
-                  checked: controller.sortByScore.value,
+                  checked: scoringController.sortByScore.value,
                   onChanged: (value) =>
-                      controller.sortByScore.value = value ?? false,
+                      scoringController.sortByScore.value = value ?? false,
                   content: const Text('Sort by score'),
                 )),
           ],
@@ -161,7 +164,9 @@ class ProxyListSection extends StatelessWidget {
 
   Widget _buildSlotList(BuildContext context) {
     return Obx(() {
-      final slots = controller.filteredSlots;
+      final slots = controller.getFilteredSlots(
+        sortByScore: scoringController.sortByScore.value,
+      );
       final _ = controller.selectedSlot.value;
 
       if (slots.isEmpty) {

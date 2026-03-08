@@ -9,6 +9,7 @@ import 'package:get/get.dart';
 
 class ProxyDetailSection extends StatelessWidget {
   final ProxyController controller;
+  final RxBool isReplacing;
   final void Function(BuildContext context, ProxySlotEntity slot,
       ProxyIpAddressEntity ip) onShowReplaceDialog;
   final void Function(BuildContext context, ProxySlotEntity slot)
@@ -20,6 +21,7 @@ class ProxyDetailSection extends StatelessWidget {
   const ProxyDetailSection({
     super.key,
     required this.controller,
+    required this.isReplacing,
     required this.onShowReplaceDialog,
     required this.onLaunchBrowser,
     required this.onShowChangeIpDialog,
@@ -48,7 +50,7 @@ class ProxyDetailSection extends StatelessWidget {
             SlotHeader(
               slot: selectedSlot,
               currentIp: currentIp,
-              isReplacing: controller.isReplacing,
+              isReplacing: isReplacing,
               getCurrentIpForSlot: controller.getCurrentIpForSlot,
               onShowReplaceDialog: onShowReplaceDialog,
               onLaunchBrowser: onLaunchBrowser,
@@ -66,7 +68,7 @@ class ProxyDetailSection extends StatelessWidget {
               const SizedBox(height: 12),
               IpScoreAnalysis(
                 ip: currentIp,
-                isReplacing: controller.isReplacing,
+                isReplacing: isReplacing,
                 onRefreshScore: () => onRefreshIpScore(currentIp),
                 onReplaceProxy: () {
                   onShowReplaceDialog(context, selectedSlot, currentIp);

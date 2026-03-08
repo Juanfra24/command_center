@@ -1,13 +1,13 @@
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class ReplaceProxyDialog extends StatelessWidget {
   final ProxySlotEntity slot;
   final ProxyIpAddressEntity currentIp;
-  final ProxyController controller;
+  final ProxyReplacementController controller;
 
   const ReplaceProxyDialog({
     super.key,
@@ -20,7 +20,7 @@ class ReplaceProxyDialog extends StatelessWidget {
     BuildContext context, {
     required ProxySlotEntity slot,
     required ProxyIpAddressEntity currentIp,
-    required ProxyController controller,
+    required ProxyReplacementController controller,
   }) {
     return showDialog(
       context: context,
