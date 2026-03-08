@@ -7,7 +7,6 @@ import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
-import 'package:command_center/feature/Status/data/proxy_model.dart';
 import 'package:command_center/feature/Status/data/skills_model.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -15,28 +14,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide Response;
 
 import '../../../core/helper/logger.dart';
-
-Future<void> handleStream(Stream<List<int>> stream, IOSink fileSink) async {
-  StreamSubscription<List<int>>? subscription;
-  try {
-    subscription = stream.listen(
-      (data) {
-        stdout.add(data); // Echo to standard output
-        fileSink.add(data); // Write to file
-      },
-      onDone: () {
-        subscription?.cancel();
-      },
-      onError: (e) {
-        print('Error from stream: $e');
-        subscription?.cancel();
-      },
-      cancelOnError: true,
-    );
-  } catch (e) {
-    print('Failed to handle stream: $e');
-  }
-}
 
 class StatusController extends GetxController {
   var isLoading = true.obs;
@@ -170,59 +147,6 @@ class StatusController extends GetxController {
   void copyToClipboard(String text, BuildContext context) {
     Clipboard.setData(ClipboardData(text: text));
     // Note: InfoBar display is handled in the UI layer for Fluent UI
-  }
-
-  Future<Proxy> getProxyDoc(String proxyAddress) async {
-    // In the new architecture, we get proxy info from the slot
-    // For now, return empty proxy as this feature will need rework
-    return Proxy.empty();
-  }
-
-  Future<void> runPythonScript(String proxyAddress) async {
-    try {
-      // TEMP: hard fail if proxyAddress isn't a real proxy string
-      if (!proxyAddress.contains('@') || !proxyAddress.contains(':')) {
-        throw Exception('proxyAddress is not a proxy URL. Got: $proxyAddress');
-      }
-
-      var pythonExecutable = 'scripts/.venv/Scripts/python.exe';
-
-      // Use the script you are actually debugging
-      var scriptPath = 'scripts/account_automation.py';
-
-      // EXPECTED IP is NOT the proxyAddress.
-      // You must pass the expected external IP for that slot.
-      // TEMP: just pass a dummy label until you wire it.
-      var expectedIp = '0.0.0.0';
-
-      // Build args for your python CLI:
-      // account_automation.py validate <proxy_url> <expected_ip> --debug
-      var args = [scriptPath, 'validate', proxyAddress, expectedIp, '--debug'];
-
-      String fileName =
-          DateTime.now().toString().replaceAll(':', '-').replaceAll(' ', '_');
-      File outputFile = File('scripts/logs/${fileName}_output.txt');
-      IOSink fileSink = outputFile.openWrite(mode: FileMode.append);
-
-      // DO NOT pip install every time. It adds delay + can break.
-      // Remove this after your setup flow is done.
-
-      var process = await Process.start(pythonExecutable, args);
-      processList.add(process.pid);
-
-      handleStream(process.stdout, fileSink);
-      handleStream(process.stderr, fileSink);
-
-      var exitCode = await process.exitCode;
-      processList.remove(process.pid);
-
-      await fileSink.flush();
-      await fileSink.close();
-
-      print('Python script exit code: $exitCode');
-    } catch (e) {
-      print('Failed to run Python script: $e');
-    }
   }
 
   Future<void> runGameClient(JagexAccount account) async {

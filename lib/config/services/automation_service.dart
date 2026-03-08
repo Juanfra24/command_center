@@ -6,6 +6,7 @@ import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/core/constants/app_values.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/scripts_path.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/account.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
@@ -100,43 +101,19 @@ class AutomationService extends GetxService {
   /// Currently running process (for cancellation)
   Process? _currentProcess;
 
-  /// Get the scripts directory path
-  String get _scriptsPath {
-    // Get the executable directory and navigate to scripts
-    final execDir = path.dirname(Platform.resolvedExecutable);
+  /// Get the scripts directory path (cached, shared with PythonSetupService)
+  String get _scriptsPath => scriptsPath;
 
-    // In development, scripts are next to lib
-    // In production, they should be bundled with the app
-    final devScriptsPath = path.join(
-      path.dirname(path.dirname(execDir)),
-      'scripts',
-    );
+  /// Maximum number of log entries to keep
+  static const int _maxLogEntries = 500;
 
-    // Check if we're in development
-    if (Directory(devScriptsPath).existsSync()) {
-      return devScriptsPath;
-    }
-
-    // Try relative to workspace
-    final workspacePath = path.join(
-      Platform.environment['USERPROFILE'] ?? '',
-      'projects',
-      'command_center',
-      'scripts',
-    );
-
-    if (Directory(workspacePath).existsSync()) {
-      return workspacePath;
-    }
-
-    // Fallback to bundled scripts
-    return path.join(execDir, 'data', 'scripts');
-  }
-
-  /// Add a log entry
+  /// Add a log entry (capped to prevent unbounded growth)
   void _log(String message) {
     final timestamp = DateTime.now().toIso8601String().substring(11, 19);
     logs.add('[$timestamp] $message');
+    if (logs.length > _maxLogEntries) {
+      logs.removeRange(0, logs.length - _maxLogEntries);
+    }
     logger.i('[Automation] $message');
   }
 
@@ -227,39 +204,73 @@ class AutomationService extends GetxService {
     }
   }
 
+  /// Ensure Python environment is ready, installing if needed.
+  /// Returns null on success, or an error [AutomationResult] on failure.
+  Future<AutomationResult?> _ensurePythonReady() async {
+    final pythonSetup = Get.find<PythonSetupService>();
+    if (pythonSetup.isSetupComplete.value) return null;
+
+    _log('Python dependencies not installed, installing now...');
+    final success = await pythonSetup.installDependencies();
+    if (!success) {
+      return AutomationResult.error(
+        'Python setup failed: ${pythonSetup.setupError.value ?? "Unknown error"}',
+      );
+    }
+
+    _log('Verifying Python dependency installation...');
+    final verified = await pythonSetup.checkDependenciesInstalled();
+    if (!verified) {
+      return AutomationResult.error(
+        'Python dependencies installation completed but verification failed. '
+        'Please check that seleniumbase is properly installed.',
+      );
+    }
+    _log('Python dependencies verified successfully');
+    return null;
+  }
+
+  /// Resolve the proxy URL and expected IP for a slot.
+  /// Returns the resolved values or sets [lastResult] and returns null on failure.
+  ({String expectedIp, String proxyUrl})? _resolveProxyForSlot(
+      ProxySlotEntity slot) {
+    final proxyController = Get.find<ProxyController>();
+    final currentIp = proxyController.getCurrentIpForSlot(slot);
+
+    if (currentIp == null) {
+      final result = AutomationResult.error(
+        'No IP assigned to slot #${slot.slotNumber}',
+      );
+      lastResult.value = result;
+      return null;
+    }
+
+    final proxyUrl = _buildProxyUrl(slot);
+    if (proxyUrl == null) {
+      final result = AutomationResult.error(
+        'Could not build proxy URL for slot #${slot.slotNumber}',
+      );
+      lastResult.value = result;
+      return null;
+    }
+
+    return (expectedIp: currentIp.ipAddress, proxyUrl: proxyUrl);
+  }
+
   /// Build proxy URL from slot entity
   /// Format: username:password@proxyhost:port
   String? _buildProxyUrl(ProxySlotEntity slot) {
-    try {
-      // Log slot details for debugging
-      _log('Building proxy URL for slot #${slot.slotNumber}');
-      _log('  Slot ID: ${slot.id}');
-      _log('  Username: ${slot.username}');
-      _log('  Password: ${slot.password.replaceAll(RegExp(r'.'), '*')}');
-      _log('  Port: ${slot.port}');
-
-      // Validate slot has required fields
-      if (slot.username.isEmpty || slot.password.isEmpty) {
-        logger.e('Slot #${slot.slotNumber} missing username or password');
-        return null;
-      }
-
-      // Use AppValues for proxy host configuration
-      final proxyHost = AppValues.proxyHost;
-      final proxyPort = AppValues.proxyPort;
-      _log('  Proxy Host: $proxyHost');
-      _log('  Proxy Port: $proxyPort');
-
-      // Build proxy URL in format: username:password@host:port
-      final proxyUrl =
-          '${slot.username}:${slot.password}@$proxyHost:$proxyPort';
-      _log(
-          '  Final Proxy URL format: ${slot.username}:***@$proxyHost:$proxyPort');
-      return proxyUrl;
-    } catch (e) {
-      logger.e('Error building proxy URL: $e');
+    if (slot.username.isEmpty || slot.password.isEmpty) {
+      logger.e('Slot #${slot.slotNumber} missing username or password');
       return null;
     }
+
+    final proxyHost = AppValues.proxyHost;
+    final proxyPort = AppValues.proxyPort;
+    _log('Building proxy URL for slot #${slot.slotNumber} '
+        '(${slot.username}:***@$proxyHost:$proxyPort)');
+
+    return '${slot.username}:${slot.password}@$proxyHost:$proxyPort';
   }
 
   /// Validate proxy IP matches expected
@@ -270,75 +281,31 @@ class AutomationService extends GetxService {
       return AutomationResult.error('Another automation task is running');
     }
 
-    // Check Python setup
-    final pythonSetup = Get.find<PythonSetupService>();
-    if (!pythonSetup.isSetupComplete.value) {
-      _log('Python dependencies not installed, installing now...');
-      final success = await pythonSetup.installDependencies();
-      if (!success) {
-        return AutomationResult.error(
-          'Python setup failed: ${pythonSetup.setupError.value ?? "Unknown error"}',
-        );
-      }
-
-      // Verify installation succeeded
-      _log('Verifying Python dependency installation...');
-      final verified = await pythonSetup.checkDependenciesInstalled();
-      if (!verified) {
-        return AutomationResult.error(
-          'Python dependencies installation completed but verification failed. '
-          'Please check that seleniumbase is properly installed.',
-        );
-      }
-      _log('Python dependencies verified successfully');
-    }
+    final pythonError = await _ensurePythonReady();
+    if (pythonError != null) return pythonError;
 
     isRunning.value = true;
     currentTask.value = 'Validating proxy IP';
     _log('Starting proxy validation for slot #${slot.slotNumber}');
 
     try {
-      // Get expected IP from slot
-      final proxyController = Get.find<ProxyController>();
-      final currentIp = proxyController.getCurrentIpForSlot(slot);
+      final proxy = _resolveProxyForSlot(slot);
+      if (proxy == null) return lastResult.value!;
 
-      if (currentIp == null) {
-        final result = AutomationResult.error(
-          'No IP assigned to slot #${slot.slotNumber}',
-        );
-        lastResult.value = result;
-        return result;
-      }
-
-      final expectedIp = currentIp.ipAddress;
-      final proxyUrl = _buildProxyUrl(slot);
-
-      if (proxyUrl == null) {
-        final result = AutomationResult.error(
-          'Could not build proxy URL for slot #${slot.slotNumber}',
-        );
-        lastResult.value = result;
-        return result;
-      }
-
-      _log('Expected IP: $expectedIp');
-      _log('Proxy URL: $proxyUrl');
+      _log('Expected IP: ${proxy.expectedIp}');
 
       // Run Python script
       final scriptPath = path.join(_scriptsPath, 'account_automation.py');
-      _log('Running script: $scriptPath');
 
       final args = [
         scriptPath,
         'validate',
-        proxyUrl,
-        expectedIp,
-        '--debug', // Enable verbose logging for better debugging
+        proxy.proxyUrl,
+        proxy.expectedIp,
+        '--debug',
       ];
 
-      // Log the full command for debugging
-      _log('Full Python command:');
-      _log('  python ${args.join(' ')}'
+      _log('Running: python ${args.join(' ')}'
           .replaceAll(RegExp(r':[^:@]+@'), ':***@'));
 
       final result = await _runPythonScript(args);
@@ -418,54 +385,18 @@ class AutomationService extends GetxService {
       return AutomationResult.error('Another automation task is running');
     }
 
-    // Check Python setup
-    final pythonSetup = Get.find<PythonSetupService>();
-    if (!pythonSetup.isSetupComplete.value) {
-      _log('Python dependencies not installed, installing now...');
-      final success = await pythonSetup.installDependencies();
-      if (!success) {
-        return AutomationResult.error(
-          'Python setup failed: ${pythonSetup.setupError.value ?? "Unknown error"}',
-        );
-      }
-      _log('Verifying Python dependency installation...');
-      final verified = await pythonSetup.checkDependenciesInstalled();
-      if (!verified) {
-        return AutomationResult.error(
-          'Python dependencies verification failed.',
-        );
-      }
-      _log('Python dependencies verified successfully');
-    }
+    final pythonError = await _ensurePythonReady();
+    if (pythonError != null) return pythonError;
 
     isRunning.value = true;
     currentTask.value = 'Creating Jagex account';
     _log('Starting account creation for slot #${slot.slotNumber}');
 
     try {
-      final proxyController = Get.find<ProxyController>();
-      final currentIp = proxyController.getCurrentIpForSlot(slot);
+      final proxy = _resolveProxyForSlot(slot);
+      if (proxy == null) return lastResult.value!;
 
-      if (currentIp == null) {
-        final result = AutomationResult.error(
-          'No IP assigned to slot #${slot.slotNumber}',
-        );
-        lastResult.value = result;
-        return result;
-      }
-
-      final expectedIp = currentIp.ipAddress;
-      final proxyUrl = _buildProxyUrl(slot);
-
-      if (proxyUrl == null) {
-        final result = AutomationResult.error(
-          'Could not build proxy URL for slot #${slot.slotNumber}',
-        );
-        lastResult.value = result;
-        return result;
-      }
-
-      _log('Expected IP: $expectedIp');
+      _log('Expected IP: ${proxy.expectedIp}');
 
       // Fetch IMAP credentials from config
       final appConfig = Get.find<AppConfigService>();
@@ -474,21 +405,19 @@ class AutomationService extends GetxService {
       final imapPass = await appConfig.getImapPass();
 
       final scriptPath = path.join(_scriptsPath, 'account_automation.py');
-      _log('Running script: $scriptPath create-account');
 
       final args = [
         scriptPath,
         'create-account',
-        proxyUrl,
-        expectedIp,
+        proxy.proxyUrl,
+        proxy.expectedIp,
         '--debug',
         if (imapHost != null) ...['--imap-host', imapHost],
         if (imapUser != null) ...['--imap-user', imapUser],
         if (imapPass != null) ...['--imap-pass', imapPass],
       ];
 
-      _log('Full Python command:');
-      _log('  python ${args.join(' ')}'
+      _log('Running: python ${args.join(' ')}'
           .replaceAll(RegExp(r':[^:@]+@'), ':***@'));
 
       final result = await _runPythonScript(
@@ -581,69 +510,26 @@ class AutomationService extends GetxService {
       return AutomationResult.error('Another automation task is running');
     }
 
-    // Check Python setup
-    final pythonSetup = Get.find<PythonSetupService>();
-    if (!pythonSetup.isSetupComplete.value) {
-      _log('Python dependencies not installed, installing now...');
-      final success = await pythonSetup.installDependencies();
-      if (!success) {
-        return AutomationResult.error(
-          'Python setup failed: ${pythonSetup.setupError.value ?? "Unknown error"}',
-        );
-      }
-
-      // Verify installation succeeded
-      _log('Verifying Python dependency installation...');
-      final verified = await pythonSetup.checkDependenciesInstalled();
-      if (!verified) {
-        return AutomationResult.error(
-          'Python dependencies installation completed but verification failed. '
-          'Please check that seleniumbase is properly installed.',
-        );
-      }
-      _log('Python dependencies verified successfully');
-    }
+    final pythonError = await _ensurePythonReady();
+    if (pythonError != null) return pythonError;
 
     isRunning.value = true;
     currentTask.value = 'Creating account session';
     _log('Starting account session for slot #${slot.slotNumber}');
 
     try {
-      // Get expected IP from slot
-      final proxyController = Get.find<ProxyController>();
-      final currentIp = proxyController.getCurrentIpForSlot(slot);
+      final proxy = _resolveProxyForSlot(slot);
+      if (proxy == null) return lastResult.value!;
 
-      if (currentIp == null) {
-        final result = AutomationResult.error(
-          'No IP assigned to slot #${slot.slotNumber}',
-        );
-        lastResult.value = result;
-        return result;
-      }
+      _log('Expected IP: ${proxy.expectedIp}');
 
-      final expectedIp = currentIp.ipAddress;
-      final proxyUrl = _buildProxyUrl(slot);
-
-      if (proxyUrl == null) {
-        final result = AutomationResult.error(
-          'Could not build proxy URL for slot #${slot.slotNumber}',
-        );
-        lastResult.value = result;
-        return result;
-      }
-
-      _log('Expected IP: $expectedIp');
-      _log('Proxy URL: $proxyUrl');
-
-      // Run Python script
       final scriptPath = path.join(_scriptsPath, 'account_automation.py');
-      _log('Running script: $scriptPath');
 
       final args = [
         scriptPath,
         'session',
-        proxyUrl,
-        expectedIp,
+        proxy.proxyUrl,
+        proxy.expectedIp,
         '--keep-open',
         '--debug', // Enable verbose logging
       ];
@@ -685,7 +571,7 @@ class AutomationService extends GetxService {
       final result = AutomationResult(
         status: AutomationStatus.success,
         message: 'Browser launched with proxy - close browser window when done',
-        expectedIp: expectedIp,
+        expectedIp: proxy.expectedIp,
       );
       lastResult.value = result;
       return result;

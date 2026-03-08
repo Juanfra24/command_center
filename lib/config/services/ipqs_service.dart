@@ -214,15 +214,25 @@ class IpqsService extends GetxService {
     }
   }
 
-  /// Score multiple IP addresses
+  /// Score multiple IP addresses with bounded concurrency
   Future<Map<String, IpqsResult>> scoreMultipleIps(
       List<String> ipAddresses) async {
     final results = <String, IpqsResult>{};
+    const maxConcurrent = 3;
 
-    for (final ip in ipAddresses) {
-      results[ip] = await scoreIp(ip);
-      // Small delay to avoid rate limiting
-      await Future.delayed(const Duration(milliseconds: 200));
+    // Process in batches of maxConcurrent
+    for (var i = 0; i < ipAddresses.length; i += maxConcurrent) {
+      final batch = ipAddresses.skip(i).take(maxConcurrent).toList();
+      final batchResults = await Future.wait(
+        batch.map((ip) => scoreIp(ip).then((r) => MapEntry(ip, r))),
+      );
+      for (final entry in batchResults) {
+        results[entry.key] = entry.value;
+      }
+      // Small delay between batches to avoid rate limiting
+      if (i + maxConcurrent < ipAddresses.length) {
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
     }
 
     return results;

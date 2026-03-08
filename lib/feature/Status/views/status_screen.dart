@@ -387,15 +387,7 @@ class StatusScreen extends GetView<StatusController> {
               ),
             ),
           const SizedBox(width: 4),
-          Tooltip(
-            message: 'Launch Browser',
-            child: IconButton(
-              icon: const Icon(FluentIcons.open_in_new_window),
-              onPressed: () async {
-                await controller.runPythonScript(account.proxyAddress);
-              },
-            ),
-          ),
+          // Browser automation is available via the Proxy Management screen
         ],
       ),
     );

@@ -699,7 +699,7 @@ class ProxyController extends GetxController {
     }
   }
 
-  /// Score all current IPs for all slots
+  /// Score all current IPs for all slots using batched concurrency
   Future<int> scoreAllCurrentIps() async {
     if (_ipqsService == null || !_ipqsService!.isConfigured.value) {
       logger.w('IPQS not configured');
@@ -711,13 +711,22 @@ class ProxyController extends GetxController {
     int successCount = 0;
 
     try {
-      for (final slot in proxySlots) {
-        final currentIp = getCurrentIpForSlot(slot);
-        if (currentIp != null) {
-          final success = await scoreIpWithIpqs(currentIp);
-          if (success) successCount++;
-          // Small delay to avoid rate limiting
-          await Future.delayed(const Duration(milliseconds: 300));
+      final ipsToScore = proxySlots
+          .map((s) => getCurrentIpForSlot(s))
+          .where((ip) => ip != null)
+          .cast<ProxyIpAddressEntity>()
+          .toList();
+
+      // Score in batches of 3 to respect rate limits
+      const batchSize = 3;
+      for (var i = 0; i < ipsToScore.length; i += batchSize) {
+        final batch = ipsToScore.skip(i).take(batchSize).toList();
+        final results = await Future.wait(
+          batch.map((ip) => scoreIpWithIpqs(ip)),
+        );
+        successCount += results.where((s) => s).length;
+        if (i + batchSize < ipsToScore.length) {
+          await Future.delayed(const Duration(milliseconds: 200));
         }
       }
 

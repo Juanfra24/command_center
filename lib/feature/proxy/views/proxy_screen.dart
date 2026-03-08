@@ -772,46 +772,15 @@ class _ProxyScreenState extends State<ProxyScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Show Replace button if IP score is low
-              Obx(() {
-                final isReplacing = controller.isReplacing.value;
-                return Builder(
-                  builder: (context) {
-                    final ip = controller.getCurrentIpForSlot(slot);
-                    if (ip != null && ip.ipScore > 0 && ip.ipScore < 50) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilledButton(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStatePropertyAll(
-                              Colors.orange,
-                            ),
-                          ),
-                          onPressed: isReplacing
-                              ? null
-                              : () =>
-                                  _showReplaceProxyDialog(context, slot, ip),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isReplacing)
-                                const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: ProgressRing(strokeWidth: 2),
-                                )
-                              else
-                                const Icon(FluentIcons.switch_widget, size: 16),
-                              const SizedBox(width: 8),
-                              Text(isReplacing ? 'Replacing...' : 'Replace'),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                );
-              }),
+              Builder(
+                builder: (context) {
+                  final ip = controller.getCurrentIpForSlot(slot);
+                  if (ip != null && ip.ipScore > 0 && ip.ipScore < 50) {
+                    return _buildReplaceProxyButton(context, slot, ip);
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
               Obx(() {
                 final automationService = Get.find<AutomationService>();
                 final isRunning = automationService.isRunning.value;
@@ -1083,42 +1052,17 @@ class _ProxyScreenState extends State<ProxyScreen> {
               ),
               const Spacer(),
               if (ip.ipScore > 0 && ip.ipScore < 50)
-                Obx(() {
-                  final isReplacing = controller.isReplacing.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilledButton(
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStatePropertyAll(
-                          Colors.orange,
-                        ),
-                      ),
-                      onPressed: isReplacing
-                          ? null
-                          : () {
-                              final slot = controller.selectedSlot.value;
-                              if (slot != null) {
-                                _showReplaceProxyDialog(context, slot, ip);
-                              }
-                            },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isReplacing)
-                            const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: ProgressRing(strokeWidth: 2),
-                            )
-                          else
-                            const Icon(FluentIcons.switch_widget, size: 14),
-                          const SizedBox(width: 8),
-                          Text(isReplacing ? 'Replacing...' : 'Replace Proxy'),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                Builder(
+                  builder: (context) {
+                    final slot = controller.selectedSlot.value;
+                    if (slot == null) return const SizedBox.shrink();
+                    return _buildReplaceProxyButton(
+                      context, slot, ip,
+                      label: 'Replace Proxy',
+                      iconSize: 14,
+                    );
+                  },
+                ),
               Button(
                 onPressed: () => _refreshIpScore(ip),
                 child: const Row(
@@ -1538,6 +1482,45 @@ class _ProxyScreenState extends State<ProxyScreen> {
         ],
       ),
     );
+  }
+
+  /// Builds a "Replace Proxy" button shown when IP score is low.
+  Widget _buildReplaceProxyButton(
+    BuildContext context,
+    ProxySlotEntity slot,
+    ProxyIpAddressEntity ip, {
+    String label = 'Replace',
+    double iconSize = 16,
+  }) {
+    return Obx(() {
+      final isReplacing = controller.isReplacing.value;
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: FilledButton(
+          style: ButtonStyle(
+            backgroundColor: WidgetStatePropertyAll(Colors.orange),
+          ),
+          onPressed: isReplacing
+              ? null
+              : () => _showReplaceProxyDialog(context, slot, ip),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isReplacing)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: const ProgressRing(strokeWidth: 2),
+                )
+              else
+                Icon(FluentIcons.switch_widget, size: iconSize),
+              const SizedBox(width: 8),
+              Text(isReplacing ? 'Replacing...' : label),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   void _showReplaceProxyDialog(

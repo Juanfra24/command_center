@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/scripts_path.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
@@ -24,35 +25,8 @@ class PythonSetupService extends GetxService {
   final currentStep = SetupStep.idle.obs;
   final setupProgressPercent = 0.0.obs;
 
-  String get _scriptsPath {
-    // Get the scripts directory path
-    final execDir = path.dirname(Platform.resolvedExecutable);
-
-    // In development
-    final devScriptsPath = path.join(
-      path.dirname(path.dirname(execDir)),
-      'scripts',
-    );
-
-    if (Directory(devScriptsPath).existsSync()) {
-      return devScriptsPath;
-    }
-
-    // Try relative to workspace
-    final workspacePath = path.join(
-      Platform.environment['USERPROFILE'] ?? '',
-      'projects',
-      'command_center',
-      'scripts',
-    );
-
-    if (Directory(workspacePath).existsSync()) {
-      return workspacePath;
-    }
-
-    // Fallback
-    return path.join(execDir, 'data', 'scripts');
-  }
+  /// Get the scripts directory path (cached, shared with AutomationService)
+  String get _scriptsPath => scriptsPath;
 
   /// Check if Python is available
   Future<bool> checkPythonAvailable() async {

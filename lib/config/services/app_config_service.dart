@@ -34,19 +34,12 @@ class AppConfigService extends GetxService {
     return this;
   }
 
-  /// Seed default values for IMAP config if not already set
+  /// Seed default IMAP host if not already set (credentials must be configured via UI)
   Future<void> _seedDefaults() async {
     if (_configRepository == null) return;
-    final defaults = {
-      _keyImapHost: 'mail.privateemail.com',
-      _keyImapUser: 'contact@onemanco.org',
-      _keyImapPass: '}7FWKb/*u/7Hj:z',
-    };
-    for (final entry in defaults.entries) {
-      final existing = await _configRepository!.getValue(entry.key);
-      if (existing == null) {
-        await _configRepository!.setValue(entry.key, entry.value);
-      }
+    final existing = await _configRepository!.getValue(_keyImapHost);
+    if (existing == null) {
+      await _configRepository!.setValue(_keyImapHost, 'mail.privateemail.com');
     }
   }
 

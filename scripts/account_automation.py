@@ -165,6 +165,57 @@ class AccountAutomation:
         except Exception:
             return None
 
+    # ---------- shared automation helpers ----------
+    def _preflight_proxy(self, expected_ip: str) -> Optional[AutomationResult]:
+        """Run proxy preflight checks (clean, validate format, TCP ping).
+        Returns an error AutomationResult if checks fail, or None on success.
+        Sets self._cleaned_proxy as a side-effect."""
+        self._cleaned_proxy = self._clean_proxy_for_sbase(self.proxy_url_raw)
+
+        self._log(f"[INFO] Proxy (masked): {self._mask_proxy(self._cleaned_proxy)}")
+        self._log(f"[INFO] Expected IP: {expected_ip}")
+
+        if self._cleaned_proxy:
+            fmt_err = self._validate_proxy_format_sbase(self._cleaned_proxy)
+            if fmt_err:
+                return AutomationResult(
+                    status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
+                    message=fmt_err,
+                    expected_ip=expected_ip,
+                )
+            hp = self._parse_host_port(self._cleaned_proxy)
+            if hp:
+                ok, msg = self._tcp_ping(hp[0], hp[1])
+                self._log(f"[INFO] Proxy reachability {hp[0]}:{hp[1]}: {msg}")
+                if not ok:
+                    return AutomationResult(
+                        status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
+                        message=f"Proxy not reachable: {hp[0]}:{hp[1]}. {msg}",
+                        expected_ip=expected_ip,
+                    )
+        return None
+
+    def _click_first_match(self, sb, selectors: List[str], timeout: int = 5, label: str = "") -> bool:
+        """Try clicking each selector in order; return True on first success."""
+        for sel in selectors:
+            try:
+                if sel.startswith("//"):
+                    sb.click_xpath(sel, timeout=timeout)
+                else:
+                    sb.click(sel, timeout=timeout)
+                if label:
+                    self._log(f"[INFO] {label} with: {sel}")
+                return True
+            except Exception:
+                continue
+        return False
+
+    def _human_type(self, sb, selector: str, text: str, min_delay: float = 0.03, max_delay: float = 0.12):
+        """Type text character-by-character with human-like delays."""
+        for char in text:
+            sb.add_text(selector, char)
+            time.sleep(random.uniform(min_delay, max_delay))
+
     # ---------- browser helpers ----------
     def _get_chromium_args_list(self) -> List[str]:
         return [
@@ -211,36 +262,17 @@ class AccountAutomation:
 
     # ---------- main ----------
     def validate_proxy_ip(self, expected_ip: str) -> AutomationResult:
-        cleaned_proxy = self._clean_proxy_for_sbase(self.proxy_url_raw)
-
         self._log("[INFO] ===== Preflight =====")
         self._log(f"[INFO] Python: {sys.version.replace(os.linesep, ' ')}")
         self._log(f"[INFO] seleniumbase: {getattr(seleniumbase, '__version__', 'unknown')}")
         self._log(f"[INFO] Headless: {self.headless}")
         self._log(f"[INFO] Debug dir: {self.debug_dir}")
         self._log(f"[INFO] Profile dir: {self.profile_dir}")
-        self._log(f"[INFO] Proxy raw (masked): {self._mask_proxy(self.proxy_url_raw)}")
-        self._log(f"[INFO] Proxy cleaned for SB (masked): {self._mask_proxy(cleaned_proxy)}")
 
-        if cleaned_proxy:
-            fmt_err = self._validate_proxy_format_sbase(cleaned_proxy)
-            if fmt_err:
-                return AutomationResult(
-                    status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
-                    message=fmt_err,
-                    expected_ip=expected_ip,
-                )
-
-            hp = self._parse_host_port(cleaned_proxy)
-            if hp:
-                ok, msg = self._tcp_ping(hp[0], hp[1])
-                self._log(f"[INFO] Proxy reachability {hp[0]}:{hp[1]}: {msg}")
-                if not ok:
-                    return AutomationResult(
-                        status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
-                        message=f"Proxy not reachable: {hp[0]}:{hp[1]}. {msg}",
-                        expected_ip=expected_ip,
-                    )
+        preflight_err = self._preflight_proxy(expected_ip)
+        if preflight_err:
+            return preflight_err
+        cleaned_proxy = self._cleaned_proxy
 
         chromium_args = self._get_chromium_args_list()
         self._dbg("[DEBUG] Chromium args:\n  " + "\n  ".join(chromium_args))
@@ -317,64 +349,86 @@ class AccountAutomation:
     # ---------- IMAP email verification ----------
     def _fetch_verification_code(self, imap_host: str, imap_user: str, imap_pass: str,
                                   target_email: str, timeout: int = 120) -> Optional[str]:
-        """Fetch the 6-digit verification code from Jagex email via IMAP."""
+        """Fetch the 6-digit verification code from Jagex email via IMAP.
+        Keeps a single IMAP connection open across poll iterations to avoid
+        repeated TLS handshakes + auth cycles."""
         self._log(f"[INFO] Checking IMAP for verification code (target: {target_email})...")
         start_time = time.time()
+        mail = None
 
-        while time.time() - start_time < timeout:
-            try:
-                mail = imaplib.IMAP4_SSL(imap_host, 993)
-                mail.login(imap_user, imap_pass)
-                mail.select("INBOX")
-
-                # Search for recent emails from Jagex
-                _, messages = mail.search(None, '(FROM "jagex" UNSEEN)')
-                if not messages[0]:
-                    # Also try broader search
-                    _, messages = mail.search(None, '(FROM "jagex.com")')
-
-                email_ids = messages[0].split()
-                # Check most recent emails first
-                for eid in reversed(email_ids[-10:]):
-                    _, msg_data = mail.fetch(eid, "(RFC822)")
-                    msg = email.message_from_bytes(msg_data[0][1])
-
-                    # Check if this email is relevant to our target
-                    to_header = msg.get("To", "").lower()
-                    subject = msg.get("Subject", "")
-                    if target_email.lower() not in to_header and target_email.split("@")[0] not in to_header:
+        try:
+            while time.time() - start_time < timeout:
+                # Connect/reconnect only when needed
+                if mail is None:
+                    try:
+                        mail = imaplib.IMAP4_SSL(imap_host, 993)
+                        mail.login(imap_user, imap_pass)
+                        self._dbg("[DEBUG] IMAP connected")
+                    except Exception as e:
+                        self._log(f"[WARNING] IMAP connect error: {e}")
+                        mail = None
+                        time.sleep(5)
                         continue
 
-                    self._log(f"[INFO] Found Jagex email: {subject}")
+                try:
+                    mail.select("INBOX")
 
-                    # Extract body
-                    body = ""
-                    if msg.is_multipart():
-                        for part in msg.walk():
-                            ct = part.get_content_type()
-                            if ct in ("text/html", "text/plain"):
-                                payload = part.get_payload(decode=True)
-                                if payload:
-                                    body += payload.decode("utf-8", errors="ignore")
-                    else:
-                        payload = msg.get_payload(decode=True)
-                        if payload:
-                            body = payload.decode("utf-8", errors="ignore")
+                    # Search for recent emails from Jagex
+                    _, messages = mail.search(None, '(FROM "jagex" UNSEEN)')
+                    if not messages[0]:
+                        _, messages = mail.search(None, '(FROM "jagex.com")')
 
-                    # Look for 6-digit code
-                    code_match = re.search(r'\b(\d{6})\b', body)
-                    if code_match:
-                        code = code_match.group(1)
-                        self._log(f"[INFO] Found verification code: {code}")
+                    email_ids = messages[0].split()
+                    for eid in reversed(email_ids[-10:]):
+                        _, msg_data = mail.fetch(eid, "(RFC822)")
+                        msg = email.message_from_bytes(msg_data[0][1])
+
+                        to_header = msg.get("To", "").lower()
+                        subject = msg.get("Subject", "")
+                        if target_email.lower() not in to_header and target_email.split("@")[0] not in to_header:
+                            continue
+
+                        self._log(f"[INFO] Found Jagex email: {subject}")
+
+                        body = ""
+                        if msg.is_multipart():
+                            for part in msg.walk():
+                                ct = part.get_content_type()
+                                if ct in ("text/html", "text/plain"):
+                                    payload = part.get_payload(decode=True)
+                                    if payload:
+                                        body += payload.decode("utf-8", errors="ignore")
+                        else:
+                            payload = msg.get_payload(decode=True)
+                            if payload:
+                                body = payload.decode("utf-8", errors="ignore")
+
+                        code_match = re.search(r'\b(\d{6})\b', body)
+                        if code_match:
+                            code = code_match.group(1)
+                            self._log(f"[INFO] Found verification code: {code}")
+                            return code
+
+                except Exception as e:
+                    self._log(f"[WARNING] IMAP poll error: {e}")
+                    # Connection likely stale, force reconnect next iteration
+                    try:
                         mail.logout()
-                        return code
+                    except Exception:
+                        pass
+                    mail = None
+                    time.sleep(5)
+                    continue
 
-                mail.logout()
-            except Exception as e:
-                self._log(f"[WARNING] IMAP error: {e}")
+                self._log(f"[INFO] No code yet, retrying in 5s... ({int(time.time() - start_time)}s elapsed)")
+                time.sleep(5)
 
-            self._log(f"[INFO] No code yet, retrying in 5s... ({int(time.time() - start_time)}s elapsed)")
-            time.sleep(5)
+        finally:
+            if mail is not None:
+                try:
+                    mail.logout()
+                except Exception:
+                    pass
 
         self._log("[WARNING] Timed out waiting for verification code")
         return None
@@ -417,14 +471,6 @@ class AccountAutomation:
         chars += random.choices(pool, k=remaining)
         random.shuffle(chars)
         return ''.join(chars)
-
-    # ---------- email helpers ----------
-    def _generate_random_email(self) -> str:
-        """Generate a random email address ending with @onemanco.org"""
-        # Random username: 8-14 chars, lowercase letters + digits
-        length = random.randint(8, 14)
-        username = ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
-        return f"{username}@onemanco.org"
 
     def _generate_random_dob(self) -> dict:
         """Generate a random date of birth (18-35 years old)"""
@@ -509,31 +555,12 @@ class AccountAutomation:
         8. Accept terms and conditions
         9. Click Continue
         """
-        cleaned_proxy = self._clean_proxy_for_sbase(self.proxy_url_raw)
-
         self._log("[INFO] ===== Account Creation Preflight =====")
-        self._log(f"[INFO] Proxy (masked): {self._mask_proxy(cleaned_proxy)}")
-        self._log(f"[INFO] Expected IP: {expected_ip}")
 
-        # Pre-flight proxy checks
-        if cleaned_proxy:
-            fmt_err = self._validate_proxy_format_sbase(cleaned_proxy)
-            if fmt_err:
-                return AutomationResult(
-                    status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
-                    message=fmt_err,
-                    expected_ip=expected_ip,
-                )
-            hp = self._parse_host_port(cleaned_proxy)
-            if hp:
-                ok, msg = self._tcp_ping(hp[0], hp[1])
-                self._log(f"[INFO] Proxy reachability {hp[0]}:{hp[1]}: {msg}")
-                if not ok:
-                    return AutomationResult(
-                        status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
-                        message=f"Proxy not reachable: {hp[0]}:{hp[1]}. {msg}",
-                        expected_ip=expected_ip,
-                    )
+        preflight_err = self._preflight_proxy(expected_ip)
+        if preflight_err:
+            return preflight_err
+        cleaned_proxy = self._cleaned_proxy
 
         chromium_args = self._get_chromium_args_list()
         account_name = self._generate_account_name()
@@ -686,18 +713,9 @@ class AccountAutomation:
                     "//button[contains(text(), 'necessary')]",
                     "//a[contains(text(), 'necessary')]",
                 ]
-                for sel in cookie_selectors:
-                    try:
-                        if sel.startswith("//"):
-                            sb.click_xpath(sel, timeout=3)
-                        else:
-                            sb.click(sel, timeout=3)
-                        self._log(f"[INFO] Cookie consent handled with: {sel}")
-                        cookie_handled = True
-                        self._human_delay(1.0, 2.0)
-                        break
-                    except Exception:
-                        continue
+                cookie_handled = self._click_first_match(sb, cookie_selectors, timeout=3, label="Cookie consent handled")
+                if cookie_handled:
+                    self._human_delay(1.0, 2.0)
 
                 if not cookie_handled:
                     self._log("[INFO] No cookie popup found or already dismissed")
@@ -706,7 +724,6 @@ class AccountAutomation:
 
                 # --- Step 5: Click 'Create an account' link ---
                 self._log("[INFO] Step 5: Clicking 'Create an account'...")
-                create_account_clicked = False
                 create_selectors = [
                     "a[href*='registration']",
                     "//a[contains(text(), 'Create an account')]",
@@ -715,18 +732,9 @@ class AccountAutomation:
                     "a.create-account-link",
                     "//a[contains(@href, 'registration')]",
                 ]
-                for sel in create_selectors:
-                    try:
-                        if sel.startswith("//"):
-                            sb.click_xpath(sel, timeout=5)
-                        else:
-                            sb.click(sel, timeout=5)
-                        self._log(f"[INFO] Clicked create account with: {sel}")
-                        create_account_clicked = True
-                        self._human_delay(2.0, 3.0)
-                        break
-                    except Exception:
-                        continue
+                create_account_clicked = self._click_first_match(sb, create_selectors, timeout=5, label="Clicked create account")
+                if create_account_clicked:
+                    self._human_delay(2.0, 3.0)
 
                 if not create_account_clicked:
                     self._log("[WARNING] Could not find 'Create an account' link, trying direct URL")
@@ -748,9 +756,7 @@ class AccountAutomation:
                         sb.wait_for_element_visible(sel, timeout=8)
                         sb.click(sel)
                         self._human_delay(0.3, 0.6)
-                        for char in generated_email:
-                            sb.add_text(sel, char)
-                            time.sleep(random.uniform(0.03, 0.12))
+                        self._human_type(sb, sel, generated_email)
                         self._log(f"[INFO] Email filled with selector: {sel}")
                         email_filled = True
                         break
@@ -780,9 +786,7 @@ class AccountAutomation:
                         sb.wait_for_element_visible(sel, timeout=5)
                         sb.click(sel)
                         self._human_delay(0.2, 0.4)
-                        for char in value:
-                            sb.add_text(sel, char)
-                            time.sleep(random.uniform(0.03, 0.1))
+                        self._human_type(sb, sel, value, min_delay=0.03, max_delay=0.1)
                         self._log(f"[INFO] DOB field '{sel}' filled with '{value}'")
                     except Exception as e:
                         self._log(f"[WARNING] Could not fill DOB field {sel}: {e}")
@@ -803,18 +807,7 @@ class AccountAutomation:
                     "//span[contains(text(), 'I agree')]",
                     ".checkbox",
                 ]
-                terms_accepted = False
-                for sel in terms_selectors:
-                    try:
-                        if sel.startswith("//"):
-                            sb.click_xpath(sel, timeout=3)
-                        else:
-                            sb.click(sel, timeout=3)
-                        self._log(f"[INFO] Terms accepted with: {sel}")
-                        terms_accepted = True
-                        break
-                    except Exception:
-                        continue
+                terms_accepted = self._click_first_match(sb, terms_selectors, timeout=3, label="Terms accepted")
 
                 if not terms_accepted:
                     self._log("[WARNING] Could not find terms checkbox")
@@ -830,18 +823,7 @@ class AccountAutomation:
                     "button.submit",
                     "input[type='submit']",
                 ]
-                continue_clicked = False
-                for sel in continue_selectors:
-                    try:
-                        if sel.startswith("//"):
-                            sb.click_xpath(sel, timeout=5)
-                        else:
-                            sb.click(sel, timeout=5)
-                        self._log(f"[INFO] Continue clicked with: {sel}")
-                        continue_clicked = True
-                        break
-                    except Exception:
-                        continue
+                continue_clicked = self._click_first_match(sb, continue_selectors, timeout=5, label="Continue clicked")
 
                 if not continue_clicked:
                     self._log("[WARNING] Could not click Continue button")
@@ -871,9 +853,7 @@ class AccountAutomation:
                                 sb.wait_for_element_visible(sel, timeout=10)
                                 sb.click(sel)
                                 self._human_delay(0.3, 0.6)
-                                for char in verification_code:
-                                    sb.add_text(sel, char)
-                                    time.sleep(random.uniform(0.05, 0.15))
+                                self._human_type(sb, sel, verification_code, min_delay=0.05, max_delay=0.15)
                                 self._log(f"[INFO] Verification code entered with selector: {sel}")
                                 code_entered = True
                                 break
@@ -885,17 +865,10 @@ class AccountAutomation:
                         else:
                             self._human_delay(0.5, 1.0)
                             # Submit verification code
-                            for sel in ["button[type='submit']", "//button[contains(text(), 'Continue')]",
-                                        "//button[contains(text(), 'Submit')]", "//button[contains(text(), 'Verify')]"]:
-                                try:
-                                    if sel.startswith("//"):
-                                        sb.click_xpath(sel, timeout=5)
-                                    else:
-                                        sb.click(sel, timeout=5)
-                                    self._log(f"[INFO] Verification submitted with: {sel}")
-                                    break
-                                except Exception:
-                                    continue
+                            self._click_first_match(sb, [
+                                "button[type='submit']", "//button[contains(text(), 'Continue')]",
+                                "//button[contains(text(), 'Submit')]", "//button[contains(text(), 'Verify')]",
+                            ], timeout=5, label="Verification submitted")
                             self._human_delay(3.0, 5.0)
                     else:
                         self._log("[WARNING] Could not fetch verification code from email")
@@ -918,9 +891,7 @@ class AccountAutomation:
                         sb.wait_for_element_visible(sel, timeout=10)
                         sb.click(sel)
                         self._human_delay(0.3, 0.6)
-                        for char in account_name:
-                            sb.add_text(sel, char)
-                            time.sleep(random.uniform(0.03, 0.12))
+                        self._human_type(sb, sel, account_name)
                         self._log(f"[INFO] Display name entered with selector: {sel}")
                         name_entered = True
                         break
@@ -930,17 +901,10 @@ class AccountAutomation:
                 if name_entered:
                     self._human_delay(0.5, 1.0)
                     # Submit display name
-                    for sel in ["button[type='submit']", "//button[contains(text(), 'Continue')]",
-                                "//button[contains(text(), 'Set')]", "//button[contains(text(), 'Next')]"]:
-                        try:
-                            if sel.startswith("//"):
-                                sb.click_xpath(sel, timeout=5)
-                            else:
-                                sb.click(sel, timeout=5)
-                            self._log(f"[INFO] Display name submitted with: {sel}")
-                            break
-                        except Exception:
-                            continue
+                    self._click_first_match(sb, [
+                        "button[type='submit']", "//button[contains(text(), 'Continue')]",
+                        "//button[contains(text(), 'Set')]", "//button[contains(text(), 'Next')]",
+                    ], timeout=5, label="Display name submitted")
                     self._human_delay(3.0, 5.0)
                 else:
                     self._log("[WARNING] Could not find display name input")
@@ -962,9 +926,7 @@ class AccountAutomation:
                             sb.wait_for_element_visible(sel, timeout=10)
                             sb.click(sel)
                             self._human_delay(0.3, 0.6)
-                            for char in generated_password:
-                                sb.add_text(sel, char)
-                                time.sleep(random.uniform(0.03, 0.1))
+                            self._human_type(sb, sel, generated_password, min_delay=0.03, max_delay=0.1)
                             self._log(f"[INFO] Password entered with selector: {sel}")
                             password_entered = True
 
@@ -981,9 +943,7 @@ class AccountAutomation:
                                     sb.wait_for_element_visible(csec, timeout=5)
                                     sb.click(csec)
                                     self._human_delay(0.3, 0.6)
-                                    for char in generated_password:
-                                        sb.add_text(csec, char)
-                                        time.sleep(random.uniform(0.03, 0.1))
+                                    self._human_type(sb, csec, generated_password, min_delay=0.03, max_delay=0.1)
                                     self._log(f"[INFO] Confirm password entered with: {csec}")
                                     break
                                 except Exception:
@@ -1008,17 +968,10 @@ class AccountAutomation:
                 if password_entered:
                     self._human_delay(0.5, 1.0)
                     # Submit password
-                    for sel in ["button[type='submit']", "//button[contains(text(), 'Continue')]",
-                                "//button[contains(text(), 'Set')]", "//button[contains(text(), 'Submit')]"]:
-                        try:
-                            if sel.startswith("//"):
-                                sb.click_xpath(sel, timeout=5)
-                            else:
-                                sb.click(sel, timeout=5)
-                            self._log(f"[INFO] Password submitted with: {sel}")
-                            break
-                        except Exception:
-                            continue
+                    self._click_first_match(sb, [
+                        "button[type='submit']", "//button[contains(text(), 'Continue')]",
+                        "//button[contains(text(), 'Set')]", "//button[contains(text(), 'Submit')]",
+                    ], timeout=5, label="Password submitted")
                     self._human_delay(3.0, 5.0)
                 else:
                     self._log("[WARNING] Could not find password input")
@@ -1065,31 +1018,12 @@ class AccountAutomation:
         """Launch a browser session with the proxy for manual use.
         Validates the proxy IP, navigates to account.jagex.com,
         then keeps Chrome open for the user by blocking until they close it."""
-        cleaned_proxy = self._clean_proxy_for_sbase(self.proxy_url_raw)
-
         self._log("[INFO] ===== Browser Session =====")
-        self._log(f"[INFO] Proxy (masked): {self._mask_proxy(cleaned_proxy)}")
-        self._log(f"[INFO] Expected IP: {expected_ip}")
 
-        # Pre-flight proxy checks
-        if cleaned_proxy:
-            fmt_err = self._validate_proxy_format_sbase(cleaned_proxy)
-            if fmt_err:
-                return AutomationResult(
-                    status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
-                    message=fmt_err,
-                    expected_ip=expected_ip,
-                )
-            hp = self._parse_host_port(cleaned_proxy)
-            if hp:
-                ok, msg = self._tcp_ping(hp[0], hp[1])
-                self._log(f"[INFO] Proxy reachability {hp[0]}:{hp[1]}: {msg}")
-                if not ok:
-                    return AutomationResult(
-                        status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
-                        message=f"Proxy not reachable: {hp[0]}:{hp[1]}. {msg}",
-                        expected_ip=expected_ip,
-                    )
+        preflight_err = self._preflight_proxy(expected_ip)
+        if preflight_err:
+            return preflight_err
+        cleaned_proxy = self._cleaned_proxy
 
         chromium_args = self._get_chromium_args_list()
 
