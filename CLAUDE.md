@@ -26,6 +26,54 @@ lib/
 └── core/            # Constants, helpers, DI bindings, shared widgets
 ```
 
+## Component Architecture (Layered Atomic)
+
+Each UI feature follows: `screen -> sections -> components -> dialogs`. Each logic layer follows single-responsibility services.
+
+### File Size Ceilings (ENFORCED)
+
+| Layer | Max Lines | Responsibility | Naming |
+|-------|-----------|----------------|--------|
+| Screen | 150 | Layout shell — compose sections, no logic | `*_screen.dart` |
+| Section | 300 | Meaningful chunk of a screen | `*_section.dart` |
+| Component | 200 | Reusable widget, single visual concern | descriptive name |
+| Dialog | 200 | Always separate file, never inline | `*_dialog.dart` |
+| Controller | 300 | Presentation state only — delegates to services | `*_controller.dart` |
+| Service | 250 | Single domain responsibility, orchestration | `*_service.dart` |
+| API Client | 200 | HTTP transport only, returns parsed models | `*_api_client.dart` |
+
+### Layering Rules
+
+- Screens never call services directly — go through controllers
+- Controllers never make HTTP calls — go through services
+- Services never build widgets or hold UI state
+- Dialogs receive data via constructor params, return results via `Navigator.pop`
+- Components are `StatelessWidget` unless they need local animation/form state
+- Every external API gets `*_api_client.dart` (HTTP) + `*_service.dart` (logic)
+
+### Feature Directory Structure
+
+```
+feature/<name>/
+├── views/
+│   ├── <name>_screen.dart           # Layout shell
+│   ├── sections/                    # Screen chunks
+│   ├── components/                  # Reusable widgets
+│   └── dialogs/                     # Modal dialogs
+└── controller/
+    └── <name>_controller.dart       # Presentation state
+```
+
+### Service Directory Structure
+
+```
+config/services/<domain>/
+├── <domain>_api_client.dart         # HTTP transport only
+└── <domain>_service.dart            # Business logic + orchestration
+```
+
+See `docs/plans/2026-03-08-layered-atomic-architecture-design.md` for full decomposition plan.
+
 ## Key Conventions
 
 - **State management:** Use GetX (`GetxController`, `.obs`, `Obx()`)
@@ -72,15 +120,6 @@ flutter build windows --release
 
 ## Current State & Known Issues
 
-- Account creation flow exists but does NOT persist created accounts to the database
-- `StatusController.getAccountsData()` has TODO placeholders for proxy resolution and character loading
-- `StatusController.runPythonScript()` uses hardcoded venv path (legacy, pre-AutomationService)
+- Account creation flow persists accounts to DB via AutomationService.createAccount()
 - Version in pubspec.yaml (0.2.1) is behind CHANGELOG (0.4.0)
-
-## Next Task: Create Account Feature
-
-The account creation pipeline needs completion:
-1. Python script creates Jagex accounts via browser automation
-2. Dart side needs to persist the created account (email, password, DOB) to AccountsTable
-3. Character creation should link to the new account
-4. The full flow: select proxy slot -> validate IP -> create account -> save to DB -> create character
+- Architecture refactor in progress: decomposing heavy files per layered atomic design (see docs/plans/)
