@@ -10,7 +10,7 @@ RuneScape Bot Command Center - A Windows desktop app (Flutter + Fluent UI) for m
 - **UI:** Fluent UI (`fluent_ui` ^4.13.0) - Windows 11 Fluent Design
 - **State Management:** GetX (`get` ^4.6.5) - controllers, services, DI, reactivity
 - **Database:** Drift ORM (`drift` ^2.22.1) - SQLite with code generation
-- **Automation:** Python + SeleniumBase (undetected Chrome) via `scripts/account_automation.py`
+- **Automation:** Python + Patchright (patched Playwright) via `scripts/account_automation.py`
 - **APIs:** Webshare (proxy management), IPQualityScore (IP scoring)
 
 ## Architecture
@@ -107,19 +107,28 @@ flutter build windows --release
 - **WebshareService** - Webshare API (proxy list, replace IP, plan info)
 - **IpqsService** - IPQualityScore API (IP fraud scoring)
 - **AutomationService** - Orchestrates Python browser automation (validate IP, create account)
-- **PythonSetupService** - Python + SeleniumBase + ChromeDriver installer
+- **PythonSetupService** - Python + Patchright dependency installer
 - **NativeCommandsService** - Windows platform channel (list/kill processes, run game client)
 - **OnboardingService** - Tracks setup completion (Webshare + IPQS configured)
 
 ## Python Automation (`scripts/`)
 
-- `account_automation.py` - SeleniumBase script with subcommands: `validate`, `create-account`, `session`
+- `account_automation.py` - CLI entry point with subcommands: `validate`, `create-account`, `session`
+- `automation/` - Patchright-based automation package:
+  - `browser.py` - Stealth browser launch/close (Chromium via Patchright)
+  - `models.py` - `AutomationResult` / `AutomationStatus` data models
+  - `proxy.py` - Proxy URL parsing helpers
+  - `helpers.py` - Shared utilities
+  - `imap_poller.py` - IMAP email polling for account verification
+  - `commands/` - Subcommand implementations (`validate.py`, `create_account.py`, `session.py`)
 - Proxy format: `username:password@p.webshare.io:80`
 - Results communicated via stdout JSON after `=== RESULT ===` marker
-- Chrome profiles stored in `scripts/automation_debug/profiles/`
+- Dependencies: `patchright>=1.49.0`, `requests>=2.32.0` (see `scripts/requirements.txt`)
 
 ## Current State & Known Issues
 
 - Account creation flow persists accounts to DB via AutomationService.createAccount()
+- Automation migrated from SeleniumBase to Patchright (patched Playwright) for stealth browser automation
+- AutomationService decomposed: PythonRunner handles process management, ResultParser handles output parsing
 - Version in pubspec.yaml (0.2.1) is behind CHANGELOG (0.4.0)
 - Architecture refactor in progress: decomposing heavy files per layered atomic design (see docs/plans/)
