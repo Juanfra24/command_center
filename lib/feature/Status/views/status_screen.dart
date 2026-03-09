@@ -1,130 +1,132 @@
 import 'package:command_center/feature/Status/controller/status_controller.dart';
-import 'package:flutter/material.dart';
+import 'package:command_center/feature/Status/views/components/summary_cards.dart';
+import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
+import 'package:command_center/feature/Status/views/sections/account_list_section.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class StatusScreen extends GetView<StatusController> {
   const StatusScreen({super.key});
 
-  IconData getProcessIcon(String characterName) {
-    return controller.processClients.containsKey(characterName)
-        ? Icons.circle
-        : Icons.circle_outlined;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Obx(
-          () => Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
-              child: DataTable(
-                columnSpacing: 38.0,
-                columns: const [
-                  DataColumn(label: Text('Account Name')),
-                  DataColumn(label: Text('Email')),
-                  DataColumn(label: Text('Password')),
-                  DataColumn(label: Text('Character Name')),
-                  DataColumn(label: Text('Proxy Address')),
-                  DataColumn(label: Text('Actions')),
+    final theme = FluentTheme.of(context);
+
+    return ScaffoldPage(
+      header: PageHeader(
+        title: const Text('Accounts & Characters'),
+        commandBar: CommandBar(
+          mainAxisAlignment: MainAxisAlignment.end,
+          primaryItems: [
+            CommandBarButton(
+              icon: const Icon(FluentIcons.add),
+              label: const Text('New Character'),
+              onPressed: CreateCharacterDialog.canCreate()
+                  ? () => CreateCharacterDialog.show(context)
+                  : null,
+            ),
+            CommandBarButton(
+              icon: const Icon(FluentIcons.refresh),
+              label: const Text('Refresh'),
+              onPressed: () async {
+                await controller.getAccountsData();
+                await controller.updateRunningProcesses();
+              },
+            ),
+          ],
+        ),
+      ),
+      content: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(
+            child: ProgressRing(),
+          );
+        }
+
+        if (controller.accountList.isEmpty) {
+          return _buildEmptyState(context, theme);
+        }
+
+        return _buildAccountsContent(context);
+      }),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, FluentThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: theme.accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(40),
+            ),
+            child: Icon(
+              FluentIcons.people,
+              size: 40,
+              color: theme.accentColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No Accounts Yet',
+            style: theme.typography.subtitle,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create your first character to get started.',
+            style: theme.typography.body,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: CreateCharacterDialog.canCreate()
+                ? () => CreateCharacterDialog.show(context)
+                : null,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(FluentIcons.add, size: 16),
+                  SizedBox(width: 8),
+                  Text('New Character'),
                 ],
-                rows: controller.accountList
-                    .expand(
-                      (user) => user.characters.map(
-                        (character) {
-                          final haveRunningProcess = controller.processClients
-                              .containsKey(character.name);
-                          return DataRow(
-                            cells: [
-                              DataCell(Text(user.accountName)),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    Text(user.email),
-                                    IconButton(
-                                      icon: const Icon(Icons.copy),
-                                      onPressed: () => controller
-                                          .copyToClipboard(user.email, context),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    Text(user.password),
-                                    IconButton(
-                                      icon: const Icon(Icons.copy),
-                                      onPressed: () =>
-                                          controller.copyToClipboard(
-                                              user.password, context),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(Text(character.name)),
-                              DataCell(Text(user.proxyAddress)),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    haveRunningProcess
-                                        ? IconButton(
-                                            icon: const Icon(Icons.stop),
-                                            tooltip: 'Stop',
-                                            onPressed: () async {
-                                              await controller.stopGameClient(
-                                                  controller.processClients[
-                                                      character.name]);
-                                            },
-                                          )
-                                        : IconButton(
-                                            icon: const Icon(Icons.play_arrow),
-                                            tooltip: 'Start',
-                                            onPressed: () async {
-                                              await controller
-                                                  .runGameClient(user);
-                                            },
-                                          ),
-                                    IconButton(
-                                      icon: haveRunningProcess
-                                          ? const Icon(
-                                              Icons.circle,
-                                              color: Colors.lightGreen,
-                                            )
-                                          : const Icon(
-                                              Icons.circle,
-                                              color: Colors.grey,
-                                            ),
-                                      tooltip: haveRunningProcess
-                                          ? "Running"
-                                          : "Unkown",
-                                      onPressed: () {},
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.open_in_browser),
-                                      tooltip: 'Launch Browser',
-                                      onPressed: () async {
-                                        await controller.runPythonScript(
-                                          user.proxyAddress,
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    )
-                    .toList(),
               ),
             ),
           ),
-        ),
+          if (!CreateCharacterDialog.canCreate()) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Connect Webshare first to sync proxy slots',
+              style: theme.typography.caption
+                  ?.copyWith(color: Colors.orange),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountsContent(BuildContext context) {
+    final totalCharacters = controller.accountList
+        .fold<int>(0, (sum, account) => sum + account.characters.length);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SummaryCards(
+            totalAccounts: controller.accountList.length,
+            totalCharacters: totalCharacters,
+            runningProcesses: controller.processClients.length,
+          ),
+          const SizedBox(height: 24),
+          AccountListSection(controller: controller),
+        ],
       ),
     );
   }

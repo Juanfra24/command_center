@@ -2,38 +2,18 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:command_center/config/services/native_commands_service.dart';
-import 'package:command_center/core/constants/db_collections.dart';
+import 'package:command_center/data/database_service.dart';
+import 'package:command_center/domain/repositories/account_repository.dart';
+import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
-import 'package:command_center/feature/Status/data/proxy_model.dart';
-import 'package:flutter/material.dart';
+import 'package:command_center/feature/Status/data/skills_model.dart';
+import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide Response;
 
-import '../../../config/services/firestore_service.dart';
 import '../../../core/helper/logger.dart';
-
-Future<void> handleStream(Stream<List<int>> stream, IOSink fileSink) async {
-  StreamSubscription<List<int>>? subscription;
-  try {
-    subscription = stream.listen(
-      (data) {
-        stdout.add(data); // Echo to standard output
-        fileSink.add(data); // Write to file
-      },
-      onDone: () {
-        subscription?.cancel();
-      },
-      onError: (e) {
-        print('Error from stream: $e');
-        subscription?.cancel();
-      },
-      cancelOnError: true,
-    );
-  } catch (e) {
-    print('Failed to handle stream: $e');
-  }
-}
 
 class StatusController extends GetxController {
   var isLoading = true.obs;
@@ -43,17 +23,27 @@ class StatusController extends GetxController {
   RxMap<String, ProcessClient> processClients =
       <String, ProcessClient>{}.obs; // Maps character names to their processes
 
-  final FirestoreService _firestoreService = Get.find();
+  AccountRepository? _accountRepository;
   final NativeCommandsService _nativeCommandsService = Get.find();
 
   @override
   void onInit() async {
     super.onInit();
+    _initRepositories();
     await getAccountsData().then((_) {
       updateRunningProcesses();
       _startProcessCheckTimer();
     });
     isLoading.value = false;
+  }
+
+  void _initRepositories() {
+    try {
+      final dbService = Get.find<DatabaseService>();
+      _accountRepository = dbService.accountRepository;
+    } catch (e) {
+      logger.e('DatabaseService not initialized: $e');
+    }
   }
 
   void _startProcessCheckTimer() {
@@ -80,85 +70,83 @@ class StatusController extends GetxController {
   }
 
   Future<void> getAccountsData() async {
+    if (_accountRepository == null) return;
+
     try {
-      var accounts = await _firestoreService.getAllDocuments(accountCollection);
+      final accounts = await _accountRepository!.getAllAccounts();
+
+      // Resolve proxy addresses
+      ProxyController? proxyController;
+      try {
+        proxyController = Get.find<ProxyController>();
+      } catch (_) {}
+
       accountList
         ..clear()
-        ..addAll(
-            [for (var account in accounts) JagexAccount.fromJson(account)]);
+        ..addAll([
+          for (var account in accounts)
+            JagexAccount(
+              accountName: account.accountName,
+              birthday: account.birthday,
+              email: account.email,
+              password: account.password,
+              proxyAddress: _resolveProxyAddress(account.proxySlotId, proxyController),
+              characters: account.characters.map((c) => Character(
+                banned: c.banned,
+                name: c.name,
+                actualSkills: _mapSkills(c.actualSkills),
+                targetSkills: _mapSkills(c.targetSkills),
+              )).toList(),
+            )
+        ]);
     } catch (err) {
       logger.e(err);
     }
   }
 
-  void copyToClipboard(String text, BuildContext context) {
-    Clipboard.setData(ClipboardData(text: text)).then(
-      (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Copied to Clipboard!')));
-      },
+  String _resolveProxyAddress(int? proxySlotId, ProxyController? proxyController) {
+    if (proxySlotId == null || proxyController == null) return 'No proxy';
+    try {
+      final slot = proxyController.proxySlots.firstWhereOrNull((s) => s.id == proxySlotId);
+      if (slot == null) return 'No proxy';
+      final currentIp = proxyController.getCurrentIpForSlot(slot);
+      return currentIp?.ipAddress ?? 'No IP';
+    } catch (_) {
+      return 'No proxy';
+    }
+  }
+
+  Skills _mapSkills(dynamic skillsEntity) {
+    return Skills(
+      attack: skillsEntity.attack,
+      defence: skillsEntity.defence,
+      strength: skillsEntity.strength,
+      hitpoints: skillsEntity.hitpoints,
+      range: skillsEntity.range,
+      prayer: skillsEntity.prayer,
+      magic: skillsEntity.magic,
+      cooking: skillsEntity.cooking,
+      woodcutting: skillsEntity.woodcutting,
+      fletching: skillsEntity.fletching,
+      fishing: skillsEntity.fishing,
+      firemaking: skillsEntity.firemaking,
+      crafting: skillsEntity.crafting,
+      mining: skillsEntity.mining,
+      smithing: skillsEntity.smithing,
+      agility: skillsEntity.agility,
+      herblore: skillsEntity.herblore,
+      thieving: skillsEntity.thieving,
+      slayer: skillsEntity.slayer,
+      farming: skillsEntity.farming,
+      runecrafting: skillsEntity.runecrafting,
+      construction: skillsEntity.construction,
+      hunter: skillsEntity.hunter,
     );
   }
 
-  Future<Proxy> getProxyDoc(String proxyAddress) async {
-    try {
-      var proxyMap = await _firestoreService.getDocumentById(
-          proxiesCollection, proxyAddress);
-
-      return Proxy.fromJson(proxyMap ?? {});
-    } catch (err) {
-      logger.e(err);
-      return Proxy.empty();
-    }
-  }
-
-  Future<void> runPythonScript(String proxyAddress) async {
-    try {
-      Proxy proxy = await getProxyDoc(proxyAddress);
-      var pythonExecutable = 'scripts/.venv/Scripts/python.exe';
-      var scriptPath = 'scripts/openChrome.py';
-      var argument = proxyAddress == "none" ? "none" : proxy.generateProxyUrl();
-
-      // Generating a timestamped filename in the scripts/log folder
-      String fileName =
-          DateTime.now().toString().replaceAll(':', '-').replaceAll(' ', '_');
-      File outputFile = File('scripts/logs/${fileName}_output.txt');
-      IOSink fileSink = outputFile.openWrite(mode: FileMode.append);
-
-      var installProcess = await Process.start(pythonExecutable,
-          ['-m', 'pip', 'install', '-r', 'scripts/requirements.txt']);
-      installProcess.stdout.asBroadcastStream();
-      installProcess.stderr.asBroadcastStream();
-
-      // Handle process output and errors using the new function
-      handleStream(installProcess.stdout, fileSink);
-      handleStream(installProcess.stderr, fileSink);
-
-      var installExitCode = await installProcess.exitCode;
-      print('Dependency installation exit code: $installExitCode');
-
-      if (installExitCode == 0) {
-        var process =
-            await Process.start(pythonExecutable, [scriptPath, argument]);
-        processList.add(process.pid);
-        process.stdout.asBroadcastStream();
-        process.stderr.asBroadcastStream();
-
-        // Handle the Python script's output in the same way
-        handleStream(process.stdout, fileSink);
-        handleStream(process.stderr, fileSink);
-
-        var exitCode = await process.exitCode;
-        processList.remove(process.pid);
-        print('Python script exit code: $exitCode');
-      } else {
-        print('Failed to install dependencies.');
-      }
-      await fileSink.flush();
-      await fileSink.close();
-    } catch (e) {
-      print('Failed to run Python script: $e');
-    }
+  void copyToClipboard(String text, BuildContext context) {
+    Clipboard.setData(ClipboardData(text: text));
+    // Note: InfoBar display is handled in the UI layer for Fluent UI
   }
 
   Future<void> runGameClient(JagexAccount account) async {

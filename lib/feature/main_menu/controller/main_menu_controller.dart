@@ -1,17 +1,17 @@
+import 'package:command_center/data/database_service.dart';
 import 'package:get/get.dart' hide Response;
 
-import '../../../config/services/firestore_service.dart';
 import '../../../core/helper/logger.dart';
 
 class MainMenuController extends GetxController {
   var isLoading = false.obs;
-  final FirestoreService _firestoreService = Get.find();
 
   Future<void> demoGetCall() async {
     try {
-      var documents = await _firestoreService.getAllDocuments('proxies');
-      for (var document in documents) {
-        print(document);
+      final dbService = Get.find<DatabaseService>();
+      final slots = await dbService.proxyRepository.getAllSlots();
+      for (var slot in slots) {
+        logger.i('Slot: ${slot.slotName}');
       }
     } catch (err) {
       logger.e(err);

@@ -1,0 +1,204 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+
+import '../../domain/entities/account.dart';
+import '../../domain/entities/character.dart';
+import '../../domain/entities/skills.dart';
+import '../../domain/repositories/account_repository.dart';
+import '../database/app_database.dart';
+
+/// Drift implementation of the AccountRepository
+class AccountRepositoryImpl implements AccountRepository {
+  final AppDatabase _db;
+
+  AccountRepositoryImpl(this._db);
+
+  // ============ Account Operations ============
+
+  @override
+  Future<List<AccountEntity>> getAllAccounts() async {
+    final accounts = await _db.select(_db.accountsTable).get();
+    final result = <AccountEntity>[];
+
+    for (final account in accounts) {
+      final characters = await _getCharactersForAccount(account.id);
+      result.add(_mapAccountRow(account, characters));
+    }
+
+    return result;
+  }
+
+  @override
+  Future<AccountEntity?> getAccountById(int id) async {
+    final query = _db.select(_db.accountsTable)
+      ..where((tbl) => tbl.id.equals(id));
+    final result = await query.getSingleOrNull();
+
+    if (result == null) return null;
+
+    final characters = await _getCharactersForAccount(id);
+    return _mapAccountRow(result, characters);
+  }
+
+  @override
+  Future<AccountEntity?> getAccountByEmail(String email) async {
+    final query = _db.select(_db.accountsTable)
+      ..where((tbl) => tbl.email.equals(email));
+    final result = await query.getSingleOrNull();
+
+    if (result == null) return null;
+
+    final characters = await _getCharactersForAccount(result.id);
+    return _mapAccountRow(result, characters);
+  }
+
+  @override
+  Future<int> insertAccount(AccountEntity account) async {
+    final accountId = await _db.into(_db.accountsTable).insert(
+          AccountsTableCompanion.insert(
+            accountName: account.accountName,
+            birthday: Value(account.birthday),
+            email: account.email,
+            password: account.password,
+            proxySlotId: Value(account.proxySlotId),
+            createdAt: Value(account.createdAt ?? DateTime.now()),
+            lastUpdated: Value(account.lastUpdated ?? DateTime.now()),
+          ),
+        );
+
+    // Insert characters
+    for (final character in account.characters) {
+      await _insertCharacter(character.copyWith(accountId: accountId));
+    }
+
+    return accountId;
+  }
+
+  @override
+  Future<void> updateAccount(AccountEntity account) async {
+    if (account.id == null) {
+      throw ArgumentError('Cannot update account without an id');
+    }
+
+    await (_db.update(_db.accountsTable)
+          ..where((tbl) => tbl.id.equals(account.id!)))
+        .write(
+      AccountsTableCompanion(
+        accountName: Value(account.accountName),
+        birthday: Value(account.birthday),
+        email: Value(account.email),
+        password: Value(account.password),
+        proxySlotId: Value(account.proxySlotId),
+        lastUpdated: Value(DateTime.now()),
+      ),
+    );
+
+    // Update characters - delete existing and re-insert
+    await (_db.delete(_db.charactersTable)
+          ..where((tbl) => tbl.accountId.equals(account.id!)))
+        .go();
+
+    for (final character in account.characters) {
+      await _insertCharacter(character.copyWith(accountId: account.id));
+    }
+  }
+
+  @override
+  Future<void> deleteAccount(int id) async {
+    // Delete characters first
+    await (_db.delete(_db.charactersTable)
+          ..where((tbl) => tbl.accountId.equals(id)))
+        .go();
+
+    // Delete account
+    await (_db.delete(_db.accountsTable)..where((tbl) => tbl.id.equals(id)))
+        .go();
+  }
+
+  @override
+  Stream<List<AccountEntity>> watchAllAccounts() {
+    return _db.select(_db.accountsTable).watch().asyncMap((accounts) async {
+      final result = <AccountEntity>[];
+      for (final account in accounts) {
+        final characters = await _getCharactersForAccount(account.id);
+        result.add(_mapAccountRow(account, characters));
+      }
+      return result;
+    });
+  }
+
+  @override
+  Future<List<AccountEntity>> getAccountsByProxySlot(int proxySlotId) async {
+    final query = _db.select(_db.accountsTable)
+      ..where((tbl) => tbl.proxySlotId.equals(proxySlotId));
+    final accounts = await query.get();
+
+    final result = <AccountEntity>[];
+    for (final account in accounts) {
+      final characters = await _getCharactersForAccount(account.id);
+      result.add(_mapAccountRow(account, characters));
+    }
+
+    return result;
+  }
+
+  // ============ Character Operations (Private) ============
+
+  Future<List<CharacterEntity>> _getCharactersForAccount(int accountId) async {
+    final query = _db.select(_db.charactersTable)
+      ..where((tbl) => tbl.accountId.equals(accountId));
+    final results = await query.get();
+    return results.map(_mapCharacterRow).toList();
+  }
+
+  Future<int> _insertCharacter(CharacterEntity character) async {
+    return await _db.into(_db.charactersTable).insert(
+          CharactersTableCompanion.insert(
+            accountId: character.accountId,
+            name: character.name,
+            banned: Value(character.banned),
+            actualSkillsJson:
+                Value(jsonEncode(character.actualSkills.toJson())),
+            targetSkillsJson:
+                Value(jsonEncode(character.targetSkills.toJson())),
+            createdAt: Value(DateTime.now()),
+            lastUpdated: Value(DateTime.now()),
+          ),
+        );
+  }
+
+  // ============ Mapping Helpers ============
+
+  AccountEntity _mapAccountRow(
+    AccountsTableData row,
+    List<CharacterEntity> characters,
+  ) {
+    return AccountEntity(
+      id: row.id,
+      accountName: row.accountName,
+      birthday: row.birthday,
+      email: row.email,
+      password: row.password,
+      proxySlotId: row.proxySlotId,
+      characters: characters,
+      createdAt: row.createdAt,
+      lastUpdated: row.lastUpdated,
+    );
+  }
+
+  CharacterEntity _mapCharacterRow(CharactersTableData row) {
+    return CharacterEntity(
+      id: row.id,
+      accountId: row.accountId,
+      name: row.name,
+      banned: row.banned,
+      actualSkills: SkillsEntity.fromJson(
+        jsonDecode(row.actualSkillsJson) as Map<String, dynamic>,
+      ),
+      targetSkills: SkillsEntity.fromJson(
+        jsonDecode(row.targetSkillsJson) as Map<String, dynamic>,
+      ),
+    );
+  }
+}
