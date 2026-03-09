@@ -14,7 +14,10 @@
       "Bash(/tmp/lib_tree.txt:*)",
       "Read(//tmp/**)",
       "Bash(flutter pub:*)",
-      "Bash(dart run:*)"
+      "Bash(dart run:*)",
+      "WebSearch",
+      "Bash(git check-ignore:*)",
+      "Bash(mv:*)"
     ]
   }
 }
