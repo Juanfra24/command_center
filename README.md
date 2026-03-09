@@ -122,6 +122,7 @@ Releases are automated via GitHub Actions using conventional commits:
 
 Each release auto-generates changelog entries and publishes a GitHub Release with the Windows build.
 
+
 ## License
 
 This project is private and not licensed for public use.

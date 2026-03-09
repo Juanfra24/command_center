@@ -107,6 +107,7 @@ Automated semantic releases via GitHub Actions (`.github/workflows/release.yml`)
 ```
 Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `build`, `revert`
 
+
 ## Database Schema (v2)
 
 - **AppConfigTable** - Key-value config store (webshare_api_key, ipqs_api_key, theme_mode)
