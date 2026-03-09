@@ -6,7 +6,7 @@ A Windows desktop application for managing and orchestrating RuneScape bot autom
 
 - **Account Management** - Track and manage multiple RuneScape accounts and characters
 - **Proxy Management** - Integrated Webshare proxy support with IP rotation, replacement, and IPQS quality scoring
-- **Browser Automation** - Automated Jagex account creation using SeleniumBase with undetected Chrome and proxy validation
+- **Browser Automation** - Automated Jagex account creation using Patchright (patched Playwright) with stealth Chromium and proxy validation
 - **Status Monitoring** - Real-time bot process status tracking (running/stopped)
 - **Background Music** - Built-in music player
 - **Modern UI** - Windows 11 Fluent Design interface with light/dark theme support
@@ -20,7 +20,7 @@ A Windows desktop application for managing and orchestrating RuneScape bot autom
 | UI | Fluent UI (Windows 11 design) |
 | State Management | GetX |
 | Database | Drift ORM (SQLite) |
-| Automation | Python + SeleniumBase (undetected Chrome) |
+| Automation | Python + Patchright (patched Playwright) |
 | Proxy Provider | Webshare API |
 | IP Scoring | IPQualityScore API |
 
@@ -51,7 +51,7 @@ The app auto-installs Python dependencies on first use. For manual setup:
 ```bash
 cd scripts
 pip install -r requirements.txt
-sbase install chromedriver latest
+python -m patchright install chromium
 ```
 
 ## Configuration
@@ -76,7 +76,16 @@ lib/
 └── core/            # Constants, helpers, DI, shared widgets
 
 scripts/
-└── account_automation.py   # Python browser automation (SeleniumBase)
+├── account_automation.py        # CLI entry point (validate, create-account, session)
+└── automation/                  # Patchright automation package
+    ├── browser.py               # Stealth browser launch/close
+    ├── models.py                # Result/status data models
+    ├── commands/                # Subcommand implementations
+    │   ├── validate.py
+    │   ├── create_account.py
+    │   └── session.py
+    ├── proxy.py, helpers.py     # Proxy parsing & utilities
+    └── imap_poller.py           # Email polling for verification
 ```
 
 ## Database Schema
@@ -101,6 +110,18 @@ dart run build_runner build --delete-conflicting-outputs
 # Build release
 flutter build windows --release
 ```
+
+## Releases
+
+Releases are automated via GitHub Actions using conventional commits:
+
+- `feat:` commits trigger a **minor** version bump
+- `fix:` / `perf:` commits trigger a **patch** version bump
+- `BREAKING CHANGE` triggers a **major** version bump
+- Other commit types (`chore:`, `docs:`, etc.) do not trigger a release
+
+Each release auto-generates changelog entries and publishes a GitHub Release with the Windows build.
+
 
 ## License
 
