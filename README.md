@@ -111,16 +111,43 @@ dart run build_runner build --delete-conflicting-outputs
 flutter build windows --release
 ```
 
-## Releases
+## Contributing
 
-Releases are automated via GitHub Actions using conventional commits:
+### Commit Message Convention (Required)
 
-- `feat:` commits trigger a **minor** version bump
-- `fix:` / `perf:` commits trigger a **patch** version bump
-- `BREAKING CHANGE` triggers a **major** version bump
-- Other commit types (`chore:`, `docs:`, etc.) do not trigger a release
+All commits **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) format. Non-conforming commits will fail CI.
 
-Each release auto-generates changelog entries and publishes a GitHub Release with the Windows build.
+```
+<type>(<scope>): <description>
+```
+
+| Type | Purpose | Triggers Release? |
+|------|---------|-------------------|
+| `feat` | New feature | Yes (minor) |
+| `fix` | Bug fix | Yes (patch) |
+| `perf` | Performance improvement | Yes (patch) |
+| `chore` | Maintenance, deps | No |
+| `docs` | Documentation | No |
+| `style` | Formatting, no code change | No |
+| `refactor` | Code restructure, no behavior change | No |
+| `test` | Tests | No |
+| `ci` | CI/CD changes | No |
+| `build` | Build system changes | No |
+| `revert` | Revert a previous commit | No |
+
+Add `BREAKING CHANGE` in the commit body for major version bumps.
+
+**Examples:**
+```
+feat(proxy): add IP rotation scheduling
+fix(automation): handle timeout on account creation
+chore: update dependencies
+docs(readme): add contributing guidelines
+```
+
+### Releases
+
+Releases are automated via GitHub Actions using conventional commits. Pushing to `main` triggers: commit lint, build, and (if releasable commits exist) version bump + GitHub Release with Windows build.
 
 
 ## License

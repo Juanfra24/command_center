@@ -13,7 +13,8 @@ The application will automatically check and install Python dependencies on firs
 
 ### Python Dependencies
 The following Python packages will be automatically installed:
-- `seleniumbase` - Browser automation with undetected Chrome (includes selenium, requests, and other deps)
+- `patchright` - Stealth browser automation (patched Playwright for Chromium)
+- `requests` - HTTP client for API calls
 
 See [scripts/requirements.txt](scripts/requirements.txt) for specific versions.
 
@@ -97,8 +98,8 @@ Then update the automation service to use `.venv\Scripts\python.exe`.
 ## Architecture
 
 ### Python Scripts
-- **account_automation.py** - Main automation script with IP validation
-- **openChrome.py** - Legacy Chrome opener (deprecated)
+- **account_automation.py** - CLI entry point (validate, create-account, session)
+- **automation/** - Patchright-based automation package
 - **requirements.txt** - Python dependencies
 
 ### Flutter Services
