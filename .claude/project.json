@@ -1,0 +1,77 @@
+{
+    "project": {
+        "name": "RuneScape Bot Command Center",
+        "description": "A Windows desktop Flutter application for managing RuneScape bot automation",
+        "version": "0.4.0",
+        "language": "dart",
+        "framework": "flutter",
+        "platform": "windows"
+    },
+    "codeStyle": {
+        "language": "dart",
+        "formatting": "flutter_format",
+        "lineLength": 80,
+        "conventions": [
+            "Use GetX for state management",
+            "Use fluent_ui for Windows 11 style widgets",
+            "Services extend GetxService",
+            "Controllers extend GetxController",
+            "Use .obs for reactive variables",
+            "Use Obx() for reactive widgets"
+        ]
+    },
+    "architecture": {
+        "pattern": "Feature-based",
+        "structure": {
+            "lib/config": "Configuration, services, themes, routes",
+            "lib/core": "Constants, helpers, shared widgets, dependency injection",
+            "lib/feature": "Feature modules (main_menu, Status, proxy, music)"
+        },
+        "stateManagement": "GetX",
+        "database": "Cloud Firestore"
+    },
+    "keyFiles": {
+        "entryPoint": "lib/main.dart",
+        "app": "lib/feature/app.dart",
+        "dependencyInjection": "lib/core/resource/dependency_injection.dart",
+        "firestoreService": "lib/config/services/firestore_service.dart",
+        "webshareService": "lib/config/services/webshare_service.dart",
+        "appConfigService": "lib/config/services/app_config_service.dart"
+    },
+    "externalServices": {
+        "firebase": {
+            "firestore": "Cloud database for persistence",
+            "collections": [
+                "app_config",
+                "proxy_slots",
+                "proxy_ip_addresses",
+                "accounts"
+            ]
+        },
+        "webshare": {
+            "baseUrl": "https://proxy.webshare.io/api/v2",
+            "purpose": "Proxy management and IP rotation"
+        }
+    },
+    "taskContext": {
+        "currentFocus": "UI refinement and bug fixes",
+        "recentChanges": [
+            "Custom Windows title bar",
+            "Onboarding flow",
+            "Webshare integration with Firestore persistence",
+            "Music volume control"
+        ],
+        "knownIssues": [],
+        "upcomingFeatures": [
+            "WhatsApp notifications",
+            "Bot process management",
+            "Character creation flow"
+        ]
+    },
+    "preferences": {
+        "editStyle": "Direct file editing, no code blocks unless requested",
+        "responseStyle": "Concise, action-oriented",
+        "toolUsage": "Use multi_replace_string_in_file for multiple edits",
+        "documentation": "Update CHANGELOG.md for significant changes"
+    }
+}

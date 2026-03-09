@@ -4,34 +4,44 @@ description: "Command center of my bots"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 
-version: 0.2.1
+version: 0.4.0
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
 
 dependencies:
-  flutter:
-    sdk: flutter
-  connectivity_plus: ^4.0.2
-  flutter_screenutil: ^5.9.0
-  get: ^4.6.5
-  get_it: ^7.6.4
-  get_storage: ^2.0.3
-  logger: ^1.1.0
-  url_launcher: ^6.1.14
-  cupertino_icons: ^1.0.6
-  menu_bar: ^0.5.3
-  cloud_firestore: ^4.17.0
-  firebase_core: ^2.30.0
-  equatable: ^2.0.5
-  audioplayers: ^6.0.0
-  window_manager: ^0.3.8
+    flutter:
+      sdk: flutter
+    flutter_localizations:
+      sdk: flutter
+    connectivity_plus: ^7.0.0
+    flutter_screenutil: ^5.9.0
+    get: ^4.6.5
+    get_it: ^9.2.0
+    get_storage: ^2.0.3
+    logger: ^2.6.2
+    url_launcher: ^6.1.14
+    fluent_ui: ^4.13.0
+    system_theme: ^3.1.2
+    equatable: ^2.0.5
+    audioplayers: ^6.0.0
+    window_manager: ^0.5.1
+    intl: ^0.20.2
+    http: ^1.2.0
+    shared_preferences: ^2.2.2
+    # Drift ORM for SQLite
+    drift: ^2.22.1
+    sqlite3_flutter_libs: ^0.5.28
+    path_provider: ^2.1.5
+    path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
+  # Drift code generation
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.15
 
 
 flutter:

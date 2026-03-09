@@ -1,11 +1,11 @@
 import 'package:get_storage/get_storage.dart';
 
 class LocalStorage {
-  static set({required String key, required dynamic value}) {
+  static Future<void> set({required String key, required dynamic value}) {
     return GetStorage().write("token", value);
   }
 
-  static get({required String key}) {
+  static dynamic get({required String key}) {
     return GetStorage().read("token");
   }
 }
