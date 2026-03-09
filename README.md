@@ -111,6 +111,17 @@ dart run build_runner build --delete-conflicting-outputs
 flutter build windows --release
 ```
 
+## Releases
+
+Releases are automated via GitHub Actions using conventional commits:
+
+- `feat:` commits trigger a **minor** version bump
+- `fix:` / `perf:` commits trigger a **patch** version bump
+- `BREAKING CHANGE` triggers a **major** version bump
+- Other commit types (`chore:`, `docs:`, etc.) do not trigger a release
+
+Each release auto-generates changelog entries and publishes a GitHub Release with the Windows build.
+
 ## License
 
 This project is private and not licensed for public use.
