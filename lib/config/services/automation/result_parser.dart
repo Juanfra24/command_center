@@ -54,6 +54,7 @@ class ResultParser {
     if (stderr.isNotEmpty) {
       onLog('Script errors: $stderr');
 
+      // Module import errors are fatal — no JSON result will exist
       if (stderr.contains('ModuleNotFoundError') ||
           stderr.contains('No module named')) {
         return AutomationResult.error(
@@ -64,19 +65,21 @@ class ResultParser {
       }
     }
 
-    if (exitCode != 0) {
-      return AutomationResult.error(
-        'Script failed with exit code $exitCode:\n$stderr',
-      );
-    }
-
-    // Parse JSON result from stdout
+    // Always try to parse JSON result first — Python writes structured
+    // results even on failure (exit code 1). The JSON contains the real
+    // error info (captcha_required, proxy_validation_failed, etc).
     final resultJson = extractJsonResult(stdout);
-
     if (resultJson != null) {
       final result = AutomationResult.fromJson(resultJson);
       onLog('Result: ${result.status.name} - ${result.message}');
       return result;
+    }
+
+    // No JSON found — fall back to exit code + stderr
+    if (exitCode != 0) {
+      return AutomationResult.error(
+        'Script failed with exit code $exitCode:\n$stderr',
+      );
     }
 
     return AutomationResult.error(

@@ -95,7 +95,8 @@ class IpScoreAnalysis extends StatelessWidget {
   }
 
   Widget _buildScoredCard(BuildContext context, FluentThemeData theme) {
-    final scoreColor = getScoreColor(ip.ipScore);
+    final scoreColor =
+        getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
 
     return Card(
       child: Column(
@@ -144,7 +145,7 @@ class IpScoreAnalysis extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              ip.ipScore > 0 ? ip.ipScore.toStringAsFixed(0) : '?',
+              ip.hasBeenScored ? ip.ipScore.toStringAsFixed(0) : '?',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -207,7 +208,7 @@ class IpScoreAnalysis extends StatelessWidget {
           style: theme.typography.caption,
         ),
         const Spacer(),
-        if (ip.ipScore > 0 && ip.ipScore < 50)
+        if (ip.hasBeenScored && ip.ipScore < 50)
           Obx(() {
             final replacing = isReplacing.value;
             return Padding(

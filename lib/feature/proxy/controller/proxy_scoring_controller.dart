@@ -39,10 +39,15 @@ class ProxyScoringController extends GetxController {
 
   // --- Score statistics ---
 
+  bool get hasScoredIps => _proxyController.proxySlots.any((s) {
+        final ip = _proxyController.getCurrentIpForSlot(s);
+        return ip != null && ip.hasBeenScored;
+      });
+
   double get averageIpScore {
     final currentIps = _proxyController.proxySlots
         .map((s) => _proxyController.getCurrentIpForSlot(s))
-        .where((ip) => ip != null && ip.ipScore > 0)
+        .where((ip) => ip != null && ip.hasBeenScored)
         .toList();
     if (currentIps.isEmpty) return 0;
     return currentIps.fold(0.0, (sum, ip) => sum + ip!.ipScore) /
@@ -52,7 +57,7 @@ class ProxyScoringController extends GetxController {
   int get lowScoreCount {
     return _proxyController.proxySlots.where((slot) {
       final ip = _proxyController.getCurrentIpForSlot(slot);
-      return ip != null && ip.ipScore > 0 && ip.ipScore < 50;
+      return ip != null && ip.hasBeenScored && ip.ipScore < 50;
     }).length;
   }
 
@@ -61,7 +66,7 @@ class ProxyScoringController extends GetxController {
     final details = <String>[];
     for (final slot in _proxyController.proxySlots) {
       final ip = _proxyController.getCurrentIpForSlot(slot);
-      if (ip != null && ip.ipScore > 0 && ip.ipScore < 50) {
+      if (ip != null && ip.hasBeenScored && ip.ipScore < 50) {
         details.add(
             '${slot.slotName}: ${ip.ipAddress} (score: ${ip.ipScore.toStringAsFixed(0)})');
       }
@@ -89,6 +94,7 @@ class ProxyScoringController extends GetxController {
         await _proxyRepository.updateIpAddress(
           ip.copyWith(
             ipScore: newScore,
+            scoreLevel: ProxyIpAddressEntity.getScoreLevel(newScore),
             fraudScore: result.fraudScore,
             isVpn: result.isVpn,
             isProxy: result.isProxy,
