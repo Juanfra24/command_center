@@ -67,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _log(msg: str):
+    """Flushing log function passed to all commands."""
+    print(msg, flush=True)
+
+
 async def run(args) -> AutomationResult:
     if args.command == "validate":
         from automation.commands.validate import validate_proxy_ip
@@ -75,6 +80,7 @@ async def run(args) -> AutomationResult:
             expected_ip=args.expected_ip,
             headless=getattr(args, "headless", False),
             debug=getattr(args, "debug", False),
+            log_fn=_log,
         )
     elif args.command == "create-account":
         from automation.commands.create_account import create_account
@@ -86,6 +92,7 @@ async def run(args) -> AutomationResult:
             imap_host=getattr(args, "imap_host", None),
             imap_user=getattr(args, "imap_user", None),
             imap_pass=getattr(args, "imap_pass", None),
+            log_fn=_log,
         )
     elif args.command == "session":
         from automation.commands.session import launch_session
@@ -94,6 +101,7 @@ async def run(args) -> AutomationResult:
             expected_ip=args.expected_ip,
             keep_open=getattr(args, "keep_open", False),
             debug=getattr(args, "debug", False),
+            log_fn=_log,
         )
     else:
         return AutomationResult(

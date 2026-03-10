@@ -33,70 +33,79 @@ class SlotHeader extends StatelessWidget {
     final theme = FluentTheme.of(context);
 
     return Card(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: theme.accentColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                '#${slot.slotNumber}',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: theme.accentColor,
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: theme.accentColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '#${slot.slotNumber}',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.accentColor,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(slot.slotName, style: theme.typography.title),
-                const SizedBox(height: 4),
-                Row(
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: slot.isActive
-                            ? Colors.green.withValues(alpha: 0.2)
-                            : Colors.grey.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        slot.isActive ? 'Active' : 'Inactive',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: slot.isActive ? Colors.green : Colors.grey,
+                    Text(slot.slotName, style: theme.typography.title),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: slot.isActive
+                                ? Colors.green.withValues(alpha: 0.2)
+                                : Colors.grey.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            slot.isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  slot.isActive ? Colors.green : Colors.grey,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${slot.totalIpChanges} IP changes',
-                      style: theme.typography.caption,
+                        Text(
+                          '${slot.totalIpChanges} IP changes',
+                          style: theme.typography.caption,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
             children: [
               _buildReplaceButton(context),
               _buildLaunchBrowserButton(context),
-              const SizedBox(width: 8),
               FilledButton(
                 onPressed: () => onShowChangeIpDialog(context, slot),
                 child: const Row(
@@ -121,7 +130,7 @@ class SlotHeader extends StatelessWidget {
       return Builder(
         builder: (context) {
           final ip = getCurrentIpForSlot(slot);
-          if (ip != null && ip.ipScore > 0 && ip.ipScore < 50) {
+          if (ip != null && ip.hasBeenScored && ip.ipScore < 50) {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilledButton(

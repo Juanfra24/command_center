@@ -16,13 +16,12 @@ extension ShadedColorToAccent on ShadedColor {
   }
 }
 
-AccentColor getScoreColor(double score) {
+AccentColor getScoreColor(double score, {bool hasBeenScored = true}) {
+  if (!hasBeenScored) return Colors.grey.toAccentColor();
   if (score >= 90) return Colors.green;
   if (score >= 70) return Colors.teal;
   if (score >= 50) return Colors.orange;
-  if (score >= 30) return Colors.red;
-  if (score > 0) return Colors.red;
-  return Colors.grey.toAccentColor();
+  return Colors.red;
 }
 
 String formatDate(DateTime date) {
@@ -36,7 +35,8 @@ class IpScoreIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scoreColor = getScoreColor(ip.ipScore);
+    final scoreColor =
+        getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -57,7 +57,7 @@ class IpScoreIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            ip.ipScore > 0 ? ip.ipScore.toStringAsFixed(0) : '?',
+            ip.hasBeenScored ? ip.ipScore.toStringAsFixed(0) : '?',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

@@ -26,45 +26,58 @@ async def validate_proxy_ip(
     log_fn(f"[INFO] Python: {sys.version.split()[0]}")
     log_fn(f"[INFO] Headless: {headless}")
 
+    # Step 1/4: Proxy preflight
+    log_fn("[STEP 1/4] Running proxy preflight checks...")
     err, cleaned_proxy = preflight_proxy(proxy_url, expected_ip, log_fn)
     if err:
+        log_fn("[STEP 1/4] FAILED - proxy preflight error")
         return err
+    log_fn("[STEP 1/4] OK")
 
     pw = browser = None
     try:
+        # Step 2/4: Launch browser
+        log_fn("[STEP 2/4] Launching browser...")
         pw, browser, context, page = await launch_browser(
             proxy_url=cleaned_proxy,
             headless=headless,
         )
-        log_fn("[INFO] Browser started successfully")
+        log_fn("[STEP 2/4] OK - browser started")
 
+        # Step 3/4: Check IP
+        log_fn("[STEP 3/4] Checking IP address...")
         actual_ip = None
         last_error = None
 
         for i, url in enumerate(IP_CHECK_URLS):
             try:
-                log_fn(f"[INFO] IP check {i + 1}/{len(IP_CHECK_URLS)}: {url}")
+                log_fn(f"[STEP 3/4] IP check {i + 1}/{len(IP_CHECK_URLS)}: {url}")
                 await page.goto(url, wait_until="domcontentloaded")
                 human_delay(0.3, 0.8)
 
                 body = await page.text_content("body") or ""
                 actual_ip = extract_ip_from_response(body)
                 if actual_ip:
-                    log_fn(f"[INFO] Got IP: {actual_ip}")
+                    log_fn(f"[STEP 3/4] Got IP: {actual_ip}")
                     break
             except Exception as e:
                 last_error = f"{type(e).__name__}: {e}"
-                log_fn(f"[WARNING] IP check failed: {last_error}")
+                log_fn(f"[STEP 3/4] IP check failed: {last_error}")
 
         if not actual_ip:
+            log_fn("[STEP 3/4] FAILED - could not determine IP")
             return AutomationResult(
                 status=AutomationStatus.BROWSER_ERROR.value,
                 message=f"Could not determine current IP. Last error: {last_error}",
                 expected_ip=expected_ip,
             )
+        log_fn("[STEP 3/4] OK")
 
+        # Step 4/4: Verify IP match
+        log_fn(f"[STEP 4/4] Verifying IP match: expected={expected_ip}, actual={actual_ip}")
         ip_matches = (expected_ip in actual_ip) or (actual_ip in expected_ip)
         if ip_matches:
+            log_fn("[STEP 4/4] OK - IPs match")
             return AutomationResult(
                 status=AutomationStatus.SUCCESS.value,
                 message="Proxy IP validation successful",
@@ -72,6 +85,7 @@ async def validate_proxy_ip(
                 actual_ip=actual_ip,
             )
 
+        log_fn("[STEP 4/4] FAILED - IP mismatch")
         return AutomationResult(
             status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
             message=f"IP mismatch: expected {expected_ip}, got {actual_ip}",
@@ -80,6 +94,7 @@ async def validate_proxy_ip(
         )
 
     except Exception as e:
+        log_fn(f"[ERROR] Browser error: {type(e).__name__}: {e}")
         return AutomationResult(
             status=AutomationStatus.BROWSER_ERROR.value,
             message=f"Browser startup failed: {type(e).__name__}: {e}",

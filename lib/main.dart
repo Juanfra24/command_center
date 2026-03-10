@@ -17,7 +17,7 @@ void main(List<String> args) async {
     (_) async {
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
       await windowManager.setSize(const Size(1280, 800));
-      await windowManager.setMinimumSize(const Size(800, 600));
+      await windowManager.setMinimumSize(const Size(1024, 700));
       await windowManager.setResizable(true);
       await windowManager.center();
       await windowManager.show();

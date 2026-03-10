@@ -31,7 +31,8 @@ class IpHistoryList extends StatelessWidget {
     return Card(
       child: Column(
         children: history.take(10).map((ip) {
-          final scoreColor = getScoreColor(ip.ipScore);
+          final scoreColor =
+              getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -71,7 +72,7 @@ class IpHistoryList extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    ip.ipScore > 0 ? ip.ipScore.toStringAsFixed(0) : '?',
+                    ip.hasBeenScored ? ip.ipScore.toStringAsFixed(0) : '?',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: scoreColor,

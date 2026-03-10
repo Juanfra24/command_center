@@ -111,6 +111,12 @@ class PythonRunner {
 
     _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
       stderr.write(data);
+      for (final line in data.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          onLog('[py:err] $trimmed');
+        }
+      }
     });
 
     // Wait for process with timeout
