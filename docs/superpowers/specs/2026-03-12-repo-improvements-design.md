@@ -27,10 +27,12 @@ Catch regressions automatically before they reach `dev` or `main`.
 
 **`scripts/hooks/pre-commit`** — Local pre-commit hook running `dart format` so formatting issues are caught before push. Documented in SETUP.md.
 
+**CI job placement:** Add a new `lint` job on Ubuntu (fast, cheap) that runs `dart format` and `flutter analyze` in parallel with the existing Windows `build` job. The `build` job gains `needs: [lint]` so it only runs if linting passes. `flutter test` runs inside the `lint` job (same Ubuntu runner).
+
 ### Files affected
 - `.github/workflows/release.yml`
 - `scripts/hooks/pre-commit` (new)
-- 5 files with `print()` calls → replace with `logger`
+- 4 files with Dart `print()` calls → replace with `logger` (`random_skills.dart`, `native_commands_service.dart`, `process_model.dart`, `status_controller.dart`). Note: `python_setup_service.dart` has `print()` inside Python command strings — those are not Dart calls and should not be changed.
 - `core/helper/logger.dart` → fix deprecated `printTime` usage
 - Files with `use_build_context_synchronously` infos → add `mounted` guards
 
@@ -71,11 +73,39 @@ class Failure<T> implements Result<T> {
 | **Controllers** | Unwrap `Result`, set UI observables (`lastError`, `isLoading`), call `logger`. Only layer that touches observables. |
 | **Repositories** | Wrap Drift calls in try-catch, return `Result<T>` instead of throwing. |
 
+### Controller pattern-matching idiom
+
+Controllers consume `Result<T>` via exhaustive `switch`:
+
+```dart
+final result = await _webshareService.testAndConnect(apiKey);
+switch (result) {
+  case Success(:final data):
+    lastError.value = null;
+    slots.assignAll(data);
+  case Failure(:final message):
+    lastError.value = message;
+    logger.e(message);
+}
+```
+
+### Migration of existing return types
+
+Several services already use ad-hoc result types that will be replaced by `Result<T>`:
+
+| Current pattern | Files | Migration |
+|----------------|-------|-----------|
+| `({bool success, String? error})` | `WebshareService`, `ProxyReplacementService`, `ProxyReplacementController` | Replace with `Result<void>` or `Result<T>` as appropriate |
+| `AutomationResult` class | `AutomationService`, `ResultParser` | Keep as-is — domain-specific result with extra fields (`data`, `status`). Not a candidate for `Result<T>`. |
+| `IpqsResult` class | `IpqsService`, `IpqsApiClient` | Keep as-is — domain-specific result carrying scoring data. Not a candidate for `Result<T>`. |
+
+Only the `({bool success, String? error})` record pattern is replaced. Domain-specific result classes (`AutomationResult`, `IpqsResult`) stay because they carry meaningful domain data beyond success/failure.
+
 ### Files affected
 - New: `lib/core/resource/result.dart`
 - Services: `WebshareService`, `IpqsService`, `AutomationService`, `AppConfigService`, `OnboardingService`
 - Controllers: `ProxyController`, `StatusController`, `ProxyScoringController`, `ProxyReplacementController`
-- Repositories: `AccountRepositoryImpl`, `ProxyRepositoryImpl`
+- Repositories: `AccountRepositoryImpl`, `ProxyRepositoryImpl`, `ConfigRepositoryImpl`
 
 ---
 
@@ -88,7 +118,7 @@ Bring all files within the CLAUDE.md size ceilings by splitting oversized files 
 
 | File | Current | Action |
 |------|---------|--------|
-| `main_menu_screen.dart` | 405 | Extract navigation pane items, content area, toolbar into sections |
+| `main_menu_screen.dart` | 405 | Extract 3 cards (System Overview, Characters Status, Recent Activity) into section files. Helpers like `_buildStatCard`, `_buildCharacterStatusCard`, and count logic move with their sections. |
 | `proxy_screen.dart` | 380 | Extract toolbar actions, scoring panel, detail/list layout into sections |
 
 ### Components (max 200 lines)
@@ -97,7 +127,7 @@ Bring all files within the CLAUDE.md size ceilings by splitting oversized files 
 |------|---------|--------|
 | `ip_score_analysis.dart` | 359 | Split into `score_summary.dart`, `score_detail_table.dart`, `score_flags.dart` |
 | `proxy_slot_card.dart` | 293 | Extract card header, card body, card actions |
-| `slot_header.dart` | 237 | Extract rename dialog, header actions |
+| `slot_header.dart` | 237 | Contains two classes: `SlotHeader` (192 lines) and `CurrentIpCard` (44 lines). Extract `CurrentIpCard` into its own file `current_ip_card.dart`. |
 | `about_card.dart` | 235 | Extract version info, links section |
 
 ### Services (max 250 lines)
@@ -159,8 +189,7 @@ Cover all services and repositories. No coverage threshold enforced — the goal
 
 ### Minor polish
 - Mask account passwords in `ValidationStatusIndicator` result display (show `••••••` instead of plaintext)
-- Add `.env.example` documenting required environment variables
-- Add cascade delete for Characters → Accounts foreign key in Drift schema (requires schema version bump to v3)
+- Add cascade delete for Characters → Accounts foreign key in Drift schema (requires schema version bump to v3). This requires updating `MigrationStrategy` in `AppDatabase` with a `from2To3` migration step and regenerating with `build_runner`.
 - Investigate `fluent_ui` pin — document why 4.14+ breaks, or upgrade if fixed
 
 ---
@@ -179,8 +208,8 @@ Each phase is its own PR to `dev`:
 
 | Phase | Key Files |
 |-------|-----------|
-| 1 | `.github/workflows/release.yml`, `core/helper/logger.dart`, 5 files with `print()` |
-| 2 | `core/resource/result.dart` (new), 6 services, 4 controllers, 2 repositories |
+| 1 | `.github/workflows/release.yml`, `core/helper/logger.dart`, 4 files with `print()` |
+| 2 | `core/resource/result.dart` (new), 6 services, 4 controllers, 3 repositories |
 | 3 | `main_menu_screen.dart`, `proxy_screen.dart`, 4 components, 2 services |
 | 4 | `test/` directory (new), `pubspec.yaml`, mock factories |
 | 5 | `scripts/README.md`, `docs/DATABASE.md`, `SETUP.md`, `logger.dart`, `validation_status_indicator.dart` |
