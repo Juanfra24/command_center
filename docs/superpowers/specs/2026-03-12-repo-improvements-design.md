@@ -209,7 +209,7 @@ Each phase is its own PR to `dev`:
 
 1. **Phase 1: CI Hardening** — ~2 hours. Immediate safety net.
 2. **Phase 2: Error Handling** — Largest phase. Define `Result<T>`, update all services/controllers/repos.
-3. **Phase 3: Architecture** — Split 8 oversized files. Follow new error patterns.
+3. **Phase 3: Architecture** — Split 9 oversized files. Follow new error patterns.
 4. **Phase 4: Tests** — Write tests against clean, final code.
 5. **Phase 5: Docs & Polish** — Documentation, logging, minor fixes.
 
