@@ -22,7 +22,7 @@ Catch regressions automatically before they reach `dev` or `main`.
 **`.github/workflows/release.yml`** — Add three steps before the build step:
 
 1. **`dart format --set-exit-if-changed .`** — Enforces consistent formatting. Any unformatted code fails the build.
-2. **`flutter analyze`** — Catches static analysis errors. The 12 pre-existing infos (`avoid_print`, `use_build_context_synchronously`, `deprecated_member_use`) must be fixed or suppressed first.
+2. **`flutter analyze`** — Catches static analysis errors. The 11 pre-existing infos (`avoid_print`, `use_build_context_synchronously`, `deprecated_member_use`) must be fixed or suppressed first.
 3. **`flutter test`** — Runs unit tests. Initially a no-op (no tests exist yet), but wired up so Phase 4 tests run automatically.
 
 **`scripts/hooks/pre-commit`** — Local pre-commit hook running `dart format` so formatting issues are caught before push. Documented in SETUP.md.
@@ -34,7 +34,7 @@ Catch regressions automatically before they reach `dev` or `main`.
 - `scripts/hooks/pre-commit` (new)
 - 3 files with Dart `print()` calls → replace with `logger` (`native_commands_service.dart`, `process_model.dart`, `status_controller.dart`). Note: `python_setup_service.dart` has `print()` inside Python command strings, and `random_skills.dart` has `print()` inside a block comment — neither are actual Dart calls.
 - `core/helper/logger.dart` → fix deprecated `printTime` usage
-- Files with `use_build_context_synchronously` infos → add `mounted` guards: `ipqs_config_dialog.dart` (2 instances), `webshare_config_dialog.dart` (2 instances), `proxy_screen.dart` (1 instance)
+- Files with `use_build_context_synchronously` infos → add `mounted` guards: `ipqs_config_dialog.dart` (2 instances), `webshare_config_dialog.dart` (2 instances)
 
 ---
 
@@ -99,11 +99,11 @@ Several services already use ad-hoc result types that will be replaced by `Resul
 | `AutomationResult` class | `AutomationService`, `ResultParser` | Keep as-is — domain-specific result with extra fields (`data`, `status`). Not a candidate for `Result<T>`. |
 | `IpqsResult` class | `IpqsService`, `IpqsApiClient` | Keep as-is — domain-specific result carrying scoring data. Not a candidate for `Result<T>`. |
 
-Only the `({bool success, String? error})` record pattern and bare `Future<bool>` returns are replaced. Domain-specific result classes (`AutomationResult`, `IpqsResult`) stay because they carry meaningful domain data beyond success/failure. Services like `AutomationService` and `IpqsService` are listed because their `Future<bool>` methods (e.g., `saveApiKey`, `clearApiKey`) should return `Result<void>`, even though their domain-specific result types are kept.
+Only the `({bool success, String? error})` record pattern and bare `Future<bool>` returns are replaced. Domain-specific result classes (`AutomationResult`, `IpqsResult`) stay because they carry meaningful domain data beyond success/failure. `IpqsService` is listed because its `Future<bool>` methods (`saveApiKey`, `clearApiKey`) should return `Result<void>`, even though `IpqsResult` is kept for scoring responses.
 
 ### Files affected
 - New: `lib/core/resource/result.dart`
-- Services: `WebshareService`, `IpqsService`, `AutomationService`, `AppConfigService`, `OnboardingService`, `ProxyReplacementService`
+- Services: `WebshareService`, `IpqsService`, `AppConfigService`, `OnboardingService`, `ProxyReplacementService`
 - Controllers: `ProxyController`, `StatusController`, `ProxyScoringController`, `ProxyReplacementController`
 - Repositories: `AccountRepositoryImpl`, `ProxyRepositoryImpl`, `ConfigRepositoryImpl`
 
@@ -137,9 +137,18 @@ Bring all files within the CLAUDE.md size ceilings by splitting oversized files 
 | `python_setup_service.dart` | 294 | Extract dependency checker logic into helper |
 | `webshare_service.dart` | 293 | All HTTP calls already delegate to `WebshareApiClient`. The bloat comes from config management (lines 27-94) and replacement polling with retry (lines 163-236). Extract replacement orchestration (polling loop + error parsing) into a helper class `webshare_replacement_handler.dart`. |
 
+### Dialogs (max 200 lines)
+
+| File | Current | Action |
+|------|---------|--------|
+| `ipqs_onboarding_dialog.dart` | 231 | Extract scoring progress UI and result display into helper widgets |
+
 ### Not decomposed
 - `proxy_ip_address_model.dart` (301 lines) — inherently verbose due to many fields. Leave as-is.
 - `proxy_controller.dart` (309 lines) — only 3% over, tolerable after Phase 2 cleanup.
+- `app.dart` (305 lines) — this is the root `GetMaterialApp` widget with route definitions and theme setup. Refactoring would require restructuring the app shell; defer to a future PR.
+- `window_title_bar.dart` (217 lines) — only 8% over component ceiling (200), low priority.
+- `automation_service.dart` (255 lines) — only 2% over service ceiling (250), will shrink naturally after Phase 2 cleanup.
 
 All decompositions follow the existing pattern: screen → sections → components → dialogs. No new architectural patterns introduced.
 
@@ -209,7 +218,7 @@ Each phase is its own PR to `dev`:
 | Phase | Key Files |
 |-------|-----------|
 | 1 | `.github/workflows/release.yml`, `core/helper/logger.dart`, 3 files with `print()` |
-| 2 | `core/resource/result.dart` (new), 6 services, 4 controllers, 3 repositories |
+| 2 | `core/resource/result.dart` (new), 5 services, 4 controllers, 3 repositories |
 | 3 | `main_menu_screen.dart`, `proxy_screen.dart`, 4 components, 2 services |
 | 4 | `test/` directory (new), `pubspec.yaml`, mock factories |
 | 5 | `scripts/README.md`, `docs/DATABASE.md`, `SETUP.md`, `logger.dart`, `validation_status_indicator.dart` |
