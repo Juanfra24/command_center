@@ -27,14 +27,14 @@ Catch regressions automatically before they reach `dev` or `main`.
 
 **`scripts/hooks/pre-commit`** — Local pre-commit hook running `dart format` so formatting issues are caught before push. Documented in SETUP.md.
 
-**CI job placement:** Add a new `lint` job on Ubuntu (fast, cheap) that runs `dart format` and `flutter analyze` in parallel with the existing Windows `build` job. The `build` job gains `needs: [lint]` so it only runs if linting passes. `flutter test` runs inside the `lint` job (same Ubuntu runner).
+**CI job placement:** Add a new `lint` job on Ubuntu (fast, cheap) that runs `dart format`, `flutter analyze`, and `flutter test`. The existing Windows `build` job gains `needs: [lint]` so it only runs after linting passes. This makes the pipeline sequential (lint → build) but keeps lint on a cheaper runner.
 
 ### Files affected
 - `.github/workflows/release.yml`
 - `scripts/hooks/pre-commit` (new)
-- 4 files with Dart `print()` calls → replace with `logger` (`random_skills.dart`, `native_commands_service.dart`, `process_model.dart`, `status_controller.dart`). Note: `python_setup_service.dart` has `print()` inside Python command strings — those are not Dart calls and should not be changed.
+- 3 files with Dart `print()` calls → replace with `logger` (`native_commands_service.dart`, `process_model.dart`, `status_controller.dart`). Note: `python_setup_service.dart` has `print()` inside Python command strings, and `random_skills.dart` has `print()` inside a block comment — neither are actual Dart calls.
 - `core/helper/logger.dart` → fix deprecated `printTime` usage
-- Files with `use_build_context_synchronously` infos → add `mounted` guards
+- Files with `use_build_context_synchronously` infos → add `mounted` guards: `ipqs_config_dialog.dart` (2 instances), `webshare_config_dialog.dart` (2 instances), `proxy_screen.dart` (1 instance)
 
 ---
 
@@ -99,11 +99,11 @@ Several services already use ad-hoc result types that will be replaced by `Resul
 | `AutomationResult` class | `AutomationService`, `ResultParser` | Keep as-is — domain-specific result with extra fields (`data`, `status`). Not a candidate for `Result<T>`. |
 | `IpqsResult` class | `IpqsService`, `IpqsApiClient` | Keep as-is — domain-specific result carrying scoring data. Not a candidate for `Result<T>`. |
 
-Only the `({bool success, String? error})` record pattern is replaced. Domain-specific result classes (`AutomationResult`, `IpqsResult`) stay because they carry meaningful domain data beyond success/failure.
+Only the `({bool success, String? error})` record pattern and bare `Future<bool>` returns are replaced. Domain-specific result classes (`AutomationResult`, `IpqsResult`) stay because they carry meaningful domain data beyond success/failure. Services like `AutomationService` and `IpqsService` are listed because their `Future<bool>` methods (e.g., `saveApiKey`, `clearApiKey`) should return `Result<void>`, even though their domain-specific result types are kept.
 
 ### Files affected
 - New: `lib/core/resource/result.dart`
-- Services: `WebshareService`, `IpqsService`, `AutomationService`, `AppConfigService`, `OnboardingService`
+- Services: `WebshareService`, `IpqsService`, `AutomationService`, `AppConfigService`, `OnboardingService`, `ProxyReplacementService`
 - Controllers: `ProxyController`, `StatusController`, `ProxyScoringController`, `ProxyReplacementController`
 - Repositories: `AccountRepositoryImpl`, `ProxyRepositoryImpl`, `ConfigRepositoryImpl`
 
@@ -119,7 +119,7 @@ Bring all files within the CLAUDE.md size ceilings by splitting oversized files 
 | File | Current | Action |
 |------|---------|--------|
 | `main_menu_screen.dart` | 405 | Extract 3 cards (System Overview, Characters Status, Recent Activity) into section files. Helpers like `_buildStatCard`, `_buildCharacterStatusCard`, and count logic move with their sections. |
-| `proxy_screen.dart` | 380 | Extract toolbar actions, scoring panel, detail/list layout into sections |
+| `proxy_screen.dart` | 380 | Detail/list layout is already extracted into `ProxyListSection`/`ProxyDetailSection`. Extract `_buildCommandBar()` (~43 lines) and `_buildIntegrationRequiredView()` (~66 lines) into section files. Extract verbose `displayInfoBar` action callbacks (`_launchBrowserWithProxy`, `_refreshIpScore`, `_scoreAllIps` — ~155 lines combined) into a mixin or helper. |
 
 ### Components (max 200 lines)
 
@@ -135,7 +135,7 @@ Bring all files within the CLAUDE.md size ceilings by splitting oversized files 
 | File | Current | Action |
 |------|---------|--------|
 | `python_setup_service.dart` | 294 | Extract dependency checker logic into helper |
-| `webshare_service.dart` | 293 | Move remaining HTTP logic to `webshare_api_client.dart` |
+| `webshare_service.dart` | 293 | All HTTP calls already delegate to `WebshareApiClient`. The bloat comes from config management (lines 27-94) and replacement polling with retry (lines 163-236). Extract replacement orchestration (polling loop + error parsing) into a helper class `webshare_replacement_handler.dart`. |
 
 ### Not decomposed
 - `proxy_ip_address_model.dart` (301 lines) — inherently verbose due to many fields. Leave as-is.
@@ -208,7 +208,7 @@ Each phase is its own PR to `dev`:
 
 | Phase | Key Files |
 |-------|-----------|
-| 1 | `.github/workflows/release.yml`, `core/helper/logger.dart`, 4 files with `print()` |
+| 1 | `.github/workflows/release.yml`, `core/helper/logger.dart`, 3 files with `print()` |
 | 2 | `core/resource/result.dart` (new), 6 services, 4 controllers, 3 repositories |
 | 3 | `main_menu_screen.dart`, `proxy_screen.dart`, 4 components, 2 services |
 | 4 | `test/` directory (new), `pubspec.yaml`, mock factories |
