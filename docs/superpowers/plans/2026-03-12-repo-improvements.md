@@ -527,12 +527,11 @@ Same pattern.
 Config dialogs call services directly. Only update call sites where the return type actually changed:
 - `webshare_config_dialog.dart`: `testAndConnect` now returns `Result<void>` (was record), `saveApiKey`/`clearApiKey` now return `Result<void>` (was `bool`)
 - `ipqs_config_dialog.dart`: `clearApiKey` now returns `Result<void>` (was `bool`). `testAndConnect` returns `IpqsResult` — unchanged, no migration needed.
-- `ipqs_onboarding_dialog.dart`: Same as `ipqs_config_dialog.dart` — only `saveApiKey`/`clearApiKey` change.
+- `ipqs_onboarding_dialog.dart`: Only calls `testAndConnect` (returns `IpqsResult`, unchanged) — no changes needed for Phase 2.
 
 **Files:**
 - Modify: `lib/feature/app/views/dialogs/webshare_config_dialog.dart`
 - Modify: `lib/feature/app/views/dialogs/ipqs_config_dialog.dart`
-- Modify: `lib/feature/app/views/dialogs/ipqs_onboarding_dialog.dart`
 
 - [ ] **Step 7: Run flutter analyze — zero issues**
 
@@ -1001,6 +1000,7 @@ git commit -m "test: add repository tests with in-memory Drift database"
 - Create: `test/config/services/ipqs_service_test.dart`
 - Create: `test/config/services/app_config_service_test.dart`
 - Create: `test/config/services/proxy_sync_service_test.dart`
+- Create: `test/config/services/automation_service_test.dart`
 
 - [ ] **Step 1: Write WebshareService tests**
 
@@ -1018,12 +1018,16 @@ Mock `ConfigRepository`. Test reading/writing config values, default handling.
 
 Mock `ProxyRepository` and `WebshareService`. Test sync scenarios: new slots created, existing updated, stale soft-deleted, recovered slots, manual slots preserved.
 
-- [ ] **Step 5: Run all service tests**
+- [ ] **Step 5: Write AutomationService tests**
+
+Mock `PythonRunner` and `ResultParser`. Test `validateIp`, `createAccount`, `createAccountSession`, `cancelCurrentTask`, and process cleanup in `onClose`.
+
+- [ ] **Step 6: Run all service tests**
 
 Run: `flutter test test/config/services/`
 Expected: All pass
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add test/config/services/
