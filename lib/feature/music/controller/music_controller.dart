@@ -1,7 +1,11 @@
 import 'package:get/get.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MusicController extends GetxController {
+  static const String _keyMusicAutoPlay = 'music_auto_play';
+  static const String _keyMusicVolume = 'music_volume';
+
   final AudioPlayer audioPlayer = AudioPlayer();
 
   // Observables
@@ -25,23 +29,39 @@ class MusicController extends GetxController {
       completeDuration.value = _formatDuration(duration);
     });
 
-    playAudio();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedVolume = prefs.getDouble(_keyMusicVolume);
+    if (savedVolume != null) {
+      volume.value = savedVolume;
+    }
     audioPlayer.setVolume(volume.value);
+
+    final autoPlay = prefs.getBool(_keyMusicAutoPlay) ?? false;
+    if (autoPlay) {
+      playAudio();
+    }
   }
 
   /// Set volume (0.0 to 1.0)
   void setVolume(double newVolume) {
     volume.value = newVolume.clamp(0.0, 1.0);
     audioPlayer.setVolume(volume.value);
+    _saveVolumePreference();
   }
 
   void playAudio() async {
     const path = 'music/keygen.mp3';
     await audioPlayer.play(AssetSource(path));
+    _savePlayPreference(true);
   }
 
   void pauseAudio() async {
     await audioPlayer.pause();
+    _savePlayPreference(false);
   }
 
   void stopAudio() async {
@@ -58,6 +78,16 @@ class MusicController extends GetxController {
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
     return [if (duration.inHours > 0) hours, minutes, seconds].join(':');
+  }
+
+  Future<void> _savePlayPreference(bool playing) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyMusicAutoPlay, playing);
+  }
+
+  Future<void> _saveVolumePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyMusicVolume, volume.value);
   }
 
   @override

@@ -1,22 +1,21 @@
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:equatable/equatable.dart';
 
-// ignore: must_be_immutable
 class JagexAccount extends Equatable {
-  String accountName = "Default Name";
-  String birthday = "01-01-2000";
-  String email = "default@example.com";
-  String password = "defaultPassword123";
-  String proxyAddress = "0.0.0.0";
-  List<Character> characters = const <Character>[];
+  final String accountName;
+  final String birthday;
+  final String email;
+  final String password;
+  final String proxyAddress;
+  final List<Character> characters;
 
-  JagexAccount({
-    required this.accountName,
-    required this.birthday,
-    required this.email,
-    required this.password,
-    required this.proxyAddress,
-    required this.characters,
+  const JagexAccount({
+    this.accountName = 'Default Name',
+    this.birthday = '01-01-2000',
+    this.email = 'default@example.com',
+    this.password = 'defaultPassword123',
+    this.proxyAddress = '0.0.0.0',
+    this.characters = const <Character>[],
   });
 
   factory JagexAccount.fromJson(Map<String, dynamic>? json) {

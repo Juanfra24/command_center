@@ -99,6 +99,11 @@ class WebshareConfigDialog {
         } catch (e) {
           logger.w('ProxyController not available or error clearing data: $e');
         }
+        try {
+          await Get.find<OnboardingService>().resetOnboarding();
+        } catch (e) {
+          logger.w('OnboardingService not available: $e');
+        }
         if (dialogContext.mounted) Navigator.of(dialogContext).pop();
         showInfoBarToast(context,
             title: 'Unlinked',
@@ -153,17 +158,28 @@ class WebshareConfigDialog {
         return;
       }
       statusMessage.value = 'Syncing proxy slots...';
+      bool syncSuccess = false;
       try {
         await Get.find<ProxyController>().syncWithWebshare();
-      } catch (_) {}
-      try {
-        await Get.find<OnboardingService>().markInitialSyncComplete();
-      } catch (_) {}
+        syncSuccess = true;
+      } catch (e) {
+        statusMessage.value = 'Sync failed: $e';
+        isError.value = true;
+      }
+      if (syncSuccess) {
+        try {
+          await Get.find<OnboardingService>().markInitialSyncComplete();
+        } catch (_) {}
+      }
       if (dialogContext.mounted) Navigator.of(dialogContext).pop();
       showInfoBarToast(context,
-          title: 'Success',
-          message: 'Webshare connected and proxies synced!',
-          severity: InfoBarSeverity.success);
+          title: syncSuccess ? 'Success' : 'Partial Success',
+          message: syncSuccess
+              ? 'Webshare connected and proxies synced!'
+              : 'Webshare connected but sync failed. Try syncing from the Proxy page.',
+          severity: syncSuccess
+              ? InfoBarSeverity.success
+              : InfoBarSeverity.warning);
     } catch (e) {
       statusMessage.value = 'Error: $e';
       isError.value = true;

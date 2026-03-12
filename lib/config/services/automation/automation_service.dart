@@ -26,6 +26,12 @@ class AutomationService extends GetxService {
   late final PythonRunner _runner = PythonRunner(onLog: _log);
   RxBool get isCancelling => _runner.isCancelling;
 
+  @override
+  void onClose() {
+    _runner.cleanupDetachedSessions();
+    super.onClose();
+  }
+
   void _log(String message) {
     final timestamp = DateTime.now().toIso8601String().substring(11, 19);
     logs.add('[$timestamp] $message');
@@ -65,7 +71,7 @@ class AutomationService extends GetxService {
     if (!await ps.checkDependenciesInstalled()) {
       return AutomationResult.error(
         'Python dependencies verification failed. '
-        'Please check that seleniumbase is properly installed.',
+        'Please check that patchright is properly installed.',
       );
     }
     _log('Python dependencies verified successfully');
