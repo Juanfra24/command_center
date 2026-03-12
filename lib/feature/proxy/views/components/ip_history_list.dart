@@ -28,9 +28,13 @@ class IpHistoryList extends StatelessWidget {
       );
     }
 
+    final displayedHistory = history.take(10).toList();
+    final isTruncated = history.length > 10;
+
     return Card(
       child: Column(
-        children: history.take(10).map((ip) {
+        children: [
+          ...displayedHistory.map((ip) {
           final scoreColor =
               getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
           return Padding(
@@ -98,7 +102,19 @@ class IpHistoryList extends StatelessWidget {
               ],
             ),
           );
-        }).toList(),
+        }),
+          if (isTruncated)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Showing 10 of ${history.length} entries',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.resources.textFillColorSecondary,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

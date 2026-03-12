@@ -67,9 +67,9 @@ class ValidationStatusIndicator extends StatelessWidget {
             ),
           ),
           HyperlinkButton(
-            onPressed: () {
+            onPressed: () async {
               final automationService = Get.find<AutomationService>();
-              automationService.cancelCurrentTask();
+              await automationService.cancelCurrentTask();
               isValidating.value = false;
               validationResult.value =
                   AutomationResult.error('Validation cancelled');

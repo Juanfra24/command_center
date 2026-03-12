@@ -1,3 +1,4 @@
+import 'package:command_center/core/helper/debouncer.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:command_center/feature/proxy/views/components/ip_score_indicator.dart';
@@ -10,6 +11,8 @@ class ProxyListSection extends StatelessWidget {
   final ProxyScoringController scoringController;
   final TextEditingController searchController;
   final VoidCallback onAddSlot;
+
+  static final _searchDebouncer = Debouncer(milliseconds: 300);
 
   const ProxyListSection({
     super.key,
@@ -139,7 +142,8 @@ class ProxyListSection extends StatelessWidget {
             padding: EdgeInsets.only(left: 8),
             child: Icon(FluentIcons.search, size: 16),
           ),
-          onChanged: (value) => controller.searchQuery.value = value,
+          onChanged: (value) => _searchDebouncer.run(
+              () => controller.searchQuery.value = value),
         ),
         const SizedBox(height: 12),
         Row(

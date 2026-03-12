@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/data/database/app_database.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
@@ -8,8 +9,10 @@ import 'package:command_center/domain/repositories/proxy_repository.dart';
 class ProxySyncService {
   final ProxyRepository _proxyRepository;
   final WebshareService _webshareService;
+  final AppDatabase? _database;
 
-  ProxySyncService(this._proxyRepository, this._webshareService);
+  ProxySyncService(this._proxyRepository, this._webshareService,
+      [this._database]);
 
   /// Sync proxy slots from Webshare API.
   /// Uses webshareId as the stable identifier:
@@ -19,6 +22,17 @@ class ProxySyncService {
   Future<void> syncWithWebshare() async {
     final webshareProxies = await _webshareService.getProxyList();
 
+    if (_database != null) {
+      await _database.transaction(() => _performSync(webshareProxies));
+    } else {
+      await _performSync(webshareProxies);
+    }
+
+    logger.i(
+        'Successfully synced ${webshareProxies.length} proxies from Webshare');
+  }
+
+  Future<void> _performSync(List<WebshareProxySlot> webshareProxies) async {
     // Get ALL existing slots from DB, including soft-deleted ones
     final allExistingSlots =
         await _proxyRepository.getAllSlotsIncludingDeleted();
@@ -50,6 +64,7 @@ class ProxySyncService {
     }
 
     // Soft-delete any DB slots whose webshareId is NOT in the API response
+    // Skip manually added slots (no webshareId) — they aren't API-managed
     for (final existingSlot in allExistingSlots) {
       if (existingSlot.webshareId != null &&
           existingSlot.webshareId!.isNotEmpty &&
@@ -60,9 +75,6 @@ class ProxySyncService {
         await _proxyRepository.softDeleteSlot(existingSlot.id!);
       }
     }
-
-    logger.i(
-        'Successfully synced ${webshareProxies.length} proxies from Webshare');
   }
 
   Future<void> _createNewSlot(WebshareProxySlot webProxy) async {

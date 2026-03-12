@@ -10,6 +10,7 @@ class IpqsOnboardingDialog {
   static void show(BuildContext context) {
     final apiKeyController = TextEditingController();
     final isProcessing = false.obs;
+    final isCancelled = false.obs;
     final statusMessage = Rxn<String>();
     final isError = false.obs;
 
@@ -50,17 +51,21 @@ class IpqsOnboardingDialog {
               ],
             )),
         actions: [
-          Button(
-            onPressed: isProcessing.value
-                ? null
-                : () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
+          Obx(() => Button(
+                onPressed: isProcessing.value
+                    ? () {
+                        isCancelled.value = true;
+                        statusMessage.value = 'Cancelling...';
+                      }
+                    : () => Navigator.of(dialogContext).pop(),
+                child: Text(isProcessing.value ? 'Cancel Scoring' : 'Cancel'),
+              )),
           _buildConnectButton(
             context: context,
             dialogContext: dialogContext,
             apiKeyController: apiKeyController,
             isProcessing: isProcessing,
+            isCancelled: isCancelled,
             statusMessage: statusMessage,
             isError: isError,
           ),
@@ -118,6 +123,7 @@ class IpqsOnboardingDialog {
     required BuildContext dialogContext,
     required TextEditingController apiKeyController,
     required RxBool isProcessing,
+    required RxBool isCancelled,
     required Rxn<String> statusMessage,
     required RxBool isError,
   }) {
@@ -132,6 +138,7 @@ class IpqsOnboardingDialog {
                   }
 
                   isProcessing.value = true;
+                  isCancelled.value = false;
                   statusMessage.value = 'Testing connection...';
                   isError.value = false;
 
@@ -149,16 +156,18 @@ class IpqsOnboardingDialog {
                       return;
                     }
 
-                    statusMessage.value = 'Scoring all proxy IPs...';
-                    try {
-                      final scoringController =
-                          Get.find<ProxyScoringController>();
-                      final scored =
-                          await scoringController.scoreAllCurrentIps();
-                      statusMessage.value =
-                          'Scored $scored IPs successfully!';
-                    } catch (e) {
-                      // Non-fatal
+                    if (!isCancelled.value) {
+                      statusMessage.value = 'Scoring all proxy IPs...';
+                      try {
+                        final scoringController =
+                            Get.find<ProxyScoringController>();
+                        final scored =
+                            await scoringController.scoreAllCurrentIps();
+                        statusMessage.value =
+                            'Scored $scored IPs successfully!';
+                      } catch (e) {
+                        // Non-fatal
+                      }
                     }
 
                     try {
@@ -177,8 +186,9 @@ class IpqsOnboardingDialog {
                           builder: (ctx, close) {
                             return InfoBar(
                               title: const Text('Setup Complete'),
-                              content: const Text(
-                                  'IPQualityScore connected and all IPs scored!'),
+                              content: Text(isCancelled.value
+                                  ? 'IPQualityScore connected! Scoring was cancelled.'
+                                  : 'IPQualityScore connected and all IPs scored!'),
                               severity: InfoBarSeverity.success,
                               action: IconButton(
                                 icon: const Icon(FluentIcons.clear),
