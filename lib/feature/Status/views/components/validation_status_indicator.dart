@@ -133,7 +133,7 @@ class ValidationStatusIndicator extends StatelessWidget {
                     ),
                   if (result.data!['password'] != null)
                     Text(
-                      'Password: ${result.data!['password']}',
+                      'Password: \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
                       style: theme.typography.caption,
                     ),
                 ],
