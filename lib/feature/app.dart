@@ -33,6 +33,9 @@ class _AppState extends State<App> with WindowListener {
   PaneDisplayMode _paneDisplayMode = PaneDisplayMode.open;
   final FlyoutController _flyoutController = FlyoutController();
 
+  /// Resolved once after DI is ready — avoids Get.find() in every build call.
+  MusicController? _musicController;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +49,26 @@ class _AppState extends State<App> with WindowListener {
 
     // Initialize async services in proper order
     await AppBindings.initializeAsyncServices();
+
+    // Resolve controller once after services are ready
+    try {
+      _musicController = Get.find<MusicController>();
+    } catch (_) {}
+
+    // Optional: instant transition when onboarding completes without waiting
+    // for a user-driven setState (e.g. navigation).
+    try {
+      final obs = Get.find<OnboardingService>();
+      ever(obs.isWebshareConfigured, (_) {
+        if (obs.isOnboardingComplete && mounted) setState(() {});
+      });
+      ever(obs.isIpqsConfigured, (_) {
+        if (obs.isOnboardingComplete && mounted) setState(() {});
+      });
+      ever(obs.isInitialSyncComplete, (_) {
+        if (obs.isOnboardingComplete && mounted) setState(() {});
+      });
+    } catch (_) {}
 
     if (mounted) {
       setState(() => _initialized = true);
@@ -151,66 +174,66 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildMainContent(bool isDark) {
-    return Obx(() {
-      // Check onboarding status
-      OnboardingService? onboardingService;
-      bool needsOnboarding = false;
+    // Direct read — no Obx wrapper around NavigationView.
+    // Onboarding completes at most once per session; the ever() listeners
+    // set up in _initializeApp call setState() for an instant transition.
+    OnboardingService? onboardingService;
+    bool needsOnboarding = false;
 
-      try {
-        onboardingService = Get.find<OnboardingService>();
-        needsOnboarding = !onboardingService.isOnboardingComplete;
-      } catch (_) {
-        // Service not ready yet
-      }
+    try {
+      onboardingService = Get.find<OnboardingService>();
+      needsOnboarding = !onboardingService.isOnboardingComplete;
+    } catch (_) {
+      // Service not ready yet
+    }
 
-      return NavigationView(
-        appBar: const NavigationAppBar(
-          height: 0, // Hide default app bar since we use custom title bar
-          automaticallyImplyLeading: false,
-        ),
-        pane: NavigationPane(
-          selected: _currentIndex,
-          onChanged: (index) => setState(() => _currentIndex = index),
-          displayMode: _paneDisplayMode,
-          toggleable:
-              false, // Disable built-in toggle since we have our own in title bar
-          items: [
-            PaneItem(
-              icon: const Icon(FluentIcons.home),
-              title: const Text('Home'),
-              body:
-                  _buildHomeWithOnboarding(needsOnboarding, onboardingService),
+    return NavigationView(
+      appBar: const NavigationAppBar(
+        height: 0, // Hide default app bar since we use custom title bar
+        automaticallyImplyLeading: false,
+      ),
+      pane: NavigationPane(
+        selected: _currentIndex,
+        onChanged: (index) => setState(() => _currentIndex = index),
+        displayMode: _paneDisplayMode,
+        toggleable:
+            false, // Disable built-in toggle since we have our own in title bar
+        items: [
+          PaneItem(
+            icon: const Icon(FluentIcons.home),
+            title: const Text('Home'),
+            body:
+                _buildHomeWithOnboarding(needsOnboarding, onboardingService),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.server),
+            title: const Text('Accounts'),
+            body: _buildAccountsWithOnboarding(needsOnboarding),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.globe),
+            title: const Text('Proxies'),
+            body: ProxyScreen(onNavigateToSettings: navigateToSettings),
+          ),
+        ],
+        footerItems: [
+          PaneItemSeparator(),
+          PaneItem(
+            icon: const Icon(FluentIcons.settings),
+            title: const Text('Settings'),
+            body: Builder(
+              builder: (context) => _buildSettingsPage(isDark, context),
             ),
+          ),
+          if (kDebugMode)
             PaneItem(
-              icon: const Icon(FluentIcons.server),
-              title: const Text('Accounts'),
-              body: _buildAccountsWithOnboarding(needsOnboarding),
+              icon: const Icon(FluentIcons.code),
+              title: const Text('Dev Tools'),
+              body: const DevToolsScreen(),
             ),
-            PaneItem(
-              icon: const Icon(FluentIcons.globe),
-              title: const Text('Proxies'),
-              body: ProxyScreen(onNavigateToSettings: navigateToSettings),
-            ),
-          ],
-          footerItems: [
-            PaneItemSeparator(),
-            PaneItem(
-              icon: const Icon(FluentIcons.settings),
-              title: const Text('Settings'),
-              body: Builder(
-                builder: (context) => _buildSettingsPage(isDark, context),
-              ),
-            ),
-            if (kDebugMode)
-              PaneItem(
-                icon: const Icon(FluentIcons.code),
-                title: const Text('Dev Tools'),
-                body: const DevToolsScreen(),
-              ),
-          ],
-        ),
-      );
-    });
+        ],
+      ),
+    );
   }
 
   Widget _buildHomeWithOnboarding(
@@ -231,25 +254,22 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildMusicButton() {
-    try {
-      final musicController = Get.find<MusicController>();
-      return Obx(() => IconButton(
-            icon: Icon(
-              musicController.isPlaying.value
-                  ? FluentIcons.music_in_collection_fill
-                  : FluentIcons.music_note,
-            ),
-            onPressed: () {
-              if (musicController.isPlaying.value) {
-                musicController.pauseAudio();
-              } else {
-                musicController.playAudio();
-              }
-            },
-          ));
-    } catch (e) {
-      return const SizedBox.shrink();
-    }
+    final mc = _musicController;
+    if (mc == null) return const SizedBox.shrink();
+    return Obx(() => IconButton(
+          icon: Icon(
+            mc.isPlaying.value
+                ? FluentIcons.music_in_collection_fill
+                : FluentIcons.music_note,
+          ),
+          onPressed: () {
+            if (mc.isPlaying.value) {
+              mc.pauseAudio();
+            } else {
+              mc.playAudio();
+            }
+          },
+        ));
   }
 
   Widget _buildThemeToggle(bool isDark) {
