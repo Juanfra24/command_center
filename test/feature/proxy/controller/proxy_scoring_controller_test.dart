@@ -178,8 +178,9 @@ void main() {
       proxyController.proxySlots.add(slot);
       proxyController.ipAddresses.add(ip);
       proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.hasScoredIps, isTrue);
+      expect(scoringController.hasScoredIps.value, isTrue);
     });
 
     test('hasScoredIps returns false when no IPs are scored', () {
@@ -189,8 +190,9 @@ void main() {
       proxyController.proxySlots.add(slot);
       proxyController.ipAddresses.add(ip);
       proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.hasScoredIps, isFalse);
+      expect(scoringController.hasScoredIps.value, isFalse);
     });
 
     test('averageIpScore computes correctly', () {
@@ -203,12 +205,13 @@ void main() {
         makeIp(id: 20, slotId: 2, ipScore: 60, lastScoreCheck: DateTime.now()),
       ]);
       proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.averageIpScore, equals(70.0));
+      expect(scoringController.averageIpScore.value, equals(70.0));
     });
 
     test('averageIpScore returns 0 when no scored IPs', () {
-      expect(scoringController.averageIpScore, equals(0));
+      expect(scoringController.averageIpScore.value, equals(0));
     });
 
     test('lowScoreCount counts IPs below 50', () {
@@ -223,8 +226,9 @@ void main() {
         makeIp(id: 30, slotId: 3, ipScore: 40, lastScoreCheck: DateTime.now()),
       ]);
       proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.lowScoreCount, equals(2));
+      expect(scoringController.lowScoreCount.value, equals(2));
     });
   });
 

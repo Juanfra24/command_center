@@ -71,7 +71,7 @@ class SystemOverviewSection extends StatelessWidget {
   String _getIssuesCount() {
     try {
       final scoringController = Get.find<ProxyScoringController>();
-      return scoringController.lowScoreCount.toString();
+      return scoringController.lowScoreCount.value.toString();
     } catch (_) {
       return '0';
     }
