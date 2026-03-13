@@ -239,6 +239,7 @@ scripts/downloaded_files/**/*
 
 # Claude Code worktrees
 .claude/worktrees/
+.worktrees/
 
 # Unused platforms (Windows-only app)
 android/

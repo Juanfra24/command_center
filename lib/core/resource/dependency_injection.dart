@@ -2,7 +2,11 @@ import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
+import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
+import 'package:command_center/config/services/proxy/proxy_replacement_service.dart';
+import 'package:command_center/config/services/proxy/proxy_sync_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/data/database_service.dart';
@@ -11,6 +15,7 @@ import 'package:command_center/feature/main_menu/controller/main_menu_controller
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
+import 'package:command_center/feature/notification/controller/notification_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:get/get.dart';
 
@@ -40,6 +45,34 @@ class AppBindings extends Bindings {
     );
     Get.lazyPut<ProxyReplacementController>(
       () => ProxyReplacementController(Get.find<ProxyController>()),
+      fenix: true,
+    );
+    Get.lazyPut<NotificationController>(
+      () => NotificationController(Get.find<NotificationService>()),
+      fenix: true,
+    );
+    Get.lazyPut<ProxyReplacementService>(
+      () => ProxyReplacementService(Get.find<WebshareService>()),
+      fenix: true,
+    );
+    Get.lazyPut<ProxySyncService>(
+      () => ProxySyncService(
+        Get.find<DatabaseService>().proxyRepository,
+        Get.find<WebshareService>(),
+        Get.find<DatabaseService>().database,
+      ),
+      fenix: true,
+    );
+    Get.lazyPut<ProxyAutoRotationService>(
+      () => ProxyAutoRotationService(
+        replacementService: Get.find<ProxyReplacementService>(),
+        webshareService: Get.find<WebshareService>(),
+        ipqsService: Get.find<IpqsService>(),
+        proxyRepository: Get.find<DatabaseService>().proxyRepository,
+        syncService: Get.find<ProxySyncService>(),
+        notificationService: Get.find<NotificationService>(),
+        configService: Get.find<AppConfigService>(),
+      ),
       fenix: true,
     );
   }
@@ -73,5 +106,11 @@ class AppBindings extends Bindings {
 
     // 7. OnboardingService (depends on WebshareService, IpqsService)
     Get.put<OnboardingService>(OnboardingService(), permanent: true);
+
+    // 8. NotificationService (depends on DatabaseService)
+    final notificationService =
+        NotificationService(databaseService.notificationRepository);
+    await notificationService.init();
+    Get.put<NotificationService>(notificationService, permanent: true);
   }
 }

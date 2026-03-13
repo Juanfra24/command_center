@@ -5,6 +5,7 @@ import 'package:command_center/feature/app/views/components/about_card.dart';
 import 'package:command_center/feature/app/views/components/integration_tile.dart';
 import 'package:command_center/feature/app/views/dialogs/ipqs_config_dialog.dart';
 import 'package:command_center/feature/app/views/dialogs/webshare_config_dialog.dart';
+import 'package:command_center/feature/app/views/sections/auto_rotation_settings.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -22,6 +23,8 @@ class SettingsSection extends StatelessWidget {
         _buildAppearanceCard(context),
         const SizedBox(height: 16),
         _buildMusicCard(context),
+        const SizedBox(height: 16),
+        const AutoRotationSettings(),
         const SizedBox(height: 16),
         _buildIntegrationsCard(context),
         const SizedBox(height: 16),

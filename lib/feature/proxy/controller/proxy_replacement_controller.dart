@@ -30,10 +30,9 @@ class ProxyReplacementController extends GetxController {
 
   void _initReplacementService() {
     try {
-      final webshareService = Get.find<WebshareService>();
-      _replacementService = ProxyReplacementService(webshareService);
+      _replacementService = Get.find<ProxyReplacementService>();
 
-      // Fetch plan info if webshare is configured
+      final webshareService = Get.find<WebshareService>();
       if (webshareService.isConfigured.value) {
         fetchPlanInfo();
       }
@@ -42,7 +41,7 @@ class ProxyReplacementController extends GetxController {
         if (configured) fetchPlanInfo();
       });
     } catch (e) {
-      logger.w('WebshareService not initialized yet for replacement: $e');
+      logger.w('Replacement service not available yet: $e');
     }
   }
 
