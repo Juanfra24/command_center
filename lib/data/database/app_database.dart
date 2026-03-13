@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -39,6 +39,20 @@ class AppDatabase extends _$AppDatabase {
           // Add soft delete columns to proxy_slots_table
           await m.addColumn(proxySlotsTable, proxySlotsTable.isDeleted);
           await m.addColumn(proxySlotsTable, proxySlotsTable.deletedAt);
+        }
+        if (from < 3) {
+          // Recreate characters_table with ON DELETE CASCADE on accountId.
+          // SQLite cannot ALTER foreign key constraints, so we use
+          // the copy-and-recreate pattern.
+          await customStatement(
+            'CREATE TABLE characters_backup AS SELECT * FROM characters_table',
+          );
+          await customStatement('DROP TABLE characters_table');
+          await m.createTable(charactersTable);
+          await customStatement(
+            'INSERT INTO characters_table SELECT * FROM characters_backup',
+          );
+          await customStatement('DROP TABLE characters_backup');
         }
       },
       beforeOpen: (details) async {

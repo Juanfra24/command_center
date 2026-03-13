@@ -2650,8 +2650,8 @@ class $CharactersTableTable extends CharactersTable
       'account_id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES accounts_table (id)'));
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES accounts_table (id) ON DELETE CASCADE'));
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -2800,7 +2800,8 @@ class CharactersTableData extends DataClass
   /// Auto-increment primary key
   final int id;
 
-  /// Reference to the account this character belongs to
+  /// Reference to the account this character belongs to.
+  /// Cascade delete: when an account is deleted, its characters are removed.
   final int accountId;
 
   /// Character name
@@ -3095,6 +3096,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         accountsTable,
         charactersTable
       ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('accounts_table',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('characters_table', kind: UpdateKind.delete),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$AppConfigTableTableCreateCompanionBuilder = AppConfigTableCompanion
