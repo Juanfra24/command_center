@@ -3,7 +3,7 @@ import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/domain/repositories/notification_repository.dart';
 import 'package:get/get.dart';
 
-class NotificationService {
+class NotificationService extends GetxService {
   final NotificationRepository _repository;
 
   final unreadCount = 0.obs;
