@@ -242,10 +242,10 @@ class ProxyController extends GetxController {
   /// Filtered slots based on search and active filter.
   /// Score-based sorting is driven by [ProxyScoringController.sortByScore].
   List<ProxySlotEntity> getFilteredSlots({bool sortByScore = false}) {
-    var result = proxySlots.toList();
+    Iterable<ProxySlotEntity> result = proxySlots;
 
     if (showOnlyActive.value) {
-      result = result.where((slot) => slot.isActive).toList();
+      result = result.where((slot) => slot.isActive);
     }
 
     if (searchQuery.value.isNotEmpty) {
@@ -257,18 +257,20 @@ class ProxyController extends GetxController {
             (ip?.ipAddress.contains(query) ?? false) ||
             (ip?.cityName.toLowerCase().contains(query) ?? false) ||
             (ip?.countryCode.toLowerCase().contains(query) ?? false);
-      }).toList();
+      });
     }
 
+    final list = result.toList(); // Single materialization
+
     if (sortByScore) {
-      result.sort((a, b) {
+      list.sort((a, b) {
         final ipA = getCurrentIpForSlot(a);
         final ipB = getCurrentIpForSlot(b);
         return (ipB?.ipScore ?? 0).compareTo(ipA?.ipScore ?? 0);
       });
     }
 
-    return result;
+    return list;
   }
 
   // --- Statistics ---
