@@ -93,5 +93,44 @@ void main() {
 
       expect(controller.selectedTable.value, 'app_config_table');
     });
+
+    test('loadTableData handles 500 rows under 200ms', () async {
+      await controller.loadTableList();
+
+      // Insert 500 rows
+      for (var i = 0; i < 500; i++) {
+        await db.into(db.appConfigTable).insert(
+              AppConfigTableCompanion.insert(
+                key: 'key_$i',
+                value: 'value_$i with some longer text to simulate real data',
+              ),
+            );
+      }
+
+      final stopwatch = Stopwatch()..start();
+      await controller.loadTableData('app_config_table');
+      stopwatch.stop();
+
+      expect(controller.tableRows.length, 500);
+      expect(stopwatch.elapsedMilliseconds, lessThan(200));
+    });
+
+    test('executeQuery handles 500-row SELECT under 200ms', () async {
+      for (var i = 0; i < 500; i++) {
+        await db.into(db.appConfigTable).insert(
+              AppConfigTableCompanion.insert(
+                key: 'key_$i',
+                value: 'value_$i',
+              ),
+            );
+      }
+
+      final stopwatch = Stopwatch()..start();
+      await controller.executeQuery('SELECT * FROM app_config_table');
+      stopwatch.stop();
+
+      expect(controller.queryResult.length, 500);
+      expect(stopwatch.elapsedMilliseconds, lessThan(200));
+    });
   });
 }

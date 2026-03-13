@@ -4,6 +4,10 @@ class ResultDataTable extends StatelessWidget {
   final List<String> columns;
   final List<Map<String, dynamic>> rows;
 
+  static const double _cellWidth = 150.0;
+  static const double _headerHeight = 36.0;
+  static const double _rowHeight = 32.0;
+
   const ResultDataTable({
     super.key,
     required this.columns,
@@ -21,27 +25,54 @@ class ResultDataTable extends StatelessWidget {
       );
     }
 
+    final tableWidth = columns.length * _cellWidth;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: Table(
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          border: TableBorder.all(
-            color: theme.resources.dividerStrokeColorDefault,
-            width: 1,
-          ),
+      child: SizedBox(
+        width: tableWidth,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            TableRow(
+            // Fixed header
+            Container(
+              height: _headerHeight,
               decoration: BoxDecoration(
                 color: theme.accentColor.withValues(alpha: 0.1),
+                border: Border(
+                  bottom: BorderSide(
+                    color: theme.resources.dividerStrokeColorDefault,
+                  ),
+                ),
               ),
-              children: columns.map((col) => _buildHeaderCell(col)).toList(),
+              child: Row(
+                children: columns.map((col) => _buildHeaderCell(col)).toList(),
+              ),
             ),
-            ...rows.map((row) => TableRow(
-                  children: columns
-                      .map((col) => _buildDataCell(row[col], theme))
-                      .toList(),
-                )),
+            // Virtualized rows
+            Flexible(
+              child: ListView.builder(
+                itemCount: rows.length,
+                itemExtent: _rowHeight,
+                itemBuilder: (context, index) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: theme.resources.dividerStrokeColorDefault,
+                          width: 0.5,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: columns
+                          .map((col) => _buildDataCell(rows[index][col], theme))
+                          .toList(),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -49,25 +80,32 @@ class ResultDataTable extends StatelessWidget {
   }
 
   Widget _buildHeaderCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+    return SizedBox(
+      width: _cellWidth,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
 
   Widget _buildDataCell(dynamic value, FluentThemeData theme) {
     if (value == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Text(
-          'NULL',
-          style: TextStyle(
-            fontStyle: FontStyle.italic,
-            color: theme.resources.textFillColorDisabled,
-            fontSize: 12,
+      return SizedBox(
+        width: _cellWidth,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            'NULL',
+            style: TextStyle(
+              fontStyle: FontStyle.italic,
+              color: theme.resources.textFillColorDisabled,
+              fontSize: 12,
+            ),
           ),
         ),
       );
@@ -78,9 +116,16 @@ class ResultDataTable extends StatelessWidget {
 
     return Tooltip(
       message: text.length > 100 ? text : '',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Text(display, style: const TextStyle(fontSize: 12)),
+      child: SizedBox(
+        width: _cellWidth,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            display,
+            style: const TextStyle(fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ),
     );
   }
