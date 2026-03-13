@@ -248,7 +248,7 @@ class _ProxyScreenState extends State<ProxyScreen> {
 
     final result = await automationService.createAccountSession(slot: slot);
 
-    if (mounted) {
+    if (context.mounted) {
       displayInfoBar(context, builder: (context, close) {
         return InfoBar(
           title: Text(result.isSuccess ? 'Browser launched' : 'Launch failed'),
