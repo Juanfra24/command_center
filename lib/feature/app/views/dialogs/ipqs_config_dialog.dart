@@ -89,10 +89,12 @@ class IpqsConfigDialog {
       final success = await Get.find<IpqsService>().clearApiKey();
       if (success) {
         if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-        showInfoBarToast(context,
-            title: 'Unlinked',
-            message: 'IPQualityScore has been disconnected.',
-            severity: InfoBarSeverity.warning);
+        if (context.mounted) {
+          showInfoBarToast(context,
+              title: 'Unlinked',
+              message: 'IPQualityScore has been disconnected.',
+              severity: InfoBarSeverity.warning);
+        }
       } else {
         statusMessage.value = 'Failed to unlink';
         isError.value = true;
@@ -131,10 +133,12 @@ class IpqsConfigDialog {
         return;
       }
       if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-      showInfoBarToast(context,
-          title: 'Success',
-          message: 'IPQualityScore connected!',
-          severity: InfoBarSeverity.success);
+      if (context.mounted) {
+        showInfoBarToast(context,
+            title: 'Success',
+            message: 'IPQualityScore connected!',
+            severity: InfoBarSeverity.success);
+      }
     } catch (e) {
       statusMessage.value = 'Error: $e';
       isError.value = true;

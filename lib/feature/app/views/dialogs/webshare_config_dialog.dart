@@ -105,11 +105,13 @@ class WebshareConfigDialog {
           logger.w('OnboardingService not available: $e');
         }
         if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-        showInfoBarToast(context,
-            title: 'Unlinked',
-            message:
-                'Webshare has been disconnected and all proxy data cleared.',
-            severity: InfoBarSeverity.warning);
+        if (context.mounted) {
+          showInfoBarToast(context,
+              title: 'Unlinked',
+              message:
+                  'Webshare has been disconnected and all proxy data cleared.',
+              severity: InfoBarSeverity.warning);
+        }
       } else {
         statusMessage.value = 'Failed to unlink';
         isError.value = true;
@@ -172,14 +174,16 @@ class WebshareConfigDialog {
         } catch (_) {}
       }
       if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-      showInfoBarToast(context,
-          title: syncSuccess ? 'Success' : 'Partial Success',
-          message: syncSuccess
-              ? 'Webshare connected and proxies synced!'
-              : 'Webshare connected but sync failed. Try syncing from the Proxy page.',
-          severity: syncSuccess
-              ? InfoBarSeverity.success
-              : InfoBarSeverity.warning);
+      if (context.mounted) {
+        showInfoBarToast(context,
+            title: syncSuccess ? 'Success' : 'Partial Success',
+            message: syncSuccess
+                ? 'Webshare connected and proxies synced!'
+                : 'Webshare connected but sync failed. Try syncing from the Proxy page.',
+            severity: syncSuccess
+                ? InfoBarSeverity.success
+                : InfoBarSeverity.warning);
+      }
     } catch (e) {
       statusMessage.value = 'Error: $e';
       isError.value = true;
