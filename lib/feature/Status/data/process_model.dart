@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:command_center/core/helper/logger.dart';
 import 'package:equatable/equatable.dart';
 
 class ProcessClient extends Equatable {
@@ -29,7 +30,7 @@ class ProcessClient extends Equatable {
         currentCommand = null; // Reset for the next command line
       }
     }
-    print(processes);
+    logger.d('Parsed ${processes.length} Java processes');
     return processes;
   }
 

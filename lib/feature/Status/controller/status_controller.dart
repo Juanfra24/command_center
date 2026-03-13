@@ -160,7 +160,7 @@ class StatusController extends GetxController {
       await updateRunningProcesses(); // Update immediately after starting
       _startProcessCheckTimer(); // Restart the timer to ensure it's running
     } catch (e) {
-      print('Failed to run game script: $e');
+      logger.e('Failed to run game script: $e');
     }
   }
 
