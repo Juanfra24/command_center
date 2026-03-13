@@ -184,20 +184,14 @@ class ProxyController extends GetxController {
 
     try {
       logger.i('Soft-deleting all proxy data from database...');
-      final allSlots = await _proxyRepository!.getAllSlots();
-
-      for (final slot in allSlots) {
-        if (slot.id != null) {
-          await _proxyRepository!.softDeleteSlot(slot.id!);
-        }
-      }
+      await _proxyRepository!.softDeleteAllSlots();
 
       proxySlots.clear();
       ipAddresses.clear();
       selectedSlot.value = null;
       selectedSlotIpHistory.clear();
 
-      logger.i('Successfully soft-deleted ${allSlots.length} proxy slots');
+      logger.i('Successfully soft-deleted all proxy slots');
     } catch (e) {
       logger.e('Error clearing proxy data: $e');
       rethrow;
