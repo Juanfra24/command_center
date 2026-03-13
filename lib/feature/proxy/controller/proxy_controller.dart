@@ -5,6 +5,7 @@ import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 /// Presentation controller for proxy slot management.
@@ -32,6 +33,10 @@ class ProxyController extends GetxController {
   // Filter states
   var showOnlyActive = true.obs;
   var searchQuery = ''.obs;
+
+  // IP lookup caches — rebuilt after every loadIpAddresses()
+  final _ipById = <int, ProxyIpAddressEntity>{};
+  final _activeIpBySlotId = <int, ProxyIpAddressEntity>{};
 
   @override
   void onInit() {
@@ -111,10 +116,28 @@ class ProxyController extends GetxController {
     try {
       final ips = await _proxyRepository!.getAllIpAddresses();
       ipAddresses.value = ips;
+      _rebuildIpLookup();
     } catch (e) {
       logger.e('Error loading IP addresses: $e');
     }
   }
+
+  void _rebuildIpLookup() {
+    _ipById.clear();
+    _activeIpBySlotId.clear();
+    for (final ip in ipAddresses) {
+      if (ip.id != null) _ipById[ip.id!] = ip;
+      if (ip.isActive) {
+        // First active IP per slot wins (matches firstWhereOrNull behavior)
+        _activeIpBySlotId.putIfAbsent(ip.slotId, () => ip);
+      }
+    }
+  }
+
+  /// Rebuilds IP lookup caches from current [ipAddresses].
+  /// Exposed for tests that populate [ipAddresses] directly.
+  @visibleForTesting
+  void rebuildIpLookup() => _rebuildIpLookup();
 
   // --- Sync ---
 
@@ -199,15 +222,13 @@ class ProxyController extends GetxController {
 
   /// Get the current (active) IP address for a slot
   ProxyIpAddressEntity? getCurrentIpForSlot(ProxySlotEntity slot) {
+    // Fast path: look up by currentIpAddressId
     if (slot.currentIpAddressId != null) {
-      final ip = ipAddresses.firstWhereOrNull(
-        (ip) => ip.id == slot.currentIpAddressId && ip.isActive,
-      );
-      if (ip != null) return ip;
+      final ip = _ipById[slot.currentIpAddressId!];
+      if (ip != null && ip.isActive) return ip;
     }
-    return ipAddresses.firstWhereOrNull(
-      (ip) => ip.slotId == slot.id && ip.isActive,
-    );
+    // Fallback: first active IP for this slot
+    return _activeIpBySlotId[slot.id];
   }
 
   /// Get IP history for a slot (all IPs including inactive, sorted by date)

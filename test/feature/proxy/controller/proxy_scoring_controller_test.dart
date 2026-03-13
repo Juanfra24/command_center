@@ -177,6 +177,7 @@ void main() {
 
       proxyController.proxySlots.add(slot);
       proxyController.ipAddresses.add(ip);
+      proxyController.rebuildIpLookup();
 
       expect(scoringController.hasScoredIps, isTrue);
     });
@@ -187,6 +188,7 @@ void main() {
 
       proxyController.proxySlots.add(slot);
       proxyController.ipAddresses.add(ip);
+      proxyController.rebuildIpLookup();
 
       expect(scoringController.hasScoredIps, isFalse);
     });
@@ -200,6 +202,7 @@ void main() {
         makeIp(id: 10, slotId: 1, ipScore: 80, lastScoreCheck: DateTime.now()),
         makeIp(id: 20, slotId: 2, ipScore: 60, lastScoreCheck: DateTime.now()),
       ]);
+      proxyController.rebuildIpLookup();
 
       expect(scoringController.averageIpScore, equals(70.0));
     });
@@ -219,6 +222,7 @@ void main() {
         makeIp(id: 20, slotId: 2, ipScore: 80, lastScoreCheck: DateTime.now()),
         makeIp(id: 30, slotId: 3, ipScore: 40, lastScoreCheck: DateTime.now()),
       ]);
+      proxyController.rebuildIpLookup();
 
       expect(scoringController.lowScoreCount, equals(2));
     });
