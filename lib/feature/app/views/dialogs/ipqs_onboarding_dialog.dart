@@ -5,164 +5,95 @@ import 'package:command_center/feature/proxy/controller/proxy_scoring_controller
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
-class IpqsOnboardingDialog {
-  IpqsOnboardingDialog._();
+class IpqsOnboardingDialog extends StatefulWidget {
+  const IpqsOnboardingDialog._();
 
   static void show(BuildContext context) {
-    final apiKeyController = TextEditingController();
-    final isProcessing = false.obs;
-    final isCancelled = false.obs;
-    final statusMessage = Rxn<String>();
-    final isError = false.obs;
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => ContentDialog(
-        title: const Text('Configure IPQualityScore'),
-        content: Obx(() => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                    'Enter your IPQualityScore API key to enable IP scoring and fraud detection.'),
-                const SizedBox(height: 16),
-                InfoLabel(
-                  label: 'API Key',
-                  child: TextBox(
-                    controller: apiKeyController,
-                    placeholder: 'Enter your IPQualityScore API key',
-                    obscureText: true,
-                    enabled: !isProcessing.value,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Get your free API key from ipqualityscore.com (1,000 free lookups/month)',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                if (statusMessage.value != null) ...[
-                  const SizedBox(height: 16),
-                  ScoringProgressDisplay(
-                    statusMessage: statusMessage,
-                    isError: isError,
-                    isProcessing: isProcessing,
-                  ),
-                ],
-              ],
-            )),
-        actions: [
-          Obx(() => Button(
-                onPressed: isProcessing.value
-                    ? () {
-                        isCancelled.value = true;
-                        statusMessage.value = 'Cancelling...';
-                      }
-                    : () => Navigator.of(dialogContext).pop(),
-                child: Text(isProcessing.value ? 'Cancel Scoring' : 'Cancel'),
-              )),
-          _buildConnectButton(
-            context: context,
-            dialogContext: dialogContext,
-            apiKeyController: apiKeyController,
-            isProcessing: isProcessing,
-            isCancelled: isCancelled,
-            statusMessage: statusMessage,
-            isError: isError,
-          ),
-        ],
-      ),
+      builder: (_) => const IpqsOnboardingDialog._(),
     );
   }
 
-  static Widget _buildConnectButton({
-    required BuildContext context,
-    required BuildContext dialogContext,
-    required TextEditingController apiKeyController,
-    required RxBool isProcessing,
-    required RxBool isCancelled,
-    required Rxn<String> statusMessage,
-    required RxBool isError,
-  }) {
+  @override
+  State<IpqsOnboardingDialog> createState() => _IpqsOnboardingDialogState();
+}
+
+class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
+  final _apiKeyController = TextEditingController();
+  final _isProcessing = false.obs;
+  final _isCancelled = false.obs;
+  final _statusMessage = Rxn<String>();
+  final _isError = false.obs;
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _isProcessing.close();
+    _isCancelled.close();
+    _statusMessage.close();
+    _isError.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: const Text('Configure IPQualityScore'),
+      content: Obx(() => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                  'Enter your IPQualityScore API key to enable IP scoring and fraud detection.'),
+              const SizedBox(height: 16),
+              InfoLabel(
+                label: 'API Key',
+                child: TextBox(
+                  controller: _apiKeyController,
+                  placeholder: 'Enter your IPQualityScore API key',
+                  obscureText: true,
+                  enabled: !_isProcessing.value,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Get your free API key from ipqualityscore.com (1,000 free lookups/month)',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              if (_statusMessage.value != null) ...[
+                const SizedBox(height: 16),
+                ScoringProgressDisplay(
+                  statusMessage: _statusMessage,
+                  isError: _isError,
+                  isProcessing: _isProcessing,
+                ),
+              ],
+            ],
+          )),
+      actions: [
+        Obx(() => Button(
+              onPressed: _isProcessing.value
+                  ? () {
+                      _isCancelled.value = true;
+                      _statusMessage.value = 'Cancelling...';
+                    }
+                  : () => Navigator.of(context).pop(),
+              child:
+                  Text(_isProcessing.value ? 'Cancel Scoring' : 'Cancel'),
+            )),
+        _buildConnectButton(context),
+      ],
+    );
+  }
+
+  Widget _buildConnectButton(BuildContext outerContext) {
     return Obx(() => FilledButton(
-          onPressed: isProcessing.value
+          onPressed: _isProcessing.value
               ? null
-              : () async {
-                  if (apiKeyController.text.isEmpty) {
-                    statusMessage.value = 'Please enter an API key';
-                    isError.value = true;
-                    return;
-                  }
-
-                  isProcessing.value = true;
-                  isCancelled.value = false;
-                  statusMessage.value = 'Testing connection...';
-                  isError.value = false;
-
-                  try {
-                    final ipqsService = Get.find<IpqsService>();
-
-                    final testResult =
-                        await ipqsService.testAndConnect(apiKeyController.text);
-
-                    if (!testResult.success) {
-                      statusMessage.value =
-                          testResult.error ?? 'Connection failed';
-                      isError.value = true;
-                      isProcessing.value = false;
-                      return;
-                    }
-
-                    if (!isCancelled.value) {
-                      statusMessage.value = 'Scoring all proxy IPs...';
-                      try {
-                        final scoringController =
-                            Get.find<ProxyScoringController>();
-                        final scored =
-                            await scoringController.scoreAllCurrentIps();
-                        statusMessage.value =
-                            'Scored $scored IPs successfully!';
-                      } catch (e) {
-                        // Non-fatal
-                      }
-                    }
-
-                    try {
-                      final onboardingService = Get.find<OnboardingService>();
-                      await onboardingService.markInitialSyncComplete();
-                    } catch (_) {}
-
-                    if (dialogContext.mounted) {
-                      Navigator.of(dialogContext).pop();
-                    }
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (context.mounted) {
-                        displayInfoBar(
-                          context,
-                          builder: (ctx, close) {
-                            return InfoBar(
-                              title: const Text('Setup Complete'),
-                              content: Text(isCancelled.value
-                                  ? 'IPQualityScore connected! Scoring was cancelled.'
-                                  : 'IPQualityScore connected and all IPs scored!'),
-                              severity: InfoBarSeverity.success,
-                              action: IconButton(
-                                icon: const Icon(FluentIcons.clear),
-                                onPressed: close,
-                              ),
-                            );
-                          },
-                        );
-                      }
-                    });
-                  } catch (e) {
-                    statusMessage.value = 'Error: $e';
-                    isError.value = true;
-                  } finally {
-                    isProcessing.value = false;
-                  }
-                },
-          child: isProcessing.value
+              : () => _handleConnect(outerContext),
+          child: _isProcessing.value
               ? const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -183,5 +114,77 @@ class IpqsOnboardingDialog {
                   ],
                 ),
         ));
+  }
+
+  Future<void> _handleConnect(BuildContext outerContext) async {
+    if (_apiKeyController.text.isEmpty) {
+      _statusMessage.value = 'Please enter an API key';
+      _isError.value = true;
+      return;
+    }
+
+    _isProcessing.value = true;
+    _isCancelled.value = false;
+    _statusMessage.value = 'Testing connection...';
+    _isError.value = false;
+
+    try {
+      final ipqsService = Get.find<IpqsService>();
+
+      final testResult =
+          await ipqsService.testAndConnect(_apiKeyController.text);
+
+      if (!testResult.success) {
+        _statusMessage.value = testResult.error ?? 'Connection failed';
+        _isError.value = true;
+        _isProcessing.value = false;
+        return;
+      }
+
+      if (!_isCancelled.value) {
+        _statusMessage.value = 'Scoring all proxy IPs...';
+        try {
+          final scoringController = Get.find<ProxyScoringController>();
+          final scored = await scoringController.scoreAllCurrentIps();
+          _statusMessage.value = 'Scored $scored IPs successfully!';
+        } catch (e) {
+          // Non-fatal
+        }
+      }
+
+      try {
+        final onboardingService = Get.find<OnboardingService>();
+        await onboardingService.markInitialSyncComplete();
+      } catch (_) {}
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (outerContext.mounted) {
+          displayInfoBar(
+            outerContext,
+            builder: (ctx, close) {
+              return InfoBar(
+                title: const Text('Setup Complete'),
+                content: Text(_isCancelled.value
+                    ? 'IPQualityScore connected! Scoring was cancelled.'
+                    : 'IPQualityScore connected and all IPs scored!'),
+                severity: InfoBarSeverity.success,
+                action: IconButton(
+                  icon: const Icon(FluentIcons.clear),
+                  onPressed: close,
+                ),
+              );
+            },
+          );
+        }
+      });
+    } catch (e) {
+      _statusMessage.value = 'Error: $e';
+      _isError.value = true;
+    } finally {
+      _isProcessing.value = false;
+    }
   }
 }

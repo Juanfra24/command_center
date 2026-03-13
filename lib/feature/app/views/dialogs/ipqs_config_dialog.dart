@@ -9,143 +9,154 @@ import 'package:command_center/feature/app/views/components/unlink_action_button
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
-class IpqsConfigDialog {
-  IpqsConfigDialog._();
+class IpqsConfigDialog extends StatefulWidget {
+  const IpqsConfigDialog._();
 
   static void show(BuildContext context) {
-    final apiKeyController = TextEditingController();
-    final isProcessing = false.obs;
-    final statusMessage = Rxn<String>();
-    final isError = false.obs;
-
-    bool isConfigured = false;
-    try {
-      isConfigured = Get.find<IpqsService>().isConfigured.value;
-    } catch (_) {}
-
     showDialog(
       context: context,
-      builder: (dialogContext) => ContentDialog(
-        title: Text(isConfigured
-            ? 'IPQualityScore Configuration'
-            : 'Configure IPQualityScore'),
-        content: Obx(() => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isConfigured)
-                  const ApiKeyConfiguredBanner(
-                    title: 'IPQualityScore Connected',
-                    subtitle: 'IP scoring is active',
-                  )
-                else
-                  ApiKeyFormField(
-                    controller: apiKeyController,
-                    isProcessing: isProcessing,
-                    description:
-                        'Enter your IPQualityScore API key to enable IP scoring.',
-                    hint: 'Get your API key from ipqualityscore.com',
-                    placeholder: 'Enter your IPQualityScore API key',
-                  ),
-                ProcessingStatusBar(
-                  statusMessage: statusMessage,
-                  isError: isError,
-                  isProcessing: isProcessing,
-                ),
-              ],
-            )),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-          if (isConfigured)
-            UnlinkActionButton(
-              isProcessing: isProcessing,
-              onUnlink: () => _handleUnlink(
-                  context, dialogContext, isProcessing, statusMessage, isError),
-            )
-          else
-            ConnectActionButton(
-              isProcessing: isProcessing,
-              onConnect: () => _handleConnect(context, dialogContext,
-                  apiKeyController, isProcessing, statusMessage, isError),
-            ),
-        ],
-      ),
+      builder: (_) => const IpqsConfigDialog._(),
     );
   }
 
-  static Future<void> _handleUnlink(
-    BuildContext context,
-    BuildContext dialogContext,
-    RxBool isProcessing,
-    Rxn<String> statusMessage,
-    RxBool isError,
-  ) async {
-    isProcessing.value = true;
-    statusMessage.value = 'Unlinking...';
-    isError.value = false;
+  @override
+  State<IpqsConfigDialog> createState() => _IpqsConfigDialogState();
+}
+
+class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
+  final _apiKeyController = TextEditingController();
+  final _isProcessing = false.obs;
+  final _statusMessage = Rxn<String>();
+  final _isError = false.obs;
+
+  late final bool _isConfigured;
+
+  @override
+  void initState() {
+    super.initState();
+    bool configured = false;
+    try {
+      configured = Get.find<IpqsService>().isConfigured.value;
+    } catch (_) {}
+    _isConfigured = configured;
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _isProcessing.close();
+    _statusMessage.close();
+    _isError.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: Text(_isConfigured
+          ? 'IPQualityScore Configuration'
+          : 'Configure IPQualityScore'),
+      content: Obx(() => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_isConfigured)
+                const ApiKeyConfiguredBanner(
+                  title: 'IPQualityScore Connected',
+                  subtitle: 'IP scoring is active',
+                )
+              else
+                ApiKeyFormField(
+                  controller: _apiKeyController,
+                  isProcessing: _isProcessing,
+                  description:
+                      'Enter your IPQualityScore API key to enable IP scoring.',
+                  hint: 'Get your API key from ipqualityscore.com',
+                  placeholder: 'Enter your IPQualityScore API key',
+                ),
+              ProcessingStatusBar(
+                statusMessage: _statusMessage,
+                isError: _isError,
+                isProcessing: _isProcessing,
+              ),
+            ],
+          )),
+      actions: [
+        Button(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+        if (_isConfigured)
+          UnlinkActionButton(
+            isProcessing: _isProcessing,
+            onUnlink: () => _handleUnlink(context),
+          )
+        else
+          ConnectActionButton(
+            isProcessing: _isProcessing,
+            onConnect: () => _handleConnect(context),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _handleUnlink(BuildContext outerContext) async {
+    _isProcessing.value = true;
+    _statusMessage.value = 'Unlinking...';
+    _isError.value = false;
     try {
       final result = await Get.find<IpqsService>().clearApiKey();
       switch (result) {
         case Success():
-          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          if (context.mounted) {
-            showInfoBarToast(context,
+          if (mounted) Navigator.of(context).pop();
+          if (outerContext.mounted) {
+            showInfoBarToast(outerContext,
                 title: 'Unlinked',
                 message: 'IPQualityScore has been disconnected.',
                 severity: InfoBarSeverity.warning);
           }
         case Failure(:final message):
-          statusMessage.value = message;
-          isError.value = true;
+          _statusMessage.value = message;
+          _isError.value = true;
       }
     } catch (e) {
-      statusMessage.value = 'Error: $e';
-      isError.value = true;
+      _statusMessage.value = 'Error: $e';
+      _isError.value = true;
     } finally {
-      isProcessing.value = false;
+      _isProcessing.value = false;
     }
   }
 
-  static Future<void> _handleConnect(
-    BuildContext context,
-    BuildContext dialogContext,
-    TextEditingController apiKeyController,
-    RxBool isProcessing,
-    Rxn<String> statusMessage,
-    RxBool isError,
-  ) async {
-    if (apiKeyController.text.isEmpty) {
-      statusMessage.value = 'Please enter an API key';
-      isError.value = true;
+  Future<void> _handleConnect(BuildContext outerContext) async {
+    if (_apiKeyController.text.isEmpty) {
+      _statusMessage.value = 'Please enter an API key';
+      _isError.value = true;
       return;
     }
-    isProcessing.value = true;
-    statusMessage.value = 'Testing connection...';
-    isError.value = false;
+    _isProcessing.value = true;
+    _statusMessage.value = 'Testing connection...';
+    _isError.value = false;
     try {
       final testResult =
-          await Get.find<IpqsService>().testAndConnect(apiKeyController.text);
+          await Get.find<IpqsService>().testAndConnect(_apiKeyController.text);
       if (!testResult.success) {
-        statusMessage.value = testResult.error ?? 'Connection failed';
-        isError.value = true;
-        isProcessing.value = false;
+        _statusMessage.value = testResult.error ?? 'Connection failed';
+        _isError.value = true;
+        _isProcessing.value = false;
         return;
       }
-      if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-      if (context.mounted) {
-        showInfoBarToast(context,
+      if (mounted) Navigator.of(context).pop();
+      if (outerContext.mounted) {
+        showInfoBarToast(outerContext,
             title: 'Success',
             message: 'IPQualityScore connected!',
             severity: InfoBarSeverity.success);
       }
     } catch (e) {
-      statusMessage.value = 'Error: $e';
-      isError.value = true;
+      _statusMessage.value = 'Error: $e';
+      _isError.value = true;
     } finally {
-      isProcessing.value = false;
+      _isProcessing.value = false;
     }
   }
 }
