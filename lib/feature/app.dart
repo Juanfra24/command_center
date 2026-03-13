@@ -11,10 +11,12 @@ import 'package:command_center/feature/Status/controller/status_controller.dart'
 import 'package:command_center/feature/Status/views/status_screen.dart';
 import 'package:command_center/feature/main_menu/views/main_menu_screen.dart';
 import 'package:command_center/feature/notification/views/components/notification_bell.dart';
+import 'package:command_center/feature/dev_tools/views/dev_tools_screen.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/proxy_screen.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -199,6 +201,12 @@ class _AppState extends State<App> with WindowListener {
                 builder: (context) => _buildSettingsPage(isDark, context),
               ),
             ),
+            if (kDebugMode)
+              PaneItem(
+                icon: const Icon(FluentIcons.code),
+                title: const Text('Dev Tools'),
+                body: const DevToolsScreen(),
+              ),
           ],
         ),
       );

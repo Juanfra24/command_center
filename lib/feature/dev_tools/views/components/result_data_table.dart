@@ -35,8 +35,7 @@ class ResultDataTable extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.accentColor.withValues(alpha: 0.1),
               ),
-              children:
-                  columns.map((col) => _buildHeaderCell(col)).toList(),
+              children: columns.map((col) => _buildHeaderCell(col)).toList(),
             ),
             ...rows.map((row) => TableRow(
                   children: columns

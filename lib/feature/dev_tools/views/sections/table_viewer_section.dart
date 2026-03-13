@@ -68,8 +68,7 @@ class TableViewerSection extends StatelessWidget {
                     : controller.selectedTable.value,
                 placeholder: const Text('Select a table...'),
                 items: controller.tables
-                    .map(
-                        (t) => ComboBoxItem<String>(value: t, child: Text(t)))
+                    .map((t) => ComboBoxItem<String>(value: t, child: Text(t)))
                     .toList(),
                 onChanged: (value) {
                   if (value != null) controller.selectTable(value);

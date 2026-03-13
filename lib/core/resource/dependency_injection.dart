@@ -16,7 +16,9 @@ import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
 import 'package:command_center/feature/notification/controller/notification_controller.dart';
+import 'package:command_center/feature/dev_tools/controller/dev_tools_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 class AppBindings extends Bindings {
@@ -75,6 +77,14 @@ class AppBindings extends Bindings {
       ),
       fenix: true,
     );
+
+    // Dev tools (debug only)
+    if (kDebugMode) {
+      Get.lazyPut<DevToolsController>(
+        () => DevToolsController(Get.find<DatabaseService>().database),
+        fenix: true,
+      );
+    }
   }
 
   /// Initialize async services in proper order

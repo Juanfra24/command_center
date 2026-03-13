@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database/app_database.dart';
-import 'package:drift/drift.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 
