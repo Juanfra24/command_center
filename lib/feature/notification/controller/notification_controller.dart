@@ -21,8 +21,7 @@ class NotificationController extends GetxController {
   Future<void> loadNotifications() async {
     isLoading.value = true;
     try {
-      notifications.value =
-          await _notificationService.getUnreadNotifications();
+      notifications.value = await _notificationService.getUnreadNotifications();
     } finally {
       isLoading.value = false;
     }

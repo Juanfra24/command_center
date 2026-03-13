@@ -28,22 +28,19 @@ class NotificationCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(_severityIcon(notification.severity),
-                color: color, size: 16),
+            Icon(_severityIcon(notification.severity), color: color, size: 16),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(notification.title,
-                      style: theme.typography.bodyStrong),
+                  Text(notification.title, style: theme.typography.bodyStrong),
                   const SizedBox(height: 2),
-                  Text(notification.message,
-                      style: theme.typography.caption),
+                  Text(notification.message, style: theme.typography.caption),
                   const SizedBox(height: 4),
                   Text(_formatTime(notification.createdAt),
-                      style: theme.typography.caption?.copyWith(
-                          color: theme.inactiveColor)),
+                      style: theme.typography.caption
+                          ?.copyWith(color: theme.inactiveColor)),
                 ],
               ),
             ),

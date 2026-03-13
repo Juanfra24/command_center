@@ -2,14 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:command_center/config/services/app_config_service.dart';
-import 'package:command_center/config/services/ipqs/ipqs_api_client.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
 import 'package:command_center/config/services/proxy/proxy_replacement_service.dart';
 import 'package:command_center/config/services/proxy/proxy_sync_service.dart';
 import 'package:command_center/config/services/proxy/scored_ip_result.dart';
-import 'package:command_center/config/services/webshare/webshare_models.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/domain/entities/notification.dart';
@@ -195,10 +193,10 @@ void main() {
       when(() => mockSync.syncWithWebshare()).thenAnswer((_) async {});
 
       // After replacement, return new IPs with good scores
-      when(() => mockProxyRepo.getActiveIpForSlot(1)).thenAnswer((_) async =>
-          makeIp(100, 1, '5.5.5.1', ipScore: 80));
-      when(() => mockProxyRepo.getActiveIpForSlot(2)).thenAnswer((_) async =>
-          makeIp(200, 2, '5.5.5.2', ipScore: 80));
+      when(() => mockProxyRepo.getActiveIpForSlot(1))
+          .thenAnswer((_) async => makeIp(100, 1, '5.5.5.1', ipScore: 80));
+      when(() => mockProxyRepo.getActiveIpForSlot(2))
+          .thenAnswer((_) async => makeIp(200, 2, '5.5.5.2', ipScore: 80));
 
       // fraudScore: 20 => normalizedScore: 80 (above threshold)
       when(() => mockIpqs.scoreIp(any())).thenAnswer((_) async => IpqsResult(
@@ -206,8 +204,7 @@ void main() {
             fraudScore: 20,
           ));
 
-      when(() => mockProxyRepo.updateIpAddress(any()))
-          .thenAnswer((_) async {});
+      when(() => mockProxyRepo.updateIpAddress(any())).thenAnswer((_) async {});
 
       await service.processScoreResults(results);
 
@@ -269,21 +266,20 @@ void main() {
       when(() => mockSync.syncWithWebshare()).thenAnswer((_) async {});
 
       // New IP is also below threshold (score 30 < 40)
-      when(() => mockProxyRepo.getActiveIpForSlot(1)).thenAnswer((_) async =>
-          makeIp(100, 1, '9.9.9.1', ipScore: 30));
+      when(() => mockProxyRepo.getActiveIpForSlot(1))
+          .thenAnswer((_) async => makeIp(100, 1, '9.9.9.1', ipScore: 30));
 
       // fraudScore: 70 => normalizedScore: 30 (below threshold of 40)
-      when(() => mockIpqs.scoreIp('9.9.9.1')).thenAnswer((_) async =>
-          IpqsResult(success: true, fraudScore: 70));
+      when(() => mockIpqs.scoreIp('9.9.9.1'))
+          .thenAnswer((_) async => IpqsResult(success: true, fraudScore: 70));
 
-      when(() => mockProxyRepo.updateIpAddress(any()))
-          .thenAnswer((_) async {});
+      when(() => mockProxyRepo.updateIpAddress(any())).thenAnswer((_) async {});
 
       await service.processScoreResults(results);
 
       // Should only replace once (no infinite loop)
-      verify(() => mockReplacement.replaceProxyIp(any(),
-          keepSameCountry: true)).called(1);
+      verify(() => mockReplacement.replaceProxyIp(any(), keepSameCountry: true))
+          .called(1);
 
       // Should send warning about new IP below threshold
       verify(() => mockNotification.createNotification(
@@ -353,14 +349,13 @@ void main() {
             fraudScore: 20,
           ));
 
-      when(() => mockProxyRepo.updateIpAddress(any()))
-          .thenAnswer((_) async {});
+      when(() => mockProxyRepo.updateIpAddress(any())).thenAnswer((_) async {});
 
       await service.processScoreResults(results);
 
       // Only 1 replacement should happen (first slot), then quota exhausted
-      verify(() => mockReplacement.replaceProxyIp(any(),
-          keepSameCountry: true)).called(1);
+      verify(() => mockReplacement.replaceProxyIp(any(), keepSameCountry: true))
+          .called(1);
 
       // Quota exhausted notification
       verify(() => mockNotification.createNotification(
@@ -422,8 +417,8 @@ void main() {
       await Future.wait([first, second]);
 
       // Only one replacement should have occurred
-      verify(() => mockReplacement.replaceProxyIp(any(),
-          keepSameCountry: true)).called(1);
+      verify(() => mockReplacement.replaceProxyIp(any(), keepSameCountry: true))
+          .called(1);
     });
   });
 }

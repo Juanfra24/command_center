@@ -7,9 +7,7 @@ class NotificationsTable extends Table {
   TextColumn get severity => text()();
   TextColumn get title => text()();
   TextColumn get message => text()();
-  BoolColumn get isRead =>
-      boolean().withDefault(const Constant(false))();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isRead => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get readAt => dateTime().nullable()();
 }

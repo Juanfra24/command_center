@@ -82,8 +82,7 @@ class ProxyAutoRotationService {
           type: NotificationType.quotaExhausted,
           severity: NotificationSeverity.error,
           title: 'Replacement Quota Exhausted',
-          message:
-              '$remaining proxies still below threshold. Webshare quota: '
+          message: '$remaining proxies still below threshold. Webshare quota: '
               '${planInfo?.proxyReplacementsAvailable ?? 0}/'
               '${planInfo?.proxyReplacementsTotal ?? 0} remaining.',
         );
@@ -117,8 +116,7 @@ class ProxyAutoRotationService {
               await _proxyRepository.updateIpAddress(
                 newIp.copyWith(
                   ipScore: newScore,
-                  scoreLevel:
-                      ProxyIpAddressEntity.getScoreLevel(newScore),
+                  scoreLevel: ProxyIpAddressEntity.getScoreLevel(newScore),
                   fraudScore: scoreResult.fraudScore,
                   isVpn: scoreResult.isVpn,
                   isProxy: scoreResult.isProxy,
@@ -134,8 +132,7 @@ class ProxyAutoRotationService {
                   type: NotificationType.rotationFailed,
                   severity: NotificationSeverity.warning,
                   title: 'New IP Below Threshold',
-                  message:
-                      '${scored.slot.slotName}: replacement IP scored '
+                  message: '${scored.slot.slotName}: replacement IP scored '
                       '${newScore.toStringAsFixed(0)}. Manual review recommended.',
                 );
                 failedCount++;
@@ -156,8 +153,7 @@ class ProxyAutoRotationService {
             type: NotificationType.rotationFailed,
             severity: NotificationSeverity.warning,
             title: 'Replacement Failed',
-            message:
-                '${scored.slot.slotName}: $message',
+            message: '${scored.slot.slotName}: $message',
           );
           failedCount++;
       }

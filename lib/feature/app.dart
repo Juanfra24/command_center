@@ -249,8 +249,7 @@ class _AppState extends State<App> with WindowListener {
                         const BoxConstraints(minWidth: 14, minHeight: 14),
                     child: Text(
                       count > 99 ? '99+' : '$count',
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 9),
+                      style: const TextStyle(color: Colors.white, fontSize: 9),
                       textAlign: TextAlign.center,
                     ),
                   ),

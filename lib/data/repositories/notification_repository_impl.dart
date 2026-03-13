@@ -43,8 +43,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   @override
   Future<void> markAsRead(int id) async {
-    await (_db.update(_db.notificationsTable)
-          ..where((t) => t.id.equals(id)))
+    await (_db.update(_db.notificationsTable)..where((t) => t.id.equals(id)))
         .write(NotificationsTableCompanion(
       isRead: const Value(true),
       readAt: Value(DateTime.now()),

@@ -26,8 +26,7 @@ class NotificationFlyout extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Row(
                 children: [
-                  Text('Notifications',
-                      style: theme.typography.bodyStrong),
+                  Text('Notifications', style: theme.typography.bodyStrong),
                   const Spacer(),
                   if (notifications.isNotEmpty)
                     HyperlinkButton(
@@ -42,8 +41,8 @@ class NotificationFlyout extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Center(
-                  child: Text('No notifications',
-                      style: theme.typography.caption),
+                  child:
+                      Text('No notifications', style: theme.typography.caption),
                 ),
               )
             else

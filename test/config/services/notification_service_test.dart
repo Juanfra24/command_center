@@ -101,16 +101,14 @@ void main() {
     });
 
     test('markAsRead handles repo error gracefully', () async {
-      when(() => mockRepo.markAsRead(any()))
-          .thenThrow(Exception('DB error'));
+      when(() => mockRepo.markAsRead(any())).thenThrow(Exception('DB error'));
 
       // Should not throw
       await service.markAsRead(1);
     });
 
     test('markAllAsRead handles repo error gracefully', () async {
-      when(() => mockRepo.markAllAsRead())
-          .thenThrow(Exception('DB error'));
+      when(() => mockRepo.markAllAsRead()).thenThrow(Exception('DB error'));
 
       // Should not throw
       await service.markAllAsRead();

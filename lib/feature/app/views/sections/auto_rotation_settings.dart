@@ -19,8 +19,7 @@ class AutoRotationSettings extends StatelessWidget {
               children: [
                 Icon(FluentIcons.sync, color: theme.accentColor),
                 const SizedBox(width: 8),
-                Text('Proxy Auto-Rotation',
-                    style: theme.typography.bodyLarge),
+                Text('Proxy Auto-Rotation', style: theme.typography.bodyLarge),
               ],
             ),
             const SizedBox(height: 16),
@@ -35,8 +34,8 @@ class AutoRotationSettings extends StatelessWidget {
                     checked: enabled,
                     onChanged: (value) =>
                         configService.saveAutoRotationEnabled(value),
-                    content: const Text(
-                        'Automatically replace low-scoring proxies'),
+                    content:
+                        const Text('Automatically replace low-scoring proxies'),
                   ),
                   const SizedBox(height: 16),
                   Text(
