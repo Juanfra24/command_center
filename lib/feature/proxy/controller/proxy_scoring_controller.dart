@@ -1,4 +1,7 @@
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
+import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
+import 'package:command_center/config/services/proxy/scored_ip_result.dart';
+import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
@@ -11,6 +14,8 @@ class ProxyScoringController extends GetxController {
   final ProxyRepository _proxyRepository;
   final IpqsService _ipqsService;
   final ProxyController _proxyController;
+
+  ProxyAutoRotationService? _autoRotationService;
 
   var isScoring = false.obs;
 
@@ -27,6 +32,36 @@ class ProxyScoringController extends GetxController {
   void onInit() {
     super.onInit();
     _initIpqs();
+    try {
+      _autoRotationService = Get.find<ProxyAutoRotationService>();
+    } catch (_) {
+      // Optional — auto-rotation not available
+    }
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    _triggerStartupScoring();
+  }
+
+  void _triggerStartupScoring() {
+    try {
+      final webshare = Get.find<WebshareService>();
+      final ipqs = Get.find<IpqsService>();
+      if (!webshare.isConfigured.value || !ipqs.isConfigured.value) return;
+
+      // Fire and forget — score stale IPs in background
+      Future(() async {
+        try {
+          await scoreAllCurrentIps(skipStale: true);
+        } catch (e) {
+          logger.e('Startup scoring failed: $e');
+        }
+      });
+    } catch (_) {
+      // Services not available, skip
+    }
   }
 
   void _initIpqs() {
@@ -117,6 +152,19 @@ class ProxyScoringController extends GetxController {
             _proxyController.selectedSlotIpHistory.value = _proxyController
                 .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
           }
+
+          // Trigger auto-rotation for this single IP
+          if (_autoRotationService != null) {
+            final slot = _proxyController.proxySlots
+                .firstWhereOrNull((s) => s.id == ip.slotId);
+            if (slot != null) {
+              await _autoRotationService!.processScoreResults([
+                ScoredIpResult(ip: ip, slot: slot, score: newScore),
+              ]);
+              // Reload after auto-rotation may have changed IPs
+              await _proxyController.loadIpAddresses();
+            }
+          }
         }
 
         return true;
@@ -130,8 +178,10 @@ class ProxyScoringController extends GetxController {
     }
   }
 
-  /// Score all current IPs for all slots
-  Future<int> scoreAllCurrentIps() async {
+  /// Score all current IPs for all slots.
+  /// When [skipStale] is true, skips IPs scored within the last 6 hours
+  /// (useful for startup scoring to avoid redundant API calls).
+  Future<int> scoreAllCurrentIps({bool skipStale = false}) async {
     if (!_ipqsService.isConfigured.value) {
       logger.w('IPQS not configured');
       return 0;
@@ -145,6 +195,14 @@ class ProxyScoringController extends GetxController {
         if (isClosed) break;
         final currentIp = _proxyController.getCurrentIpForSlot(slot);
         if (currentIp != null) {
+          // Skip IPs scored within the last 6 hours (for startup scoring only)
+          if (skipStale &&
+              currentIp.lastScoreCheck != null &&
+              DateTime.now().difference(currentIp.lastScoreCheck!).inHours <
+                  6) {
+            continue;
+          }
+
           final success = await scoreIpWithIpqs(currentIp, skipReload: true);
           if (success) successCount++;
           // Small delay to avoid rate limiting
@@ -160,6 +218,24 @@ class ProxyScoringController extends GetxController {
           _proxyController.selectedSlot.value!.id != null) {
         _proxyController.selectedSlotIpHistory.value = _proxyController
             .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
+      }
+
+      // Trigger auto-rotation for all scored IPs
+      if (_autoRotationService != null) {
+        final results = <ScoredIpResult>[];
+        for (final slot in _proxyController.proxySlots) {
+          final currentIp = _proxyController.getCurrentIpForSlot(slot);
+          if (currentIp != null && currentIp.hasBeenScored) {
+            results.add(ScoredIpResult(
+              ip: currentIp,
+              slot: slot,
+              score: currentIp.ipScore,
+            ));
+          }
+        }
+        await _autoRotationService!.processScoreResults(results);
+        // Reload after auto-rotation may have changed IPs
+        await _proxyController.loadIpAddresses();
       }
 
       return successCount;

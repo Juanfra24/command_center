@@ -68,14 +68,10 @@ class ProxyController extends GetxController {
   }
 
   void _initSyncService() {
-    if (_proxyRepository != null && _webshareService != null) {
-      try {
-        final db = Get.find<DatabaseService>().database;
-        _syncService =
-            ProxySyncService(_proxyRepository!, _webshareService!, db);
-      } catch (_) {
-        _syncService = ProxySyncService(_proxyRepository!, _webshareService!);
-      }
+    try {
+      _syncService = Get.find<ProxySyncService>();
+    } catch (e) {
+      logger.w('ProxySyncService not available yet: $e');
     }
   }
 

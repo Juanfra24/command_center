@@ -15,6 +15,8 @@ class AppConfigService extends GetxService {
   static const String _keyImapHost = 'imap_host';
   static const String _keyImapUser = 'imap_user';
   static const String _keyImapPass = 'imap_pass';
+  static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
+  static const String _keyAutoRotationThreshold = 'auto_rotation_threshold';
 
   ConfigRepository? _configRepository;
 
@@ -23,6 +25,8 @@ class AppConfigService extends GetxService {
   final isWebshareSetup = false.obs;
   final themeMode = 'system'.obs; // 'light', 'dark', 'system'
   final isLoading = true.obs;
+  final autoRotationEnabled = true.obs;
+  final autoRotationThreshold = 40.obs;
 
   Future<AppConfigService> init() async {
     try {
@@ -58,6 +62,14 @@ class AppConfigService extends GetxService {
 
       themeMode.value =
           await _configRepository!.getValue(_keyThemeMode) ?? 'system';
+
+      final rotationEnabled =
+          await _configRepository!.getValue(_keyAutoRotationEnabled);
+      autoRotationEnabled.value = rotationEnabled != 'false'; // default true
+
+      final threshold =
+          await _configRepository!.getValue(_keyAutoRotationThreshold);
+      autoRotationThreshold.value = int.tryParse(threshold ?? '') ?? 40;
     } catch (e) {
       logger.e('Error loading config: $e');
     } finally {
@@ -133,6 +145,38 @@ class AppConfigService extends GetxService {
   /// Get IMAP password
   Future<String?> getImapPass() async {
     return _configRepository?.getValue(_keyImapPass);
+  }
+
+  /// Save auto-rotation enabled preference
+  Future<Result<void>> saveAutoRotationEnabled(bool enabled) async {
+    try {
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
+      await _configRepository!
+          .setValue(_keyAutoRotationEnabled, enabled.toString());
+      autoRotationEnabled.value = enabled;
+      return Result.success(null);
+    } catch (e) {
+      logger.e('Error saving auto-rotation enabled: $e');
+      return Result.failure('Failed to save auto-rotation setting: $e', e);
+    }
+  }
+
+  /// Save auto-rotation threshold preference
+  Future<Result<void>> saveAutoRotationThreshold(int threshold) async {
+    try {
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
+      await _configRepository!
+          .setValue(_keyAutoRotationThreshold, threshold.toString());
+      autoRotationThreshold.value = threshold;
+      return Result.success(null);
+    } catch (e) {
+      logger.e('Error saving auto-rotation threshold: $e');
+      return Result.failure('Failed to save auto-rotation threshold: $e', e);
+    }
   }
 
   /// Get ThemeMode from string

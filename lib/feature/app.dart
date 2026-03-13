@@ -10,6 +10,7 @@ import 'package:command_center/core/widgets/window_title_bar.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/views/status_screen.dart';
 import 'package:command_center/feature/main_menu/views/main_menu_screen.dart';
+import 'package:command_center/feature/notification/views/components/notification_bell.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/proxy_screen.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
@@ -28,6 +29,7 @@ class _AppState extends State<App> with WindowListener {
   int _currentIndex = 0;
   bool _initialized = false;
   PaneDisplayMode _paneDisplayMode = PaneDisplayMode.open;
+  final FlyoutController _flyoutController = FlyoutController();
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _AppState extends State<App> with WindowListener {
   @override
   void dispose() {
     windowManager.removeListener(this);
+    _flyoutController.dispose();
     super.dispose();
   }
 
@@ -113,6 +116,8 @@ class _AppState extends State<App> with WindowListener {
               ),
               title: const Text('RuneScape Bot Command Center'),
               actions: [
+                NotificationBell(flyoutController: _flyoutController),
+                const SizedBox(width: 8),
                 _buildMusicButton(),
                 const SizedBox(width: 8),
                 _buildThemeToggle(isDark),
