@@ -1,3 +1,4 @@
+import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/feature/app.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get_storage/get_storage.dart';
@@ -6,6 +7,9 @@ import 'package:window_manager/window_manager.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize file logging with rotation
+  await initLogger();
 
   // Initialize system theme for Windows accent color
   await SystemTheme.accentColor.load();
