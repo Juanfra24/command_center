@@ -4,8 +4,6 @@ import 'package:get/get.dart' hide Response;
 import '../../../core/helper/logger.dart';
 
 class MainMenuController extends GetxController {
-  var isLoading = false.obs;
-
   Future<void> demoGetCall() async {
     try {
       final dbService = Get.find<DatabaseService>();

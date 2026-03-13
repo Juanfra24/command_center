@@ -43,7 +43,7 @@ void main() {
       expect(service.webshareApiKey.value, isNull);
       expect(service.isWebshareSetup.value, isFalse);
       expect(service.themeMode.value, equals('system'));
-      expect(service.isLoading.value, isTrue);
+      expect(service.isLoading, isTrue);
     });
   });
 

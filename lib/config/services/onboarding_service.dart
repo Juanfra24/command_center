@@ -15,7 +15,6 @@ class OnboardingService extends GetxService {
   final isWebshareConfigured = false.obs;
   final isIpqsConfigured = false.obs;
   final isInitialSyncComplete = false.obs;
-  final isStatusSyncComplete = false.obs;
   final isLoading = true.obs;
 
   // Workers list to prevent duplicate ever() listeners
@@ -82,20 +81,6 @@ class OnboardingService extends GetxService {
       // Check initial sync status
       isInitialSyncComplete.value =
           prefs.getBool(_initialSyncCompleteKey) ?? false;
-
-      // Check status sync
-      try {
-        final statusController = Get.find<StatusController>();
-        isStatusSyncComplete.value = !statusController.isLoading.value;
-
-        _workers.add(ever(statusController.isLoading, (loading) {
-          if (!loading) {
-            isStatusSyncComplete.value = true;
-          }
-        }));
-      } catch (_) {
-        isStatusSyncComplete.value = false;
-      }
     } catch (e) {
       // Default to not configured on error
       isWebshareConfigured.value = false;
@@ -176,6 +161,5 @@ class OnboardingService extends GetxService {
 
     isWebshareConfigured.value = false;
     isInitialSyncComplete.value = false;
-    isStatusSyncComplete.value = false;
   }
 }

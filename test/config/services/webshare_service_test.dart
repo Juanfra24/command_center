@@ -31,8 +31,7 @@ void main() {
     test('initial states are correct', () {
       expect(service.isConfigured.value, isFalse);
       expect(service.isLoading.value, isFalse);
-      expect(service.isSyncing.value, isFalse);
-      expect(service.lastSyncTime.value, isNull);
+      expect(service.lastSyncTime, isNull);
       expect(service.lastError.value, isNull);
     });
   });
