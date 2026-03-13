@@ -71,6 +71,104 @@ To update Flutter packages:
 flutter pub upgrade
 ```
 
+## Development Environment Setup
+
+### Flutter SDK
+
+1. Install the Flutter SDK by following the [official guide](https://docs.flutter.dev/get-started/install/windows/desktop).
+2. Ensure the `flutter` command is on your PATH.
+3. Run `flutter doctor` to verify your installation. You need:
+   - Flutter SDK (stable channel)
+   - Windows development toolchain (Visual Studio 2022 with "Desktop development with C++" workload)
+
+### Clone and Bootstrap
+
+```bash
+git clone <repo-url>
+cd command_center
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+```
+
+### Running Locally
+
+Launch the app on Windows:
+
+```bash
+flutter run -d windows
+```
+
+For a release-mode build:
+
+```bash
+flutter build windows --release
+```
+
+The built executable will be in `build/windows/x64/runner/Release/`.
+
+### Running Tests
+
+Run the full test suite:
+
+```bash
+flutter test
+```
+
+Run a specific test file:
+
+```bash
+flutter test test/path/to/test_file.dart
+```
+
+### Static Analysis
+
+Run the Dart analyzer to catch lint issues:
+
+```bash
+flutter analyze
+```
+
+The analyzer rules are configured in `analysis_options.yaml`.
+
+### Code Formatting
+
+Check formatting (CI enforces this):
+
+```bash
+dart format --set-exit-if-changed .
+```
+
+Auto-fix formatting:
+
+```bash
+dart format .
+```
+
+### Drift Code Generation
+
+After modifying any Drift table definition in `lib/data/database/tables/`, regenerate the companion code:
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+This updates `lib/data/database/app_database.g.dart`. Always commit the regenerated file alongside your table changes.
+
+### Commit Message Convention
+
+All commits must follow the conventional format:
+
+```
+<type>(<scope>): <description>
+```
+
+Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `build`, `revert`
+
+Examples:
+- `feat(proxy): add IP rotation scheduling`
+- `fix(db): handle null proxy slot on account deletion`
+- `docs: update SETUP.md with dev instructions`
+
 ## Development Notes
 
 ### Python Environment
