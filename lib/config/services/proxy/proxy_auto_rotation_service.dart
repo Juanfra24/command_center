@@ -152,6 +152,13 @@ class ProxyAutoRotationService {
         case Failure(:final message):
           logger.w(
               'Auto-rotation: failed to replace ${scored.slot.slotName}: $message');
+          await _notificationService.createNotification(
+            type: NotificationType.rotationFailed,
+            severity: NotificationSeverity.warning,
+            title: 'Replacement Failed',
+            message:
+                '${scored.slot.slotName}: $message',
+          );
           failedCount++;
       }
 
