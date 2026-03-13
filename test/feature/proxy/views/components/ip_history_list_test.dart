@@ -52,8 +52,7 @@ ProxyIpAddressEntity makeIp({
 
 void main() {
   group('IpHistoryList', () {
-    testWidgets('renders empty state message when no history',
-        (tester) async {
+    testWidgets('renders empty state message when no history', (tester) async {
       await tester.pumpWidget(
         wrapInFluentApp(const IpHistoryList(history: [])),
       );

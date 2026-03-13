@@ -33,7 +33,8 @@ class _ProxyScreenState extends State<ProxyScreen>
   @override
   ProxyScoringController get scoringController => _scoringController;
   @override
-  ProxyReplacementController get replacementController => _replacementController;
+  ProxyReplacementController get replacementController =>
+      _replacementController;
 
   @override
   void initState() {

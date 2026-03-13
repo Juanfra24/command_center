@@ -4,7 +4,7 @@ import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 
-/// ProxyController uses Get.find<DatabaseService>() and Get.find<WebshareService>()
+/// ProxyController uses `Get.find<DatabaseService>()` and `Get.find<WebshareService>()`
 /// in onInit, which makes it difficult to test via Get.put(). Instead, we test
 /// the controller's pure logic methods by constructing it directly and populating
 /// its observable lists manually (bypassing onInit).
@@ -112,8 +112,7 @@ void main() {
   group('ProxyController - getCurrentIpForSlot', () {
     test('returns IP by currentIpAddressId', () {
       final ip = makeIp(id: 10, slotId: 1, ipAddress: '1.1.1.1');
-      final slot =
-          makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10);
+      final slot = makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10);
 
       controller.ipAddresses.add(ip);
 
@@ -206,8 +205,7 @@ void main() {
     });
 
     test('filters by search query on IP address', () {
-      final slot =
-          makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10);
+      final slot = makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10);
       final ip = makeIp(id: 10, slotId: 1, ipAddress: '99.88.77.66');
 
       controller.proxySlots.add(slot);

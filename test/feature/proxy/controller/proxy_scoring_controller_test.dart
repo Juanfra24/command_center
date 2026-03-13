@@ -127,12 +127,10 @@ void main() {
           recentAbuse: false,
         ),
       );
-      when(() => mockProxyRepo.updateIpAddress(any()))
-          .thenAnswer((_) async {});
+      when(() => mockProxyRepo.updateIpAddress(any())).thenAnswer((_) async {});
 
       // Provide ipAddresses for proxyController reload
-      when(() => mockProxyRepo.getAllIpAddresses())
-          .thenAnswer((_) async => []);
+      when(() => mockProxyRepo.getAllIpAddresses()).thenAnswer((_) async => []);
 
       final success =
           await scoringController.scoreIpWithIpqs(ip, skipReload: true);
@@ -199,16 +197,8 @@ void main() {
         makeSlot(id: 2, slotNumber: 2, currentIpAddressId: 20),
       ]);
       proxyController.ipAddresses.addAll([
-        makeIp(
-            id: 10,
-            slotId: 1,
-            ipScore: 80,
-            lastScoreCheck: DateTime.now()),
-        makeIp(
-            id: 20,
-            slotId: 2,
-            ipScore: 60,
-            lastScoreCheck: DateTime.now()),
+        makeIp(id: 10, slotId: 1, ipScore: 80, lastScoreCheck: DateTime.now()),
+        makeIp(id: 20, slotId: 2, ipScore: 60, lastScoreCheck: DateTime.now()),
       ]);
 
       expect(scoringController.averageIpScore, equals(70.0));
@@ -225,21 +215,9 @@ void main() {
         makeSlot(id: 3, slotNumber: 3, currentIpAddressId: 30),
       ]);
       proxyController.ipAddresses.addAll([
-        makeIp(
-            id: 10,
-            slotId: 1,
-            ipScore: 30,
-            lastScoreCheck: DateTime.now()),
-        makeIp(
-            id: 20,
-            slotId: 2,
-            ipScore: 80,
-            lastScoreCheck: DateTime.now()),
-        makeIp(
-            id: 30,
-            slotId: 3,
-            ipScore: 40,
-            lastScoreCheck: DateTime.now()),
+        makeIp(id: 10, slotId: 1, ipScore: 30, lastScoreCheck: DateTime.now()),
+        makeIp(id: 20, slotId: 2, ipScore: 80, lastScoreCheck: DateTime.now()),
+        makeIp(id: 30, slotId: 3, ipScore: 40, lastScoreCheck: DateTime.now()),
       ]);
 
       expect(scoringController.lowScoreCount, equals(2));

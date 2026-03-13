@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 /// StatusController cannot be unit tested in isolation because:
-/// 1. It calls Get.find<NativeCommandsService>() at field initialization time
+/// 1. It calls `Get.find<NativeCommandsService>()` at field initialization time
 ///    (not just in onInit), making it impossible to construct without DI.
 /// 2. NativeCommandsService depends on platform channels (Windows MethodChannel).
 ///
@@ -21,7 +21,8 @@ void main() {
   });
 
   group('StatusController', () {
-    test('requires NativeCommandsService in DI - skipped due to platform channel dependency',
+    test(
+        'requires NativeCommandsService in DI - skipped due to platform channel dependency',
         () {
       // StatusController eagerly calls Get.find<NativeCommandsService>()
       // at construction time, which requires platform channels.

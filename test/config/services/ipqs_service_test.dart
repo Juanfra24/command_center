@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
-import 'package:command_center/config/services/ipqs/ipqs_api_client.dart';
+
 import 'package:command_center/core/resource/result.dart';
 
 void main() {

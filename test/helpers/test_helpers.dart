@@ -4,8 +4,6 @@ import 'package:command_center/config/services/webshare/webshare_api_client.dart
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_api_client.dart';
 import 'package:command_center/config/services/app_config_service.dart';
-import 'package:command_center/config/services/automation/python_runner.dart';
-import 'package:command_center/config/services/automation/result_parser.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
@@ -27,5 +25,4 @@ class MockAccountRepository extends Mock implements AccountRepository {}
 
 class MockConfigRepository extends Mock implements ConfigRepository {}
 
-class MockNativeCommandsService extends Mock
-    implements NativeCommandsService {}
+class MockNativeCommandsService extends Mock implements NativeCommandsService {}

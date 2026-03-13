@@ -48,7 +48,8 @@ mixin ProxyScreenActions<T extends StatefulWidget> on State<T> {
         displayInfoBar(context, builder: (context, close) {
           return InfoBar(
             title: const Text('No IP assigned'),
-            content: Text('Slot #${slot.slotNumber} has no IP address assigned.'),
+            content:
+                Text('Slot #${slot.slotNumber} has no IP address assigned.'),
             severity: InfoBarSeverity.warning,
             action: IconButton(
               icon: const Icon(FluentIcons.clear),
@@ -141,7 +142,8 @@ mixin ProxyScreenActions<T extends StatefulWidget> on State<T> {
         builder: (ctx, close) {
           return InfoBar(
             title: const Text('Scoring Failed'),
-            content: const Text('Failed to refresh IP score. Please try again.'),
+            content:
+                const Text('Failed to refresh IP score. Please try again.'),
             severity: InfoBarSeverity.error,
             action: IconButton(
               icon: const Icon(FluentIcons.clear),

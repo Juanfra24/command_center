@@ -41,7 +41,8 @@ void main() {
         final result = Result<int>.failure('Something went wrong');
 
         expect(result, isA<Failure<int>>());
-        expect((result as Failure<int>).message, equals('Something went wrong'));
+        expect(
+            (result as Failure<int>).message, equals('Something went wrong'));
         expect((result).error, isNull);
       });
 

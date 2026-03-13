@@ -35,7 +35,8 @@ class CurrentIpCard extends StatelessWidget {
       children: [
         SizedBox(
           width: 100,
-          child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          child:
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
         Expanded(child: Text(value)),
       ],

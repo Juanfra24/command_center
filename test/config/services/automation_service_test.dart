@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/automation/automation_result.dart';
 import 'package:command_center/config/services/automation/result_parser.dart';
 
-/// AutomationService itself is tightly coupled to GetX DI (Get.find<PythonSetupService>,
-/// Get.find<ProxyController>, etc.) and spawns OS processes, making it hard to unit test
+/// AutomationService itself is tightly coupled to GetX DI (`Get.find<PythonSetupService>`,
+/// `Get.find<ProxyController>`, etc.) and spawns OS processes, making it hard to unit test
 /// in isolation. Instead, we test its two key dependencies:
 /// - AutomationResult (data model + parsing)
 /// - ResultParser (output parsing logic)

@@ -99,8 +99,8 @@ class WebshareConfigDialog {
             statusMessage.value = 'Clearing proxy data...';
             await Get.find<ProxyController>().clearAllProxyData();
           } catch (e) {
-            logger.w(
-                'ProxyController not available or error clearing data: $e');
+            logger
+                .w('ProxyController not available or error clearing data: $e');
           }
           try {
             await Get.find<OnboardingService>().resetOnboarding();

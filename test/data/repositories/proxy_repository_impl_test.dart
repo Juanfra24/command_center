@@ -317,10 +317,10 @@ void main() {
       final slotId2 =
           await repo.insertSlot(_makeSlot(slotNumber: 2, webshareId: 'ws-ip2'));
 
-      await repo.insertIpAddress(
-          _makeIp(slotId: slotId, ipAddress: '10.0.0.1'));
-      await repo.insertIpAddress(
-          _makeIp(slotId: slotId2, ipAddress: '10.0.0.2'));
+      await repo
+          .insertIpAddress(_makeIp(slotId: slotId, ipAddress: '10.0.0.1'));
+      await repo
+          .insertIpAddress(_makeIp(slotId: slotId2, ipAddress: '10.0.0.2'));
 
       final allIps = await repo.getAllIpAddresses();
       expect(allIps.length, equals(2));
@@ -338,8 +338,8 @@ void main() {
 
     test('excludes soft-deleted slots', () async {
       await repo.insertSlot(_makeSlot(slotNumber: 1, webshareId: 'ws-w1'));
-      final id2 = await repo.insertSlot(
-          _makeSlot(slotNumber: 2, webshareId: 'ws-w2'));
+      final id2 =
+          await repo.insertSlot(_makeSlot(slotNumber: 2, webshareId: 'ws-w2'));
       await repo.softDeleteSlot(id2);
 
       final slots = await repo.watchAllSlots().first;

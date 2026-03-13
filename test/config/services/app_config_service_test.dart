@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/core/resource/result.dart';
-import 'package:command_center/domain/repositories/config_repository.dart';
 
 void main() {
   late AppConfigService service;
@@ -50,12 +49,10 @@ void main() {
 
   // Test using a real in-memory database for full integration
   group('AppConfigService - with real ConfigRepository', () {
-    late ConfigRepository realRepo;
-
     setUp(() async {
-      // Use Drift in-memory database for integration testing
-      final db = await _createInMemoryDb();
-      realRepo = _ConfigRepoAdapter(db);
+      // An in-memory database could be wired up here for full integration
+      // testing, but the current tests verify behaviour when the repository
+      // is *not* initialised, so we intentionally leave it disconnected.
     });
 
     test('saveWebshareApiKey returns failure when repo not initialized',
@@ -76,27 +73,4 @@ void main() {
       expect(result, isA<Failure<void>>());
     });
   });
-}
-
-// Simple in-memory config repository for integration tests
-Future<Map<String, String>> _createInMemoryDb() async {
-  return <String, String>{};
-}
-
-class _ConfigRepoAdapter implements ConfigRepository {
-  final Map<String, String> _store;
-  _ConfigRepoAdapter(this._store);
-
-  @override
-  Future<String?> getValue(String key) async => _store[key];
-  @override
-  Future<void> setValue(String key, String value) async => _store[key] = value;
-  @override
-  Future<void> deleteValue(String key) async => _store.remove(key);
-  @override
-  Future<Map<String, String>> getAllConfig() async => Map.from(_store);
-  @override
-  Future<void> clearAll() async => _store.clear();
-  @override
-  Stream<String?> watchValue(String key) => Stream.value(_store[key]);
 }

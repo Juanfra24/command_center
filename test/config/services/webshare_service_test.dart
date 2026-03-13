@@ -54,12 +54,10 @@ void main() {
   });
 
   group('WebshareService - saveApiKey with real AppConfigService', () {
-    late AppConfigService configService;
-
     setUp(() {
       // Use a real AppConfigService (not mocked) to avoid GetX lifecycle issues.
       // Its _configRepository will be null, so operations will return failures.
-      configService = Get.put(AppConfigService());
+      Get.put(AppConfigService());
     });
 
     test('saveApiKey returns failure when config repo not initialized',

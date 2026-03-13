@@ -81,11 +81,13 @@ void main() {
         await repo.setValue('key3', 'value3');
 
         final config = await repo.getAllConfig();
-        expect(config, equals({
-          'key1': 'value1',
-          'key2': 'value2',
-          'key3': 'value3',
-        }));
+        expect(
+            config,
+            equals({
+              'key1': 'value1',
+              'key2': 'value2',
+              'key3': 'value3',
+            }));
       });
     });
 

@@ -5,7 +5,6 @@ import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/config/services/webshare/webshare_models.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:command_center/domain/repositories/proxy_repository.dart';
 
 import '../../helpers/test_helpers.dart';
 
@@ -113,13 +112,13 @@ void main() {
       when(() => mockRepo.getAllSlotsIncludingDeleted())
           .thenAnswer((_) async => [existingSlot]);
       when(() => mockRepo.updateSlot(any())).thenAnswer((_) async {});
-      when(() => mockRepo.getActiveIpForSlot(1)).thenAnswer((_) async =>
-          ProxyIpAddressEntity.empty().copyWith(
-            id: 10,
-            ipAddress: '1.2.3.4',
-            slotId: 1,
-            isActive: true,
-          ));
+      when(() => mockRepo.getActiveIpForSlot(1))
+          .thenAnswer((_) async => ProxyIpAddressEntity.empty().copyWith(
+                id: 10,
+                ipAddress: '1.2.3.4',
+                slotId: 1,
+                isActive: true,
+              ));
 
       await syncService.syncWithWebshare();
 
@@ -145,13 +144,13 @@ void main() {
           .thenAnswer((_) async => [deletedSlot]);
       when(() => mockRepo.recoverSlot(1)).thenAnswer((_) async {});
       when(() => mockRepo.updateSlot(any())).thenAnswer((_) async {});
-      when(() => mockRepo.getActiveIpForSlot(1)).thenAnswer((_) async =>
-          ProxyIpAddressEntity.empty().copyWith(
-            id: 10,
-            ipAddress: '1.2.3.4',
-            slotId: 1,
-            isActive: true,
-          ));
+      when(() => mockRepo.getActiveIpForSlot(1))
+          .thenAnswer((_) async => ProxyIpAddressEntity.empty().copyWith(
+                id: 10,
+                ipAddress: '1.2.3.4',
+                slotId: 1,
+                isActive: true,
+              ));
 
       await syncService.syncWithWebshare();
 
@@ -192,8 +191,7 @@ void main() {
             id: 'ws-ip-change', slotNumber: 1, proxyAddress: '5.6.7.8'),
       ];
 
-      final existingSlot =
-          _makeSlotEntity(id: 1, webshareId: 'ws-ip-change');
+      final existingSlot = _makeSlotEntity(id: 1, webshareId: 'ws-ip-change');
 
       when(() => mockWebshare.getProxyList())
           .thenAnswer((_) async => wsProxies);
@@ -201,13 +199,13 @@ void main() {
           .thenAnswer((_) async => [existingSlot]);
       when(() => mockRepo.updateSlot(any())).thenAnswer((_) async {});
       // Current IP is different from the new one in API
-      when(() => mockRepo.getActiveIpForSlot(1)).thenAnswer((_) async =>
-          ProxyIpAddressEntity.empty().copyWith(
-            id: 10,
-            ipAddress: '1.2.3.4',
-            slotId: 1,
-            isActive: true,
-          ));
+      when(() => mockRepo.getActiveIpForSlot(1))
+          .thenAnswer((_) async => ProxyIpAddressEntity.empty().copyWith(
+                id: 10,
+                ipAddress: '1.2.3.4',
+                slotId: 1,
+                isActive: true,
+              ));
       when(() => mockRepo.deactivateIp(10)).thenAnswer((_) async {});
       when(() => mockRepo.insertIpAddress(any())).thenAnswer((_) async => 20);
 
