@@ -95,6 +95,16 @@ Then update the automation service to use `.venv\Scripts\python.exe`.
 2. Run `flutter pub get`
 3. Import in your Dart files
 
+### Pre-commit Hook (Recommended)
+Install the formatting pre-commit hook to catch issues before push:
+
+```bash
+cp scripts/hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+This runs `dart format --set-exit-if-changed .` on every commit.
+
 ## Architecture
 
 ### Python Scripts
