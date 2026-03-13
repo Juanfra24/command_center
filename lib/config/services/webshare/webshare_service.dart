@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/webshare/webshare_api_client.dart';
 
@@ -63,43 +64,51 @@ class WebshareService extends GetxService {
   }
 
   /// Save API key to SQLite via AppConfigService
-  Future<bool> saveApiKey(String apiKey) async {
+  Future<Result<void>> saveApiKey(String apiKey) async {
     try {
       _configService ??= Get.find<AppConfigService>();
-      final success = await _configService!.saveWebshareApiKey(apiKey);
-      if (success) {
-        _apiKey = apiKey;
-        isConfigured.value = true;
+      final result = await _configService!.saveWebshareApiKey(apiKey);
+      switch (result) {
+        case Success():
+          _apiKey = apiKey;
+          isConfigured.value = true;
+          return Result.success(null);
+        case Failure(:final message):
+          lastError.value = message;
+          return Result.failure(message);
       }
-      return success;
     } catch (e) {
       logger.e('Error saving Webshare API key: $e');
       lastError.value = 'Failed to save API key: $e';
-      return false;
+      return Result.failure('Failed to save API key: $e', e);
     }
   }
 
   /// Clear API key (unlink)
-  Future<bool> clearApiKey() async {
+  Future<Result<void>> clearApiKey() async {
     try {
       _configService ??= Get.find<AppConfigService>();
-      final success = await _configService!.clearWebshareApiKey();
-      if (success) {
-        _apiKey = null;
-        isConfigured.value = false;
+      final result = await _configService!.clearWebshareApiKey();
+      switch (result) {
+        case Success():
+          _apiKey = null;
+          isConfigured.value = false;
+          return Result.success(null);
+        case Failure(:final message):
+          lastError.value = message;
+          return Result.failure(message);
       }
-      return success;
     } catch (e) {
       logger.e('Error clearing Webshare API key: $e');
       lastError.value = 'Failed to unlink: $e';
-      return false;
+      return Result.failure('Failed to unlink: $e', e);
     }
   }
 
   /// Test API connection and return detailed error message
-  Future<({bool success, String? error})> testAndConnect(String apiKey) async {
+  Future<Result<void>> testAndConnect(String apiKey) async {
     if (apiKey.isEmpty) {
-      return (success: false, error: 'API key cannot be empty');
+      return Result.failure('API key cannot be empty');
     }
 
     lastError.value = null;
@@ -108,37 +117,30 @@ class WebshareService extends GetxService {
       final statusCode = await _apiClient.getProfile(apiKey);
 
       if (statusCode == 200) {
-        return (success: true, error: null);
+        return Result.success(null);
       } else if (statusCode == 401) {
-        return (
-          success: false,
-          error: 'Invalid API key. Please check your Webshare dashboard.'
-        );
+        return Result.failure(
+            'Invalid API key. Please check your Webshare dashboard.');
       } else if (statusCode == 403) {
-        return (
-          success: false,
-          error: 'Access denied. API key may have restricted permissions.'
-        );
+        return Result.failure(
+            'Access denied. API key may have restricted permissions.');
       } else if (statusCode == 429) {
-        return (
-          success: false,
-          error: 'Rate limited. Please wait a moment and try again.'
-        );
+        return Result.failure(
+            'Rate limited. Please wait a moment and try again.');
       } else {
-        return (success: false, error: 'Connection failed (HTTP $statusCode)');
+        return Result.failure('Connection failed (HTTP $statusCode)');
       }
     } catch (e) {
       final errorMsg = e.toString().contains('ClientException')
           ? 'Network error: $e'
           : 'Connection error: $e';
-      return (success: false, error: errorMsg);
+      return Result.failure(errorMsg, e);
     }
   }
 
   /// Test API connection with current key (legacy method)
-  Future<bool> testConnection([String? tempApiKey]) async {
-    final result = await testAndConnect(tempApiKey ?? _apiKey ?? '');
-    return result.success;
+  Future<Result<void>> testConnection([String? tempApiKey]) async {
+    return testAndConnect(tempApiKey ?? _apiKey ?? '');
   }
 
   /// Get all proxy slots from Webshare
@@ -162,12 +164,12 @@ class WebshareService extends GetxService {
 
   /// Replace a proxy IP via the v3 Proxy Replacement API.
   /// Orchestrates: create replacement -> poll until complete/failed.
-  Future<({bool success, String? error})> replaceProxyIp(
+  Future<Result<void>> replaceProxyIp(
     String ipAddress, {
     String? countryCode,
   }) async {
     if (_apiKey == null) {
-      return (success: false, error: 'Webshare API key not configured');
+      return Result.failure('Webshare API key not configured');
     }
 
     try {
@@ -188,15 +190,15 @@ class WebshareService extends GetxService {
       final errorMsg = _parseErrorMessage(e.responseBody) ??
           'Failed to create replacement: HTTP ${e.statusCode}';
       logger.e('Failed to create replacement: $errorMsg');
-      return (success: false, error: errorMsg);
+      return Result.failure(errorMsg, e);
     } catch (e) {
       logger.e('Error replacing proxy: $e');
-      return (success: false, error: 'Error replacing proxy: $e');
+      return Result.failure('Error replacing proxy: $e', e);
     }
   }
 
   /// Poll the replacement status until completed or failed.
-  Future<({bool success, String? error})> _pollReplacementStatus(
+  Future<Result<void>> _pollReplacementStatus(
       dynamic replacementId) async {
     const maxAttempts = 30;
     const pollInterval = Duration(seconds: 2);
@@ -215,12 +217,12 @@ class WebshareService extends GetxService {
           logger.i('Replacement completed: '
               '${data['proxies_removed']} removed, '
               '${data['proxies_added']} added');
-          return (success: true, error: null);
+          return Result.success(null);
         } else if (state == 'failed') {
           final error = data['error'] ?? 'Unknown error';
           final errorCode = data['error_code'] ?? '';
           logger.e('Replacement failed: $error ($errorCode)');
-          return (success: false, error: 'Replacement failed: $error');
+          return Result.failure('Replacement failed: $error');
         }
         // States: validating, validated, processing — keep polling
       } catch (e) {
@@ -228,11 +230,8 @@ class WebshareService extends GetxService {
       }
     }
 
-    return (
-      success: false,
-      error:
-          'Replacement timed out after ${maxAttempts * pollInterval.inSeconds}s'
-    );
+    return Result.failure(
+        'Replacement timed out after ${maxAttempts * pollInterval.inSeconds}s');
   }
 
   /// Legacy: Rotate/replace IP for a specific proxy using v2 API

@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 
@@ -25,7 +26,7 @@ class ProxyReplacementService {
   }
 
   /// Replace a proxy IP via the Webshare v3 Proxy Replacement API.
-  Future<({bool success, String? error})> replaceProxyIp(
+  Future<Result<void>> replaceProxyIp(
     ProxyIpAddressEntity currentIp, {
     bool keepSameCountry = false,
   }) async {

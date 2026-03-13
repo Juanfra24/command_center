@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/ipqs/ipqs_api_client.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/repositories/config_repository.dart';
 import 'package:get/get.dart';
@@ -47,36 +48,40 @@ class IpqsService extends GetxService {
   }
 
   /// Save API key
-  Future<bool> saveApiKey(String key) async {
+  Future<Result<void>> saveApiKey(String key) async {
     try {
-      if (_configRepository == null) return false;
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
 
       await _configRepository!.setValue(_keyApiKey, key);
       await _configRepository!.setValue(_keyIsSetup, 'true');
 
       apiKey.value = key;
       isConfigured.value = true;
-      return true;
+      return Result.success(null);
     } catch (e) {
       logger.e('Error saving IPQS API key: $e');
-      return false;
+      return Result.failure('Failed to save IPQS API key: $e', e);
     }
   }
 
   /// Clear API key (unlink)
-  Future<bool> clearApiKey() async {
+  Future<Result<void>> clearApiKey() async {
     try {
-      if (_configRepository == null) return false;
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
 
       await _configRepository!.deleteValue(_keyApiKey);
       await _configRepository!.setValue(_keyIsSetup, 'false');
 
       apiKey.value = null;
       isConfigured.value = false;
-      return true;
+      return Result.success(null);
     } catch (e) {
       logger.e('Error clearing IPQS API key: $e');
-      return false;
+      return Result.failure('Failed to clear IPQS API key: $e', e);
     }
   }
 
@@ -100,8 +105,8 @@ class IpqsService extends GetxService {
       final result = await testConnection(key);
 
       if (result.success) {
-        final saved = await saveApiKey(key);
-        if (!saved) {
+        final saveResult = await saveApiKey(key);
+        if (saveResult is Failure) {
           return IpqsResult.error('Failed to save API key');
         }
       }

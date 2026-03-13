@@ -1,4 +1,5 @@
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/repositories/config_repository.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -65,51 +66,57 @@ class AppConfigService extends GetxService {
   }
 
   /// Save Webshare API key
-  Future<bool> saveWebshareApiKey(String apiKey) async {
+  Future<Result<void>> saveWebshareApiKey(String apiKey) async {
     try {
-      if (_configRepository == null) return false;
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
 
       await _configRepository!.setValue(_keyWebshareApiKey, apiKey);
       await _configRepository!.setValue(_keyIsWebshareSetup, 'true');
 
       webshareApiKey.value = apiKey;
       isWebshareSetup.value = true;
-      return true;
+      return Result.success(null);
     } catch (e) {
       logger.e('Error saving Webshare API key: $e');
-      return false;
+      return Result.failure('Failed to save Webshare API key: $e', e);
     }
   }
 
   /// Clear Webshare API key (unlink)
-  Future<bool> clearWebshareApiKey() async {
+  Future<Result<void>> clearWebshareApiKey() async {
     try {
-      if (_configRepository == null) return false;
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
 
       await _configRepository!.deleteValue(_keyWebshareApiKey);
       await _configRepository!.setValue(_keyIsWebshareSetup, 'false');
 
       webshareApiKey.value = null;
       isWebshareSetup.value = false;
-      return true;
+      return Result.success(null);
     } catch (e) {
       logger.e('Error clearing Webshare API key: $e');
-      return false;
+      return Result.failure('Failed to clear Webshare API key: $e', e);
     }
   }
 
   /// Save theme mode preference
-  Future<bool> saveThemeMode(String mode) async {
+  Future<Result<void>> saveThemeMode(String mode) async {
     try {
-      if (_configRepository == null) return false;
+      if (_configRepository == null) {
+        return Result.failure('Config repository not initialized');
+      }
 
       await _configRepository!.setValue(_keyThemeMode, mode);
 
       themeMode.value = mode;
-      return true;
+      return Result.success(null);
     } catch (e) {
       logger.e('Error saving theme mode: $e');
-      return false;
+      return Result.failure('Failed to save theme mode: $e', e);
     }
   }
 
