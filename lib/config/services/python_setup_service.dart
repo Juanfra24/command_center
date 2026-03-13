@@ -18,13 +18,13 @@ enum SetupStep {
 
 /// Service to manage Python environment setup and dependencies
 class PythonSetupService extends GetxService {
-  final isSetupComplete = false.obs;
-  final isChecking = false.obs;
-  final isChromiumInstalled = false.obs;
-  final setupError = Rxn<String>();
-  final setupProgress = ''.obs;
-  final currentStep = SetupStep.idle.obs;
-  final setupProgressPercent = 0.0.obs;
+  bool isSetupComplete = false;
+  bool isChecking = false;
+  bool isChromiumInstalled = false;
+  String? setupError;
+  String setupProgress = '';
+  SetupStep currentStep = SetupStep.idle;
+  double setupProgressPercent = 0.0;
 
   late final PythonDependencyChecker _checker;
 
@@ -45,46 +45,46 @@ class PythonSetupService extends GetxService {
   /// Check if dependencies are already installed
   Future<bool> checkDependenciesInstalled() async {
     final result = await _checker.checkDependenciesInstalled();
-    if (result) isSetupComplete.value = true;
+    if (result) isSetupComplete = true;
     return result;
   }
 
   /// Install Python dependencies
   Future<bool> installDependencies() async {
-    if (isChecking.value) return false;
+    if (isChecking) return false;
 
-    isChecking.value = true;
-    setupError.value = null;
-    currentStep.value = SetupStep.checkingPython;
-    setupProgressPercent.value = 0.1;
+    isChecking = true;
+    setupError = null;
+    currentStep = SetupStep.checkingPython;
+    setupProgressPercent = 0.1;
 
     try {
-      setupProgress.value = 'Checking Python installation...';
+      setupProgress = 'Checking Python installation...';
 
       if (!await checkPythonAvailable()) {
-        setupError.value =
+        setupError =
             'Python not found. Please install Python 3.8 or higher.';
-        currentStep.value = SetupStep.failed;
+        currentStep = SetupStep.failed;
         return false;
       }
 
-      setupProgressPercent.value = 0.2;
+      setupProgressPercent = 0.2;
 
       if (!await checkPipAvailable()) {
-        setupError.value = 'pip not found. Please reinstall Python with pip.';
-        currentStep.value = SetupStep.failed;
+        setupError = 'pip not found. Please reinstall Python with pip.';
+        currentStep = SetupStep.failed;
         return false;
       }
 
-      setupProgressPercent.value = 0.3;
-      currentStep.value = SetupStep.installingDependencies;
-      setupProgress.value = 'Installing Python dependencies...';
+      setupProgressPercent = 0.3;
+      currentStep = SetupStep.installingDependencies;
+      setupProgress = 'Installing Python dependencies...';
 
       final requirementsPath = path.join(_scriptsPath, 'requirements.txt');
 
       if (!File(requirementsPath).existsSync()) {
-        setupError.value = 'requirements.txt not found at: $requirementsPath';
-        currentStep.value = SetupStep.failed;
+        setupError = 'requirements.txt not found at: $requirementsPath';
+        currentStep = SetupStep.failed;
         return false;
       }
 
@@ -120,47 +120,47 @@ class PythonSetupService extends GetxService {
       final exitCode = await process.exitCode;
 
       if (exitCode != 0) {
-        setupError.value =
+        setupError =
             'Failed to install dependencies: ${output.toString()}';
         logger.e('Dependency installation failed with exit code: $exitCode');
-        currentStep.value = SetupStep.failed;
+        currentStep = SetupStep.failed;
         return false;
       }
 
-      setupProgressPercent.value = 0.6;
+      setupProgressPercent = 0.6;
       logger.i('Python dependencies installed successfully');
 
-      currentStep.value = SetupStep.installingChromium;
-      setupProgress.value = 'Installing Chromium browser driver...';
+      currentStep = SetupStep.installingChromium;
+      setupProgress = 'Installing Chromium browser driver...';
 
       final chromiumSuccess = await installChromiumDriver();
       if (!chromiumSuccess) {
         logger.w('Chromium pre-install failed, will download at runtime');
       }
 
-      setupProgressPercent.value = 0.9;
-      currentStep.value = SetupStep.verifying;
-      setupProgress.value = 'Verifying installation...';
+      setupProgressPercent = 0.9;
+      currentStep = SetupStep.verifying;
+      setupProgress = 'Verifying installation...';
 
       final verified = await checkDependenciesInstalled();
       if (!verified) {
-        setupError.value = 'Installation verification failed';
-        currentStep.value = SetupStep.failed;
+        setupError = 'Installation verification failed';
+        currentStep = SetupStep.failed;
         return false;
       }
 
-      setupProgressPercent.value = 1.0;
-      currentStep.value = SetupStep.complete;
-      setupProgress.value = 'Setup complete!';
-      isSetupComplete.value = true;
+      setupProgressPercent = 1.0;
+      currentStep = SetupStep.complete;
+      setupProgress = 'Setup complete!';
+      isSetupComplete = true;
       return true;
     } catch (e) {
-      setupError.value = 'Error during setup: $e';
+      setupError = 'Error during setup: $e';
       logger.e('Python setup error: $e');
-      currentStep.value = SetupStep.failed;
+      currentStep = SetupStep.failed;
       return false;
     } finally {
-      isChecking.value = false;
+      isChecking = false;
     }
   }
 
@@ -177,7 +177,7 @@ class PythonSetupService extends GetxService {
 
       if (result.exitCode == 0) {
         logger.i('Patchright Chromium installed successfully');
-        isChromiumInstalled.value = true;
+        isChromiumInstalled = true;
         return await _verifyChromiumWorks();
       } else {
         logger.w('Patchright Chromium install returned: ${result.stderr}');
@@ -191,13 +191,13 @@ class PythonSetupService extends GetxService {
 
   Future<bool> _verifyChromiumWorks() async {
     final result = await _checker.verifyChromiumWorks();
-    if (result) isChromiumInstalled.value = true;
+    if (result) isChromiumInstalled = true;
     return result;
   }
 
   /// Initialize and setup if needed
   Future<void> initializeSetup() async {
-    if (isSetupComplete.value) return;
+    if (isSetupComplete) return;
 
     logger.i('Checking Python setup...');
 
@@ -207,7 +207,7 @@ class PythonSetupService extends GetxService {
       final browserWorks = await _verifyChromiumWorks();
 
       if (browserWorks) {
-        isSetupComplete.value = true;
+        isSetupComplete = true;
         return;
       } else {
         logger.w('Browser verification failed! Re-running full setup...');

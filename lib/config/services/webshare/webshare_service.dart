@@ -22,8 +22,7 @@ class WebshareService extends GetxService {
 
   var isConfigured = false.obs;
   var isLoading = false.obs;
-  var isSyncing = false.obs;
-  var lastSyncTime = Rxn<DateTime>();
+  DateTime? lastSyncTime;
   var lastError = Rxn<String>();
 
   String? _apiKey;
@@ -154,7 +153,7 @@ class WebshareService extends GetxService {
     isLoading.value = true;
     try {
       final proxies = await _apiClient.getProxyList(_apiKey!);
-      lastSyncTime.value = DateTime.now();
+      lastSyncTime = DateTime.now();
       return proxies;
     } catch (e) {
       logger.e('Error fetching Webshare proxies: $e');

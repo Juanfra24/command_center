@@ -3,7 +3,9 @@ import 'package:get/get.dart';
 
 import '../../core/resource/local_storage/local_storage.dart';
 
-class ThemeManage extends GetxController {
+class ThemeManage {
+  ThemeManage._(); // Prevent instantiation
+
   static const _themeKey = "isDarkMode";
 
   static final Rx<ThemeMode> _themeMode = getThemeMode().obs;

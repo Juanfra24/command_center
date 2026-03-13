@@ -60,11 +60,11 @@ class AutomationService extends GetxService {
   /// Returns an error [AutomationResult] if setup fails, otherwise null.
   Future<AutomationResult?> _ensurePythonSetup() async {
     final ps = Get.find<PythonSetupService>();
-    if (ps.isSetupComplete.value) return null;
+    if (ps.isSetupComplete) return null;
     _log('Python dependencies not installed, installing now...');
     if (!await ps.installDependencies()) {
       return AutomationResult.error(
-        'Python setup failed: ${ps.setupError.value ?? "Unknown error"}',
+        'Python setup failed: ${ps.setupError ?? "Unknown error"}',
       );
     }
     _log('Verifying Python dependency installation...');

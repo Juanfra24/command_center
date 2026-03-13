@@ -24,7 +24,7 @@ class AppConfigService extends GetxService {
   final webshareApiKey = Rxn<String>();
   final isWebshareSetup = false.obs;
   final themeMode = 'system'.obs; // 'light', 'dark', 'system'
-  final isLoading = true.obs;
+  bool isLoading = true;
   final autoRotationEnabled = true.obs;
   final autoRotationThreshold = 40.obs;
 
@@ -50,7 +50,7 @@ class AppConfigService extends GetxService {
 
   /// Load configuration from SQLite
   Future<void> loadConfig() async {
-    isLoading.value = true;
+    isLoading = true;
     try {
       if (_configRepository == null) return;
 
@@ -73,7 +73,7 @@ class AppConfigService extends GetxService {
     } catch (e) {
       logger.e('Error loading config: $e');
     } finally {
-      isLoading.value = false;
+      isLoading = false;
     }
   }
 

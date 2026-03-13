@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 
 /// Handles checking and verifying Python and Patchright dependencies.
 class PythonDependencyChecker extends GetxService {
-  final isChromiumInstalled = false.obs;
+  bool isChromiumInstalled = false;
 
   String get _scriptsPath => scriptsPath;
 
@@ -87,7 +87,7 @@ asyncio.run(verify())
       final output = result.stdout.toString();
       if (output.contains('CHROMIUM_OK')) {
         logger.i('Patchright Chromium verification successful');
-        isChromiumInstalled.value = true;
+        isChromiumInstalled = true;
         return true;
       }
       logger.w('Chromium verification failed: $output');

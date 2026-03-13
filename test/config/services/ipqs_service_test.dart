@@ -18,7 +18,7 @@ void main() {
 
   group('IpqsService - observable states', () {
     test('initial states are correct', () {
-      expect(service.apiKey.value, isNull);
+      expect(service.apiKey, isNull);
       expect(service.isConfigured.value, isFalse);
       expect(service.isLoading.value, isFalse);
       expect(service.lastError.value, isNull);
