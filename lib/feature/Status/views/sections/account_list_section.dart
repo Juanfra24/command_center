@@ -23,8 +23,7 @@ class AccountListSection extends StatelessWidget {
             style: theme.typography.subtitle,
           ),
           const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          Expanded(
             child: _buildAccountsTable(context),
           ),
         ],
@@ -35,60 +34,103 @@ class AccountListSection extends StatelessWidget {
   Widget _buildAccountsTable(BuildContext context) {
     final theme = FluentTheme.of(context);
 
-    return Table(
-      defaultColumnWidth: const IntrinsicColumnWidth(),
-      border: TableBorder.all(
-        color: theme.resources.dividerStrokeColorDefault,
-        width: 1,
-        borderRadius: BorderRadius.circular(4),
-      ),
+    // Flatten accounts into displayable rows
+    final rows = <_AccountRow>[];
+    for (final account in controller.accountList) {
+      if (account.characters.isEmpty) {
+        rows.add(_AccountRow(account: account, character: null));
+      } else {
+        for (final character in account.characters) {
+          rows.add(_AccountRow(account: account, character: character));
+        }
+      }
+    }
+
+    const columns = [
+      'Account Name',
+      'Email',
+      'Password',
+      'Character',
+      'Proxy',
+      'Status',
+      'Actions',
+    ];
+
+    return Column(
       children: [
-        TableRow(
+        // Fixed header
+        Container(
           decoration: BoxDecoration(
             color: theme.accentColor.withValues(alpha: 0.1),
+            border: Border.all(
+              color: theme.resources.dividerStrokeColorDefault,
+            ),
           ),
-          children: [
-            _buildTableHeader('Account Name'),
-            _buildTableHeader('Email'),
-            _buildTableHeader('Password'),
-            _buildTableHeader('Character'),
-            _buildTableHeader('Proxy'),
-            _buildTableHeader('Status'),
-            _buildTableHeader('Actions'),
-          ],
+          child: Row(
+            children: columns
+                .map((c) => Expanded(child: _buildTableHeader(c)))
+                .toList(),
+          ),
         ),
-        ...controller.accountList.expand((account) {
-          if (account.characters.isEmpty) {
-            return [
-              TableRow(
-                children: [
-                  _buildTableCell(account.accountName),
-                  _buildTableCellWithCopy(context, account.email),
-                  _buildTableCellWithCopy(context, account.password),
-                  _buildTableCell('\u2014'),
-                  _buildTableCell(account.proxyAddress),
-                  const ProcessStatusBadge(isRunning: false),
-                  _buildEmptyAccountActions(context, account),
-                ],
-              ),
-            ];
-          }
-          return account.characters.map((character) {
-            final isRunning =
-                controller.processClients.containsKey(character.name);
-            return TableRow(
-              children: [
-                _buildTableCell(account.accountName),
-                _buildTableCellWithCopy(context, account.email),
-                _buildTableCellWithCopy(context, account.password),
-                _buildTableCell(character.name),
-                _buildTableCell(account.proxyAddress),
-                ProcessStatusBadge(isRunning: isRunning),
-                _buildActionsCell(context, account, character, isRunning),
-              ],
-            );
-          });
-        }),
+        // Virtualized rows
+        Expanded(
+          child: ListView.builder(
+            itemCount: rows.length,
+            itemBuilder: (context, index) {
+              final row = rows[index];
+              final isRunning = row.character != null &&
+                  controller.processClients.containsKey(row.character!.name);
+              return Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: theme.resources.dividerStrokeColorDefault,
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: _buildTableCell(row.account.accountName)),
+                    Expanded(
+                      child: _buildTableCellWithCopy(
+                        context,
+                        row.account.email,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildTableCellWithCopy(
+                        context,
+                        row.account.password,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildTableCell(
+                        row.character?.name ?? '\u2014',
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildTableCell(row.account.proxyAddress),
+                    ),
+                    Expanded(
+                      child: ProcessStatusBadge(isRunning: isRunning),
+                    ),
+                    Expanded(
+                      child: row.character != null
+                          ? _buildActionsCell(
+                              context,
+                              row.account,
+                              row.character!,
+                              isRunning,
+                            )
+                          : _buildEmptyAccountActions(context, row.account),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -231,4 +273,11 @@ class AccountListSection extends StatelessWidget {
       },
     );
   }
+}
+
+class _AccountRow {
+  final JagexAccount account;
+  final Character? character;
+
+  const _AccountRow({required this.account, this.character});
 }
