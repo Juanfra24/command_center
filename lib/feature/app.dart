@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/feature/app/views/sections/onboarding_section.dart';
 import 'package:command_center/feature/app/views/sections/settings_section.dart';
@@ -11,8 +10,7 @@ import 'package:command_center/core/widgets/window_title_bar.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/views/status_screen.dart';
 import 'package:command_center/feature/main_menu/views/main_menu_screen.dart';
-import 'package:command_center/feature/notification/controller/notification_controller.dart';
-import 'package:command_center/feature/notification/views/components/notification_flyout.dart';
+import 'package:command_center/feature/notification/views/components/notification_bell.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/proxy_screen.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
@@ -118,7 +116,7 @@ class _AppState extends State<App> with WindowListener {
               ),
               title: const Text('RuneScape Bot Command Center'),
               actions: [
-                _buildNotificationBell(),
+                NotificationBell(flyoutController: _flyoutController),
                 const SizedBox(width: 8),
                 _buildMusicButton(),
                 const SizedBox(width: 8),
@@ -222,53 +220,6 @@ class _AppState extends State<App> with WindowListener {
 
   Widget _buildOnboardingRequired(OnboardingService? onboardingService) {
     return OnboardingSection(onboardingService: onboardingService);
-  }
-
-  Widget _buildNotificationBell() {
-    return Obx(() {
-      final notificationService = Get.find<NotificationService>();
-      final count = notificationService.unreadCount.value;
-      return FlyoutTarget(
-        controller: _flyoutController,
-        child: IconButton(
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(FluentIcons.ringer, size: 16),
-              if (count > 0)
-                Positioned(
-                  right: -6,
-                  top: -6,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    constraints:
-                        const BoxConstraints(minWidth: 14, minHeight: 14),
-                    child: Text(
-                      count > 99 ? '99+' : '$count',
-                      style: const TextStyle(color: Colors.white, fontSize: 9),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          onPressed: () {
-            try {
-              Get.find<NotificationController>().loadNotifications();
-            } catch (_) {}
-            _flyoutController.showFlyout(
-              barrierDismissible: true,
-              dismissOnPointerMoveAway: false,
-              builder: (context) => const NotificationFlyout(),
-            );
-          },
-        ),
-      );
-    });
   }
 
   Widget _buildMusicButton() {

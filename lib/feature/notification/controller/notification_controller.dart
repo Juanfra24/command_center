@@ -16,6 +16,7 @@ class NotificationController extends GetxController {
   void onInit() {
     super.onInit();
     loadNotifications();
+    ever(_notificationService.unreadCount, (_) => loadNotifications());
   }
 
   Future<void> loadNotifications() async {

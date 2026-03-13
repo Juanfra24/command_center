@@ -74,6 +74,9 @@ class ProxyAutoRotationService {
     int failedCount = 0;
 
     for (final scored in belowThreshold) {
+      // Skip if already rotated this cycle
+      if (_recentlyRotatedSlotIds.contains(scored.slot.id!)) continue;
+
       // Check quota
       final planInfo = await _replacementService.fetchPlanInfo();
       if (planInfo == null || planInfo.proxyReplacementsAvailable <= 0) {
