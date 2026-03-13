@@ -151,8 +151,7 @@ class WebshareConfigDialog {
         return;
       }
       statusMessage.value = 'Saving configuration...';
-      final saved =
-          await webshareService.saveApiKey(apiKeyController.text);
+      final saved = await webshareService.saveApiKey(apiKeyController.text);
       if (!saved) {
         statusMessage.value = 'Failed to save API key';
         isError.value = true;

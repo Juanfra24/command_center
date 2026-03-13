@@ -10,8 +10,9 @@ import 'package:get/get.dart';
 class ProxyDetailSection extends StatelessWidget {
   final ProxyController controller;
   final RxBool isReplacing;
-  final void Function(BuildContext context, ProxySlotEntity slot,
-      ProxyIpAddressEntity ip) onShowReplaceDialog;
+  final void Function(
+          BuildContext context, ProxySlotEntity slot, ProxyIpAddressEntity ip)
+      onShowReplaceDialog;
   final void Function(BuildContext context, ProxySlotEntity slot)
       onLaunchBrowser;
   final void Function(BuildContext context, ProxySlotEntity slot)

@@ -74,8 +74,7 @@ class ProxyController extends GetxController {
         _syncService =
             ProxySyncService(_proxyRepository!, _webshareService!, db);
       } catch (_) {
-        _syncService =
-            ProxySyncService(_proxyRepository!, _webshareService!);
+        _syncService = ProxySyncService(_proxyRepository!, _webshareService!);
       }
     }
   }
@@ -145,8 +144,8 @@ class ProxyController extends GetxController {
       await loadData();
       // Re-select the previously selected slot by ID
       if (previousSelectedId != null) {
-        final restored = proxySlots.firstWhereOrNull(
-            (s) => s.id == previousSelectedId);
+        final restored =
+            proxySlots.firstWhereOrNull((s) => s.id == previousSelectedId);
         if (restored != null) {
           selectSlot(restored);
         }

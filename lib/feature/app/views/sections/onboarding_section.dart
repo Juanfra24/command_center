@@ -67,8 +67,7 @@ class OnboardingSection extends StatelessWidget {
   Widget _buildSetupChecklist(BuildContext context) {
     final isWebshareComplete =
         onboardingService?.isWebshareConfigured.value ?? false;
-    final isIpqsComplete =
-        onboardingService?.isIpqsConfigured.value ?? false;
+    final isIpqsComplete = onboardingService?.isIpqsConfigured.value ?? false;
 
     return Column(
       children: [

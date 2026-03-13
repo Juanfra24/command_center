@@ -85,8 +85,7 @@ class CreateAccountButton extends StatelessWidget {
           builder: (ctx, close) {
             return InfoBar(
               title: Text('Account Created: $accountName'),
-              content:
-                  Text('Email: $createdEmail\nPassword: $password'),
+              content: Text('Email: $createdEmail\nPassword: $password'),
               severity: InfoBarSeverity.success,
               isLong: true,
               action: IconButton(

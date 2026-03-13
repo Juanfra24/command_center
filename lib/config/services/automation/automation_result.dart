@@ -61,7 +61,9 @@ class AutomationResult {
     );
   }
 
-  bool get isSuccess => status == AutomationStatus.success || status == AutomationStatus.accountCreated;
+  bool get isSuccess =>
+      status == AutomationStatus.success ||
+      status == AutomationStatus.accountCreated;
   bool get isAccountCreated => status == AutomationStatus.accountCreated;
   bool get needsCaptcha => status == AutomationStatus.captchaRequired;
   bool get proxyFailed => status == AutomationStatus.proxyValidationFailed;

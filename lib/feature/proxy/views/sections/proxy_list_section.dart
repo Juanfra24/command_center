@@ -142,8 +142,8 @@ class ProxyListSection extends StatelessWidget {
             padding: EdgeInsets.only(left: 8),
             child: Icon(FluentIcons.search, size: 16),
           ),
-          onChanged: (value) => _searchDebouncer.run(
-              () => controller.searchQuery.value = value),
+          onChanged: (value) =>
+              _searchDebouncer.run(() => controller.searchQuery.value = value),
         ),
         const SizedBox(height: 12),
         Row(

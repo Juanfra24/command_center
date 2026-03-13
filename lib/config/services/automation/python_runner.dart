@@ -80,8 +80,8 @@ class PythonRunner {
   /// Log redacted command for debugging
   void logCommand(List<String> args) {
     onLog('Full Python command:');
-    onLog('  python ${args.join(' ')}'
-        .replaceAll(RegExp(r':[^:@]+@'), ':***@'));
+    onLog(
+        '  python ${args.join(' ')}'.replaceAll(RegExp(r':[^:@]+@'), ':***@'));
   }
 
   /// Run a Python script with timeout and cancellation support.

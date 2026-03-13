@@ -17,7 +17,16 @@
       "Bash(dart run:*)",
       "WebSearch",
       "Bash(git check-ignore:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(find /mnt/c/Projects/command_center/docs -type f -name \"*.md\" | xargs ls -lh)",
+      "Bash(find /mnt/c/Projects/command_center/lib -type f \\\\\\( -name \"*screen.dart\" -o -name \"*section.dart\" -o -name \"*component.dart\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /mnt/c/Projects/command_center/lib -name \"*model.dart\" -exec wc -l {} + | sort -rn | head -20)",
+      "Bash(grep -n \"\\\\.init\\(\\)\" /mnt/c/Projects/command_center/lib/config/services/*.dart /mnt/c/Projects/command_center/lib/config/services/**/*.dart | head -20)",
+      "Bash(awk 'NR>=134 && NR<=200' lib/feature/proxy/views/proxy_screen.dart | wc -l)",
+      "Bash(awk 'NR>=225 && NR<=379' lib/feature/proxy/views/proxy_screen.dart | wc -l)",
+      "Bash(ls /mnt/c/Projects/command_center/lib/feature/proxy/views/helpers/ 2>/dev/null; echo \"exit: $?\")",
+      "Bash(git add:*)",
+      "Bash(dart format:*)"
     ]
   }
 }

@@ -10,8 +10,9 @@ class SlotHeader extends StatelessWidget {
   final ProxyIpAddressEntity? currentIp;
   final RxBool isReplacing;
   final ProxyIpAddressEntity? Function(ProxySlotEntity) getCurrentIpForSlot;
-  final void Function(BuildContext context, ProxySlotEntity slot,
-      ProxyIpAddressEntity ip) onShowReplaceDialog;
+  final void Function(
+          BuildContext context, ProxySlotEntity slot, ProxyIpAddressEntity ip)
+      onShowReplaceDialog;
   final void Function(BuildContext context, ProxySlotEntity slot)
       onLaunchBrowser;
   final void Function(BuildContext context, ProxySlotEntity slot)
@@ -82,8 +83,7 @@ class SlotHeader extends StatelessWidget {
                             slot.isActive ? 'Active' : 'Inactive',
                             style: TextStyle(
                               fontSize: 12,
-                              color:
-                                  slot.isActive ? Colors.green : Colors.grey,
+                              color: slot.isActive ? Colors.green : Colors.grey,
                             ),
                           ),
                         ),
@@ -169,8 +169,7 @@ class SlotHeader extends StatelessWidget {
       final automationService = Get.find<AutomationService>();
       final isRunning = automationService.isRunning.value;
       return Button(
-        onPressed:
-            isRunning ? null : () => onLaunchBrowser(context, slot),
+        onPressed: isRunning ? null : () => onLaunchBrowser(context, slot),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -204,8 +203,7 @@ class CurrentIpCard extends StatelessWidget {
         children: [
           _buildSimpleInfoRow('IP Address', ip.ipAddress),
           const SizedBox(height: 12),
-          _buildSimpleInfoRow(
-              'Location', '${ip.cityName}, ${ip.countryCode}'),
+          _buildSimpleInfoRow('Location', '${ip.cityName}, ${ip.countryCode}'),
           const SizedBox(height: 12),
           _buildSimpleInfoRow('Timezone', ip.ipTimezone),
           const SizedBox(height: 12),

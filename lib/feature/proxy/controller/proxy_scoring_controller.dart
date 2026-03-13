@@ -114,9 +114,8 @@ class ProxyScoringController extends GetxController {
           // Refresh selected slot history if applicable
           if (_proxyController.selectedSlot.value != null &&
               _proxyController.selectedSlot.value!.id != null) {
-            _proxyController.selectedSlotIpHistory.value =
-                _proxyController.getIpHistoryForSlot(
-                    _proxyController.selectedSlot.value!.id!);
+            _proxyController.selectedSlotIpHistory.value = _proxyController
+                .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
           }
         }
 
@@ -159,9 +158,8 @@ class ProxyScoringController extends GetxController {
       // Refresh selected slot history
       if (_proxyController.selectedSlot.value != null &&
           _proxyController.selectedSlot.value!.id != null) {
-        _proxyController.selectedSlotIpHistory.value =
-            _proxyController.getIpHistoryForSlot(
-                _proxyController.selectedSlot.value!.id!);
+        _proxyController.selectedSlotIpHistory.value = _proxyController
+            .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
       }
 
       return successCount;

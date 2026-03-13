@@ -82,8 +82,7 @@ class ReplaceProxyDialog extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: InfoBar(
-                    title:
-                        Text('Replacements: $available / $total remaining'),
+                    title: Text('Replacements: $available / $total remaining'),
                     content: Text(
                       'You have used ${total - available} of $total replacements this period.',
                     ),
@@ -131,13 +130,11 @@ class ReplaceProxyDialog extends StatelessWidget {
                           context,
                           builder: (ctx, close) {
                             return InfoBar(
-                              title:
-                                  Text(result.success ? 'Success' : 'Error'),
+                              title: Text(result.success ? 'Success' : 'Error'),
                               content: Text(
                                 result.success
                                     ? 'Proxy replaced successfully! The new IP has been synced.'
-                                    : result.error ??
-                                        'Failed to replace proxy',
+                                    : result.error ?? 'Failed to replace proxy',
                               ),
                               severity: result.success
                                   ? InfoBarSeverity.success

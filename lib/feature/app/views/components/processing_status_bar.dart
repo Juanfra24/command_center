@@ -44,9 +44,7 @@ class ProcessingStatusBar extends StatelessWidget {
                 )
               else
                 Icon(
-                  isError.value
-                      ? FluentIcons.error_badge
-                      : FluentIcons.info,
+                  isError.value ? FluentIcons.error_badge : FluentIcons.info,
                   size: 14,
                   color: isError.value ? Colors.red : Colors.blue,
                 ),

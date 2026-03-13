@@ -6,8 +6,11 @@ import 'package:command_center/config/services/webshare/webshare_api_client.dart
 
 // Re-export models so existing imports still work
 export 'package:command_center/config/services/webshare/webshare_api_client.dart'
-    show WebshareProxySlot, WebshareProxyConfig, WebsharePlanInfo,
-         WebshareApiException;
+    show
+        WebshareProxySlot,
+        WebshareProxyConfig,
+        WebsharePlanInfo,
+        WebshareApiException;
 
 /// Service for interacting with Webshare API.
 /// Handles API key management, config sync, error handling, and orchestration.
@@ -122,10 +125,7 @@ class WebshareService extends GetxService {
           error: 'Rate limited. Please wait a moment and try again.'
         );
       } else {
-        return (
-          success: false,
-          error: 'Connection failed (HTTP $statusCode)'
-        );
+        return (success: false, error: 'Connection failed (HTTP $statusCode)');
       }
     } catch (e) {
       final errorMsg = e.toString().contains('ClientException')

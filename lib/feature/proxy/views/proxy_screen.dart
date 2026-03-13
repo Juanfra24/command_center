@@ -108,14 +108,13 @@ class _ProxyScreenState extends State<ProxyScreen> {
               ),
             if (controller.isWebshareConfigured.value)
               CommandBarButton(
-                icon:
-                    controller.isSyncing.value || controller.isLoading.value
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: ProgressRing(strokeWidth: 2),
-                          )
-                        : const Icon(FluentIcons.sync),
+                icon: controller.isSyncing.value || controller.isLoading.value
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: ProgressRing(strokeWidth: 2),
+                      )
+                    : const Icon(FluentIcons.sync),
                 label: Text(controller.isSyncing.value
                     ? 'Syncing...'
                     : 'Sync & Refresh'),

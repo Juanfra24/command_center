@@ -89,13 +89,16 @@ class StatusController extends GetxController {
               birthday: account.birthday,
               email: account.email,
               password: account.password,
-              proxyAddress: _resolveProxyAddress(account.proxySlotId, proxyController),
-              characters: account.characters.map((c) => Character(
-                banned: c.banned,
-                name: c.name,
-                actualSkills: _mapSkills(c.actualSkills),
-                targetSkills: _mapSkills(c.targetSkills),
-              )).toList(),
+              proxyAddress:
+                  _resolveProxyAddress(account.proxySlotId, proxyController),
+              characters: account.characters
+                  .map((c) => Character(
+                        banned: c.banned,
+                        name: c.name,
+                        actualSkills: _mapSkills(c.actualSkills),
+                        targetSkills: _mapSkills(c.targetSkills),
+                      ))
+                  .toList(),
             )
         ]);
     } catch (err) {
@@ -103,10 +106,12 @@ class StatusController extends GetxController {
     }
   }
 
-  String _resolveProxyAddress(int? proxySlotId, ProxyController? proxyController) {
+  String _resolveProxyAddress(
+      int? proxySlotId, ProxyController? proxyController) {
     if (proxySlotId == null || proxyController == null) return 'No proxy';
     try {
-      final slot = proxyController.proxySlots.firstWhereOrNull((s) => s.id == proxySlotId);
+      final slot = proxyController.proxySlots
+          .firstWhereOrNull((s) => s.id == proxySlotId);
       if (slot == null) return 'No proxy';
       final currentIp = proxyController.getCurrentIpForSlot(slot);
       return currentIp?.ipAddress ?? 'No IP';

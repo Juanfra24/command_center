@@ -97,9 +97,7 @@ class IpqsOnboardingDialog {
                 )
               else
                 Icon(
-                  isError.value
-                      ? FluentIcons.error_badge
-                      : FluentIcons.info,
+                  isError.value ? FluentIcons.error_badge : FluentIcons.info,
                   size: 14,
                   color: isError.value ? Colors.red : Colors.blue,
                 ),
@@ -145,8 +143,8 @@ class IpqsOnboardingDialog {
                   try {
                     final ipqsService = Get.find<IpqsService>();
 
-                    final testResult = await ipqsService
-                        .testAndConnect(apiKeyController.text);
+                    final testResult =
+                        await ipqsService.testAndConnect(apiKeyController.text);
 
                     if (!testResult.success) {
                       statusMessage.value =
@@ -171,8 +169,7 @@ class IpqsOnboardingDialog {
                     }
 
                     try {
-                      final onboardingService =
-                          Get.find<OnboardingService>();
+                      final onboardingService = Get.find<OnboardingService>();
                       await onboardingService.markInitialSyncComplete();
                     } catch (_) {}
 

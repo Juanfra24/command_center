@@ -48,8 +48,7 @@ class ProxySlotSelector extends StatelessWidget {
 
     try {
       final proxyController = Get.find<ProxyController>();
-      final slot =
-          proxyController.proxySlots.firstWhere((s) => s.id == slotId);
+      final slot = proxyController.proxySlots.firstWhere((s) => s.id == slotId);
       slotName = slot.slotName;
 
       final currentIp = proxyController.getCurrentIpForSlot(slot);
