@@ -11,43 +11,43 @@ class SystemOverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            context,
-            icon: FluentIcons.server,
-            label: 'Total Accounts',
-            value: _getAccountCount(),
-            color: Colors.blue,
-            onTap: () => onNavigateToIndex?.call(1),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatCard(
-            context,
-            icon: FluentIcons.globe,
-            label: 'Proxy Slots',
-            value: _getProxyCount(),
-            color: Colors.green,
-            onTap: () => onNavigateToIndex?.call(2),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatCard(
-            context,
-            icon: FluentIcons.warning,
-            label: 'Issues',
-            value: _getIssuesCount(),
-            color: Colors.red,
-            onTap: () => onNavigateToIndex?.call(2),
-            tooltip: _getIssuesTooltip(),
-          ),
-        ),
-      ],
-    );
+    return Obx(() => Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                context,
+                icon: FluentIcons.server,
+                label: 'Total Accounts',
+                value: _getAccountCount(),
+                color: Colors.blue,
+                onTap: () => onNavigateToIndex?.call(1),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                context,
+                icon: FluentIcons.globe,
+                label: 'Proxy Slots',
+                value: _getProxyCount(),
+                color: Colors.green,
+                onTap: () => onNavigateToIndex?.call(2),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                context,
+                icon: FluentIcons.warning,
+                label: 'Issues',
+                value: _getIssuesCount(),
+                color: Colors.red,
+                onTap: () => onNavigateToIndex?.call(2),
+                tooltip: _getIssuesTooltip(),
+              ),
+            ),
+          ],
+        ));
   }
 
   String _getAccountCount() {
