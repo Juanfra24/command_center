@@ -2,6 +2,7 @@ import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:equatable/equatable.dart';
 
 class JagexAccount extends Equatable {
+  final int? id;
   final String accountName;
   final String birthday;
   final String email;
@@ -10,6 +11,7 @@ class JagexAccount extends Equatable {
   final List<Character> characters;
 
   const JagexAccount({
+    this.id,
     this.accountName = 'Default Name',
     this.birthday = '01-01-2000',
     this.email = 'default@example.com',
@@ -30,6 +32,7 @@ class JagexAccount extends Equatable {
       );
     }
     return JagexAccount(
+      id: json['id'] as int?,
       accountName: json['accountName'] ?? "Default Name",
       birthday: json['birthday'] ?? "01-01-2000",
       email: json['email'] ?? "default@example.com",
@@ -43,5 +46,5 @@ class JagexAccount extends Equatable {
 
   @override
   List<Object?> get props =>
-      [accountName, birthday, email, password, proxyAddress, characters];
+      [id, accountName, birthday, email, password, proxyAddress, characters];
 }

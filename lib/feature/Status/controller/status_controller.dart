@@ -85,6 +85,7 @@ class StatusController extends GetxController {
         ..addAll([
           for (var account in accounts)
             JagexAccount(
+              id: account.id,
               accountName: account.accountName,
               birthday: account.birthday,
               email: account.email,
@@ -151,6 +152,16 @@ class StatusController extends GetxController {
   void copyToClipboard(String text, BuildContext context) {
     Clipboard.setData(ClipboardData(text: text));
     // Note: InfoBar display is handled in the UI layer for Fluent UI
+  }
+
+  Future<void> deleteAccount(int accountId) async {
+    if (_accountRepository == null) return;
+    try {
+      await _accountRepository!.deleteAccount(accountId);
+      await getAccountsData();
+    } catch (e) {
+      logger.e('Failed to delete account: $e');
+    }
   }
 
   Future<void> runGameClient(JagexAccount account) async {

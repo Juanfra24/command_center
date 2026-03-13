@@ -2,6 +2,7 @@ import 'package:command_center/feature/Status/controller/status_controller.dart'
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/views/components/process_status_badge.dart';
+import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class AccountListSection extends StatelessWidget {
@@ -129,9 +130,48 @@ class AccountListSection extends StatelessWidget {
   Widget _buildEmptyAccountActions(BuildContext context, JagexAccount account) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Tooltip(
-        message: 'No characters — create one to get started',
-        child: Icon(FluentIcons.info, size: 14, color: Colors.grey[100]),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: 'Create Character',
+            child: IconButton(
+              icon: Icon(FluentIcons.add, color: Colors.green),
+              onPressed: () => CreateCharacterDialog.show(context),
+            ),
+          ),
+          if (account.id != null)
+            Tooltip(
+              message: 'Delete Account',
+              child: IconButton(
+                icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => ContentDialog(
+                      title: const Text('Delete Account'),
+                      content: Text(
+                        'Delete "${account.email}"? This cannot be undone.',
+                      ),
+                      actions: [
+                        Button(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await controller.deleteAccount(account.id!);
+                  }
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
