@@ -21,6 +21,8 @@ dependencies:
     get_storage: ^2.0.3
     logger: ^2.6.2
     url_launcher: ^6.1.14
+    # Pinned: 4.14+ removes PaneDisplayMode.open and NavigationAppBar (breaking).
+    # Upgrading requires refactoring lib/feature/app.dart navigation code.
     fluent_ui: 4.13.0
     system_theme: ^3.1.2
     equatable: ^2.0.5
