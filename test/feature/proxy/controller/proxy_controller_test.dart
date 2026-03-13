@@ -115,6 +115,7 @@ void main() {
       final slot = makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10);
 
       controller.ipAddresses.add(ip);
+      controller.rebuildIpLookup();
 
       final result = controller.getCurrentIpForSlot(slot);
       expect(result, isNotNull);
@@ -126,6 +127,7 @@ void main() {
       final slot = makeSlot(id: 1, slotNumber: 1);
 
       controller.ipAddresses.add(ip);
+      controller.rebuildIpLookup();
 
       final result = controller.getCurrentIpForSlot(slot);
       expect(result, isNotNull);
@@ -210,6 +212,7 @@ void main() {
 
       controller.proxySlots.add(slot);
       controller.ipAddresses.add(ip);
+      controller.rebuildIpLookup();
       controller.showOnlyActive.value = false;
       controller.searchQuery.value = '99.88';
 
@@ -225,6 +228,7 @@ void main() {
 
       controller.proxySlots.addAll([slot1, slot2]);
       controller.ipAddresses.addAll([ip1, ip2]);
+      controller.rebuildIpLookup();
       controller.showOnlyActive.value = false;
 
       final sorted = controller.getFilteredSlots(sortByScore: true);

@@ -3,17 +3,23 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class AutoRotationSettings extends StatelessWidget {
-  const AutoRotationSettings({super.key});
+  final AppConfigService? appConfigService;
+
+  const AutoRotationSettings({super.key, this.appConfigService});
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
 
-    final AppConfigService configService;
-    try {
-      configService = Get.find<AppConfigService>();
-    } catch (_) {
-      return const SizedBox.shrink();
+    final AppConfigService resolvedService;
+    if (appConfigService != null) {
+      resolvedService = appConfigService!;
+    } else {
+      try {
+        resolvedService = Get.find<AppConfigService>();
+      } catch (_) {
+        return const SizedBox.shrink();
+      }
     }
 
     return Card(
@@ -29,16 +35,16 @@ class AutoRotationSettings extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Obx(() {
-            final enabled = configService.autoRotationEnabled.value;
+            final enabled = resolvedService.autoRotationEnabled.value;
             final threshold =
-                configService.autoRotationThreshold.value.toDouble();
+                resolvedService.autoRotationThreshold.value.toDouble();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ToggleSwitch(
                   checked: enabled,
                   onChanged: (value) =>
-                      configService.saveAutoRotationEnabled(value),
+                      resolvedService.saveAutoRotationEnabled(value),
                   content:
                       const Text('Automatically replace low-scoring proxies'),
                 ),
@@ -54,12 +60,13 @@ class AutoRotationSettings extends StatelessWidget {
                   max: 100,
                   divisions: 20,
                   onChanged: enabled
-                      ? (value) => configService.autoRotationThreshold.value =
-                          value.round()
+                      ? (value) =>
+                          resolvedService.autoRotationThreshold.value =
+                              value.round()
                       : null,
                   onChangeEnd: enabled
-                      ? (value) =>
-                          configService.saveAutoRotationThreshold(value.round())
+                      ? (value) => resolvedService
+                          .saveAutoRotationThreshold(value.round())
                       : null,
                   label: '${threshold.round()}',
                 ),

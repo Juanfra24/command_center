@@ -80,15 +80,15 @@ class ProxyListSection extends StatelessWidget {
             _buildStatChip(
               context,
               label: 'Avg Score',
-              value: scoringController.averageIpScore.toStringAsFixed(1),
-              color: getScoreColor(scoringController.averageIpScore,
-                  hasBeenScored: scoringController.hasScoredIps),
+              value: scoringController.averageIpScore.value.toStringAsFixed(1),
+              color: getScoreColor(scoringController.averageIpScore.value,
+                  hasBeenScored: scoringController.hasScoredIps.value),
             ),
-            if (scoringController.lowScoreCount > 0)
+            if (scoringController.lowScoreCount.value > 0)
               _buildStatChip(
                 context,
                 label: 'Low Score',
-                value: scoringController.lowScoreCount.toString(),
+                value: scoringController.lowScoreCount.value.toString(),
                 color: Colors.red,
                 isWarning: true,
               ),
@@ -172,7 +172,6 @@ class ProxyListSection extends StatelessWidget {
       final slots = controller.getFilteredSlots(
         sortByScore: scoringController.sortByScore.value,
       );
-      final _ = controller.selectedSlot.value;
 
       if (slots.isEmpty) {
         return Center(
@@ -201,11 +200,10 @@ class ProxyListSection extends StatelessWidget {
         itemBuilder: (context, index) {
           final slot = slots[index];
           final currentIp = controller.getCurrentIpForSlot(slot);
-          final isSelected = controller.selectedSlot.value?.id == slot.id;
           return ProxySlotCard(
             slot: slot,
             currentIp: currentIp,
-            isSelected: isSelected,
+            controller: controller,
             onSelect: () => controller.selectSlot(slot),
             onUpdateSlotName: (s, name) => controller.updateSlotName(s, name),
           );

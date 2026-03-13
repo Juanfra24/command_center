@@ -2,13 +2,25 @@ import 'package:command_center/feature/main_menu/controller/main_menu_controller
 import 'package:command_center/feature/main_menu/views/sections/characters_status_section.dart';
 import 'package:command_center/feature/main_menu/views/sections/recent_activity_section.dart';
 import 'package:command_center/feature/main_menu/views/sections/system_overview_section.dart';
+import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
+import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
+import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class MainMenuScreen extends GetView<MainMenuController> {
   final void Function(int index)? onNavigateToIndex;
+  final StatusController? statusController;
+  final ProxyController? proxyController;
+  final ProxyScoringController? proxyScoringController;
 
-  const MainMenuScreen({super.key, this.onNavigateToIndex});
+  const MainMenuScreen({
+    super.key,
+    this.onNavigateToIndex,
+    this.statusController,
+    this.proxyController,
+    this.proxyScoringController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +41,12 @@ class MainMenuScreen extends GetView<MainMenuController> {
                 ],
               ),
               const SizedBox(height: 20),
-              SystemOverviewSection(onNavigateToIndex: onNavigateToIndex),
+              SystemOverviewSection(
+                onNavigateToIndex: onNavigateToIndex,
+                statusController: statusController,
+                proxyController: proxyController,
+                proxyScoringController: proxyScoringController,
+              ),
             ],
           ),
         ),
@@ -46,7 +63,7 @@ class MainMenuScreen extends GetView<MainMenuController> {
                 ],
               ),
               const SizedBox(height: 16),
-              const CharactersStatusSection(),
+              CharactersStatusSection(statusController: statusController),
             ],
           ),
         ),

@@ -110,6 +110,13 @@ class ProxyRepositoryImpl implements ProxyRepository {
   }
 
   @override
+  Future<void> softDeleteAllSlots() async {
+    await (_db.update(_db.proxySlotsTable)
+          ..where((t) => t.isDeleted.equals(false)))
+        .write(const ProxySlotsTableCompanion(isDeleted: Value(true)));
+  }
+
+  @override
   Future<void> recoverSlot(int id) async {
     await (_db.update(_db.proxySlotsTable)..where((tbl) => tbl.id.equals(id)))
         .write(

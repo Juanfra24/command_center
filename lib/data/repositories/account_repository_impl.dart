@@ -20,14 +20,18 @@ class AccountRepositoryImpl implements AccountRepository {
   @override
   Future<List<AccountEntity>> getAllAccounts() async {
     final accounts = await _db.select(_db.accountsTable).get();
-    final result = <AccountEntity>[];
+    final allCharacters = await _db.select(_db.charactersTable).get();
 
-    for (final account in accounts) {
-      final characters = await _getCharactersForAccount(account.id);
-      result.add(_mapAccountRow(account, characters));
+    // Group characters by accountId for O(1) lookup
+    final charsByAccountId = <int, List<CharacterEntity>>{};
+    for (final charRow in allCharacters) {
+      final entity = _mapCharacterRow(charRow);
+      charsByAccountId.putIfAbsent(charRow.accountId, () => []).add(entity);
     }
 
-    return result;
+    return accounts
+        .map((a) => _mapAccountRow(a, charsByAccountId[a.id] ?? []))
+        .toList();
   }
 
   @override

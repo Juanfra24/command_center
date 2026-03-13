@@ -16,6 +16,7 @@ class SlotHeader extends StatelessWidget {
       onLaunchBrowser;
   final void Function(BuildContext context, ProxySlotEntity slot)
       onShowChangeIpDialog;
+  final AutomationService automationService;
 
   const SlotHeader({
     super.key,
@@ -26,6 +27,7 @@ class SlotHeader extends StatelessWidget {
     required this.onShowReplaceDialog,
     required this.onLaunchBrowser,
     required this.onShowChangeIpDialog,
+    required this.automationService,
   });
 
   @override
@@ -165,7 +167,6 @@ class SlotHeader extends StatelessWidget {
 
   Widget _buildLaunchBrowserButton(BuildContext context) {
     return Obx(() {
-      final automationService = Get.find<AutomationService>();
       final isRunning = automationService.isRunning.value;
       return Button(
         onPressed: isRunning ? null : () => onLaunchBrowser(context, slot),

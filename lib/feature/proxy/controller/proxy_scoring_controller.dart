@@ -70,30 +70,38 @@ class ProxyScoringController extends GetxController {
     ever(_ipqsService.isConfigured, (configured) {
       isIpqsConfigured.value = configured;
     });
+
+    // Recalculate stats whenever IP addresses change
+    ever(_proxyController.ipAddresses, (_) => _recalculateStats());
   }
 
-  // --- Score statistics ---
+  // --- Cached score statistics ---
+  final hasScoredIps = false.obs;
+  final averageIpScore = 0.0.obs;
+  final lowScoreCount = 0.obs;
 
-  bool get hasScoredIps => _proxyController.proxySlots.any((s) {
-        final ip = _proxyController.getCurrentIpForSlot(s);
-        return ip != null && ip.hasBeenScored;
-      });
+  /// Exposed for testing only — call to force recalculation of cached stats.
+  // ignore: invalid_use_of_visible_for_testing_member
+  void recalculateStatsForTest() => _recalculateStats();
 
-  double get averageIpScore {
-    final currentIps = _proxyController.proxySlots
-        .map((s) => _proxyController.getCurrentIpForSlot(s))
-        .where((ip) => ip != null && ip.hasBeenScored)
-        .toList();
-    if (currentIps.isEmpty) return 0;
-    return currentIps.fold(0.0, (sum, ip) => sum + ip!.ipScore) /
-        currentIps.length;
-  }
+  void _recalculateStats() {
+    final slots = _proxyController.proxySlots;
+    int scored = 0;
+    double totalScore = 0;
+    int lowCount = 0;
 
-  int get lowScoreCount {
-    return _proxyController.proxySlots.where((slot) {
+    for (final slot in slots) {
       final ip = _proxyController.getCurrentIpForSlot(slot);
-      return ip != null && ip.hasBeenScored && ip.ipScore < 50;
-    }).length;
+      if (ip != null && ip.hasBeenScored) {
+        scored++;
+        totalScore += ip.ipScore;
+        if (ip.ipScore < 50) lowCount++;
+      }
+    }
+
+    hasScoredIps.value = scored > 0;
+    averageIpScore.value = scored > 0 ? totalScore / scored : 0;
+    lowScoreCount.value = lowCount;
   }
 
   /// Get details of low-score proxies for tooltip display

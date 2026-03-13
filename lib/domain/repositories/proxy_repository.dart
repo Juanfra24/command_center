@@ -30,6 +30,9 @@ abstract class ProxyRepository {
   /// Soft-delete a slot by ID (marks as deleted, preserves data)
   Future<void> softDeleteSlot(int id);
 
+  /// Soft-delete all active slots in a single batch operation
+  Future<void> softDeleteAllSlots();
+
   /// Recover a soft-deleted slot (marks as not deleted)
   Future<void> recoverSlot(int id);
 

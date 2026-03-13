@@ -3,57 +3,61 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class CharactersStatusSection extends StatelessWidget {
-  const CharactersStatusSection({super.key});
+  final StatusController? statusController;
+
+  const CharactersStatusSection({super.key, this.statusController});
 
   @override
   Widget build(BuildContext context) {
-    final counts = _getCharacterCounts();
+    return Obx(() {
+      final counts = _getCharacterCounts();
 
-    return Row(
-      children: [
-        Expanded(
-          child: _buildCharacterStatusCard(
-            context,
-            icon: FluentIcons.play_solid,
-            label: 'Running',
-            count: counts['running'] ?? 0,
-            total: counts['total'] ?? 0,
-            color: Colors.green,
+      return Row(
+        children: [
+          Expanded(
+            child: _buildCharacterStatusCard(
+              context,
+              icon: FluentIcons.play_solid,
+              label: 'Running',
+              count: counts['running'] ?? 0,
+              total: counts['total'] ?? 0,
+              color: Colors.green,
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildCharacterStatusCard(
-            context,
-            icon: FluentIcons.pause,
-            label: 'Stopped',
-            count: counts['stopped'] ?? 0,
-            total: counts['total'] ?? 0,
-            color: Colors.orange,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildCharacterStatusCard(
+              context,
+              icon: FluentIcons.pause,
+              label: 'Stopped',
+              count: counts['stopped'] ?? 0,
+              total: counts['total'] ?? 0,
+              color: Colors.orange,
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildCharacterStatusCard(
-            context,
-            icon: FluentIcons.people,
-            label: 'Total',
-            count: counts['total'] ?? 0,
-            total: counts['total'] ?? 0,
-            color: Colors.blue,
-            showProgress: false,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildCharacterStatusCard(
+              context,
+              icon: FluentIcons.people,
+              label: 'Total',
+              count: counts['total'] ?? 0,
+              total: counts['total'] ?? 0,
+              color: Colors.blue,
+              showProgress: false,
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 
   Map<String, int> _getCharacterCounts() {
     try {
-      final statusController = Get.find<StatusController>();
-      final accounts = statusController.accountList;
+      final ctrl = statusController ?? Get.find<StatusController>();
+      final accounts = ctrl.accountList;
       final total = accounts.length;
-      final runningProcesses = statusController.processClients;
+      final runningProcesses = ctrl.processClients;
       int running = 0;
 
       for (final account in accounts) {
