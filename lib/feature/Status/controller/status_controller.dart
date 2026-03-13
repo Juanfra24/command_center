@@ -18,7 +18,7 @@ import '../../../core/helper/logger.dart';
 class StatusController extends GetxController {
   var isLoading = true.obs;
   Timer? _processCheckTimer;
-  List<JagexAccount> accountList = <JagexAccount>[].obs;
+  final accountList = <JagexAccount>[].obs;
   RxMap<String, ProcessClient> processClients =
       <String, ProcessClient>{}.obs; // Maps character names to their processes
 
