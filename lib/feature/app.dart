@@ -50,6 +50,9 @@ class _AppState extends State<App> with WindowListener {
   IpqsService? _ipqsService;
   AppConfigService? _appConfigService;
 
+  /// GetX ever() workers for onboarding service observables
+  final List<Worker> _onboardingWorkers = [];
+
   @override
   void initState() {
     super.initState();
@@ -95,15 +98,15 @@ class _AppState extends State<App> with WindowListener {
     // for a user-driven setState (e.g. navigation).
     try {
       final obs = Get.find<OnboardingService>();
-      ever(obs.isWebshareConfigured, (_) {
+      _onboardingWorkers.add(ever(obs.isWebshareConfigured, (_) {
         if (obs.isOnboardingComplete && mounted) setState(() {});
-      });
-      ever(obs.isIpqsConfigured, (_) {
+      }));
+      _onboardingWorkers.add(ever(obs.isIpqsConfigured, (_) {
         if (obs.isOnboardingComplete && mounted) setState(() {});
-      });
-      ever(obs.isInitialSyncComplete, (_) {
+      }));
+      _onboardingWorkers.add(ever(obs.isInitialSyncComplete, (_) {
         if (obs.isOnboardingComplete && mounted) setState(() {});
-      });
+      }));
     } catch (_) {}
 
     if (mounted) {
@@ -113,6 +116,9 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   void dispose() {
+    for (final w in _onboardingWorkers) {
+      w.dispose();
+    }
     windowManager.removeListener(this);
     _flyoutController.dispose();
     super.dispose();
