@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -10,6 +11,7 @@ import 'package:get/get.dart';
 
 class ProxyDetailSection extends StatelessWidget {
   final ProxyController controller;
+  final AutomationService automationService;
   final RxBool isReplacing;
   final void Function(
           BuildContext context, ProxySlotEntity slot, ProxyIpAddressEntity ip)
@@ -23,6 +25,7 @@ class ProxyDetailSection extends StatelessWidget {
   const ProxyDetailSection({
     super.key,
     required this.controller,
+    required this.automationService,
     required this.isReplacing,
     required this.onShowReplaceDialog,
     required this.onLaunchBrowser,
@@ -57,6 +60,7 @@ class ProxyDetailSection extends StatelessWidget {
               onShowReplaceDialog: onShowReplaceDialog,
               onLaunchBrowser: onLaunchBrowser,
               onShowChangeIpDialog: onShowChangeIpDialog,
+              automationService: automationService,
             ),
             const SizedBox(height: 24),
             if (currentIp != null) ...[

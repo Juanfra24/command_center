@@ -3,7 +3,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
 class CharactersStatusSection extends StatelessWidget {
-  const CharactersStatusSection({super.key});
+  final StatusController? statusController;
+
+  const CharactersStatusSection({super.key, this.statusController});
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +54,10 @@ class CharactersStatusSection extends StatelessWidget {
 
   Map<String, int> _getCharacterCounts() {
     try {
-      final statusController = Get.find<StatusController>();
-      final accounts = statusController.accountList;
+      final ctrl = statusController ?? Get.find<StatusController>();
+      final accounts = ctrl.accountList;
       final total = accounts.length;
-      final runningProcesses = statusController.processClients;
+      final runningProcesses = ctrl.processClients;
       int running = 0;
 
       for (final account in accounts) {

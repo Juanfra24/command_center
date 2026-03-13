@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
@@ -12,8 +13,19 @@ import 'package:get/get.dart';
 
 class SettingsSection extends StatelessWidget {
   final bool isDark;
+  final MusicController? musicController;
+  final WebshareService? webshareService;
+  final IpqsService? ipqsService;
+  final AppConfigService? appConfigService;
 
-  const SettingsSection({super.key, required this.isDark});
+  const SettingsSection({
+    super.key,
+    required this.isDark,
+    this.musicController,
+    this.webshareService,
+    this.ipqsService,
+    this.appConfigService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +36,7 @@ class SettingsSection extends StatelessWidget {
         const SizedBox(height: 16),
         _buildMusicCard(context),
         const SizedBox(height: 16),
-        const AutoRotationSettings(),
+        AutoRotationSettings(appConfigService: appConfigService),
         const SizedBox(height: 16),
         _buildIntegrationsCard(context),
         const SizedBox(height: 16),
@@ -81,43 +93,40 @@ class SettingsSection extends StatelessWidget {
   }
 
   Widget _buildMusicVolumeControl(BuildContext context) {
-    try {
-      final musicController = Get.find<MusicController>();
-      return Obx(() => Row(
-            children: [
-              Icon(
-                musicController.volume.value == 0
-                    ? FluentIcons.volume0
-                    : musicController.volume.value < 0.5
-                        ? FluentIcons.volume1
-                        : FluentIcons.volume3,
-                size: 20,
+    final mc = musicController;
+    if (mc == null) return const Text('Music controller not available');
+    return Obx(() => Row(
+          children: [
+            Icon(
+              mc.volume.value == 0
+                  ? FluentIcons.volume0
+                  : mc.volume.value < 0.5
+                      ? FluentIcons.volume1
+                      : FluentIcons.volume3,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Slider(
+                value: mc.volume.value * 100,
+                min: 0,
+                max: 100,
+                onChanged: (value) {
+                  mc.setVolume(value / 100);
+                },
+                label: '${(mc.volume.value * 100).round()}%',
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Slider(
-                  value: musicController.volume.value * 100,
-                  min: 0,
-                  max: 100,
-                  onChanged: (value) {
-                    musicController.setVolume(value / 100);
-                  },
-                  label: '${(musicController.volume.value * 100).round()}%',
-                ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 40,
+              child: Text(
+                '${(mc.volume.value * 100).round()}%',
+                style: FluentTheme.of(context).typography.caption,
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 40,
-                child: Text(
-                  '${(musicController.volume.value * 100).round()}%',
-                  style: FluentTheme.of(context).typography.caption,
-                ),
-              ),
-            ],
-          ));
-    } catch (e) {
-      return const Text('Music controller not available');
-    }
+            ),
+          ],
+        ));
   }
 
   Widget _buildIntegrationsCard(BuildContext context) {
@@ -163,38 +172,42 @@ class SettingsSection extends StatelessWidget {
   }
 
   Widget _buildWebshareIntegrationTile(BuildContext context) {
-    return Obx(() {
-      bool isConfigured = false;
-      try {
-        final webshareService = Get.find<WebshareService>();
-        isConfigured = webshareService.isConfigured.value;
-      } catch (_) {}
-
+    final ws = webshareService;
+    if (ws == null) {
       return IntegrationTile(
         icon: FluentIcons.globe,
         title: 'Webshare',
         description: 'Proxy service integration for IP management',
-        isConfigured: isConfigured,
+        isConfigured: false,
         onConfigure: () => WebshareConfigDialog.show(context),
       );
-    });
+    }
+    return Obx(() => IntegrationTile(
+          icon: FluentIcons.globe,
+          title: 'Webshare',
+          description: 'Proxy service integration for IP management',
+          isConfigured: ws.isConfigured.value,
+          onConfigure: () => WebshareConfigDialog.show(context),
+        ));
   }
 
   Widget _buildIpqsIntegrationTile(BuildContext context) {
-    return Obx(() {
-      bool isConfigured = false;
-      try {
-        final ipqsService = Get.find<IpqsService>();
-        isConfigured = ipqsService.isConfigured.value;
-      } catch (_) {}
-
+    final ipqs = ipqsService;
+    if (ipqs == null) {
       return IntegrationTile(
         icon: FluentIcons.shield,
         title: 'IPQualityScore',
         description: 'IP scoring and fraud detection service',
-        isConfigured: isConfigured,
+        isConfigured: false,
         onConfigure: () => IpqsConfigDialog.show(context),
       );
-    });
+    }
+    return Obx(() => IntegrationTile(
+          icon: FluentIcons.shield,
+          title: 'IPQualityScore',
+          description: 'IP scoring and fraud detection service',
+          isConfigured: ipqs.isConfigured.value,
+          onConfigure: () => IpqsConfigDialog.show(context),
+        ));
   }
 }

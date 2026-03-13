@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -27,6 +28,7 @@ class _ProxyScreenState extends State<ProxyScreen>
 
   late final ProxyScoringController _scoringController;
   late final ProxyReplacementController _replacementController;
+  late final AutomationService _automationService;
 
   @override
   ProxyController get controller => _controller;
@@ -42,6 +44,7 @@ class _ProxyScreenState extends State<ProxyScreen>
     _controller = Get.put(ProxyController());
     _scoringController = Get.find<ProxyScoringController>();
     _replacementController = Get.find<ProxyReplacementController>();
+    _automationService = Get.find<AutomationService>();
   }
 
   @override
@@ -88,6 +91,7 @@ class _ProxyScreenState extends State<ProxyScreen>
               flex: 3,
               child: ProxyDetailSection(
                 controller: _controller,
+                automationService: _automationService,
                 isReplacing: _replacementController.isReplacing,
                 onShowReplaceDialog: (
                   BuildContext ctx,

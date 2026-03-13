@@ -6,8 +6,17 @@ import 'package:get/get.dart';
 
 class SystemOverviewSection extends StatelessWidget {
   final void Function(int)? onNavigateToIndex;
+  final StatusController? statusController;
+  final ProxyController? proxyController;
+  final ProxyScoringController? proxyScoringController;
 
-  const SystemOverviewSection({super.key, this.onNavigateToIndex});
+  const SystemOverviewSection({
+    super.key,
+    this.onNavigateToIndex,
+    this.statusController,
+    this.proxyController,
+    this.proxyScoringController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +61,7 @@ class SystemOverviewSection extends StatelessWidget {
 
   String _getAccountCount() {
     try {
-      final controller = Get.find<StatusController>();
+      final controller = statusController ?? Get.find<StatusController>();
       return controller.accountList.length.toString();
     } catch (_) {
       return '--';
@@ -61,7 +70,7 @@ class SystemOverviewSection extends StatelessWidget {
 
   String _getProxyCount() {
     try {
-      final controller = Get.find<ProxyController>();
+      final controller = proxyController ?? Get.find<ProxyController>();
       return controller.totalSlots.toString();
     } catch (_) {
       return '--';
@@ -70,8 +79,9 @@ class SystemOverviewSection extends StatelessWidget {
 
   String _getIssuesCount() {
     try {
-      final scoringController = Get.find<ProxyScoringController>();
-      return scoringController.lowScoreCount.value.toString();
+      final scoringCtrl =
+          proxyScoringController ?? Get.find<ProxyScoringController>();
+      return scoringCtrl.lowScoreCount.value.toString();
     } catch (_) {
       return '0';
     }
@@ -79,8 +89,9 @@ class SystemOverviewSection extends StatelessWidget {
 
   String? _getIssuesTooltip() {
     try {
-      final scoringController = Get.find<ProxyScoringController>();
-      final details = scoringController.getLowScoreSlotDetails();
+      final scoringCtrl =
+          proxyScoringController ?? Get.find<ProxyScoringController>();
+      final details = scoringCtrl.getLowScoreSlotDetails();
       if (details.isEmpty) return null;
       return 'Low score proxies:\n${details.join('\n')}';
     } catch (_) {
