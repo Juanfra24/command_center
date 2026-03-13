@@ -1,6 +1,7 @@
 import 'package:command_center/config/services/proxy/proxy_replacement_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:get/get.dart';
@@ -71,21 +72,19 @@ class ProxyReplacementController extends GetxController {
   }
 
   /// Replace a proxy IP via the Webshare v3 Proxy Replacement API.
-  Future<({bool success, String? error})> replaceProxyIp(
+  Future<Result<void>> replaceProxyIp(
     ProxySlotEntity slot, {
     bool keepSameCountry = false,
   }) async {
     if (_replacementService == null ||
         !_proxyController.isWebshareConfigured.value) {
-      return (
-        success: false,
-        error: 'Webshare not configured. Please add your API key in Settings.'
-      );
+      return Result.failure(
+          'Webshare not configured. Please add your API key in Settings.');
     }
 
     final currentIp = _proxyController.getCurrentIpForSlot(slot);
     if (currentIp == null) {
-      return (success: false, error: 'No active IP found for this slot');
+      return Result.failure('No active IP found for this slot');
     }
 
     isReplacing.value = true;
@@ -97,32 +96,29 @@ class ProxyReplacementController extends GetxController {
         keepSameCountry: keepSameCountry,
       );
 
-      if (result.success) {
-        // Sync to get the updated proxy data
-        try {
-          await _proxyController.syncWithWebshare();
-        } catch (e) {
-          logger.w('Sync after replacement failed: $e');
-          // Replacement succeeded but sync failed — still a partial success
+      switch (result) {
+        case Success():
+          // Sync to get the updated proxy data
+          try {
+            await _proxyController.syncWithWebshare();
+          } catch (e) {
+            logger.w('Sync after replacement failed: $e');
+            // Replacement succeeded but sync failed — still a partial success
+            await fetchPlanInfo();
+            return Result.success(null);
+          }
+          // Refresh plan info to update remaining replacements
           await fetchPlanInfo();
-          return (
-            success: true,
-            error:
-                'IP replaced successfully, but sync failed. Try syncing manually.'
-          );
-        }
-        // Refresh plan info to update remaining replacements
-        await fetchPlanInfo();
-        return (success: true, error: null);
-      } else {
-        _proxyController.lastSyncError.value = result.error;
-        return result;
+          return Result.success(null);
+        case Failure(:final message):
+          _proxyController.lastSyncError.value = message;
+          return Result.failure(message);
       }
     } catch (e) {
       logger.e('Error replacing proxy: $e');
       final errorMsg = 'Failed to replace proxy: ${e.toString()}';
       _proxyController.lastSyncError.value = errorMsg;
-      return (success: false, error: errorMsg);
+      return Result.failure(errorMsg, e);
     } finally {
       isReplacing.value = false;
     }

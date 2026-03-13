@@ -1,4 +1,5 @@
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/feature/app/views/components/api_key_configured_banner.dart';
 import 'package:command_center/feature/app/views/components/api_key_form_field.dart';
 import 'package:command_center/feature/app/views/components/connect_action_button.dart';
@@ -86,18 +87,19 @@ class IpqsConfigDialog {
     statusMessage.value = 'Unlinking...';
     isError.value = false;
     try {
-      final success = await Get.find<IpqsService>().clearApiKey();
-      if (success) {
-        if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-        if (context.mounted) {
-          showInfoBarToast(context,
-              title: 'Unlinked',
-              message: 'IPQualityScore has been disconnected.',
-              severity: InfoBarSeverity.warning);
-        }
-      } else {
-        statusMessage.value = 'Failed to unlink';
-        isError.value = true;
+      final result = await Get.find<IpqsService>().clearApiKey();
+      switch (result) {
+        case Success():
+          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          if (context.mounted) {
+            showInfoBarToast(context,
+                title: 'Unlinked',
+                message: 'IPQualityScore has been disconnected.',
+                severity: InfoBarSeverity.warning);
+          }
+        case Failure(:final message):
+          statusMessage.value = message;
+          isError.value = true;
       }
     } catch (e) {
       statusMessage.value = 'Error: $e';

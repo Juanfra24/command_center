@@ -1,3 +1,4 @@
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
@@ -126,17 +127,21 @@ class ReplaceProxyDialog extends StatelessWidget {
                       );
 
                       if (context.mounted) {
+                        final isSuccess = result is Success;
+                        final errorMessage = result is Failure
+                            ? (result as Failure).message
+                            : null;
                         displayInfoBar(
                           context,
                           builder: (ctx, close) {
                             return InfoBar(
-                              title: Text(result.success ? 'Success' : 'Error'),
+                              title: Text(isSuccess ? 'Success' : 'Error'),
                               content: Text(
-                                result.success
+                                isSuccess
                                     ? 'Proxy replaced successfully! The new IP has been synced.'
-                                    : result.error ?? 'Failed to replace proxy',
+                                    : errorMessage ?? 'Failed to replace proxy',
                               ),
-                              severity: result.success
+                              severity: isSuccess
                                   ? InfoBarSeverity.success
                                   : InfoBarSeverity.error,
                               action: IconButton(

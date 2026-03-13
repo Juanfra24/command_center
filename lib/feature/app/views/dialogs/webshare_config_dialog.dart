@@ -1,6 +1,7 @@
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/feature/app/views/components/api_key_configured_banner.dart';
 import 'package:command_center/feature/app/views/components/api_key_form_field.dart';
 import 'package:command_center/feature/app/views/components/connect_action_button.dart';
@@ -91,30 +92,32 @@ class WebshareConfigDialog {
     statusMessage.value = 'Unlinking...';
     isError.value = false;
     try {
-      final success = await Get.find<WebshareService>().clearApiKey();
-      if (success) {
-        try {
-          statusMessage.value = 'Clearing proxy data...';
-          await Get.find<ProxyController>().clearAllProxyData();
-        } catch (e) {
-          logger.w('ProxyController not available or error clearing data: $e');
-        }
-        try {
-          await Get.find<OnboardingService>().resetOnboarding();
-        } catch (e) {
-          logger.w('OnboardingService not available: $e');
-        }
-        if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-        if (context.mounted) {
-          showInfoBarToast(context,
-              title: 'Unlinked',
-              message:
-                  'Webshare has been disconnected and all proxy data cleared.',
-              severity: InfoBarSeverity.warning);
-        }
-      } else {
-        statusMessage.value = 'Failed to unlink';
-        isError.value = true;
+      final result = await Get.find<WebshareService>().clearApiKey();
+      switch (result) {
+        case Success():
+          try {
+            statusMessage.value = 'Clearing proxy data...';
+            await Get.find<ProxyController>().clearAllProxyData();
+          } catch (e) {
+            logger.w(
+                'ProxyController not available or error clearing data: $e');
+          }
+          try {
+            await Get.find<OnboardingService>().resetOnboarding();
+          } catch (e) {
+            logger.w('OnboardingService not available: $e');
+          }
+          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          if (context.mounted) {
+            showInfoBarToast(context,
+                title: 'Unlinked',
+                message:
+                    'Webshare has been disconnected and all proxy data cleared.',
+                severity: InfoBarSeverity.warning);
+          }
+        case Failure(:final message):
+          statusMessage.value = message;
+          isError.value = true;
       }
     } catch (e) {
       statusMessage.value = 'Error: $e';
@@ -144,19 +147,26 @@ class WebshareConfigDialog {
       final webshareService = Get.find<WebshareService>();
       final testResult =
           await webshareService.testAndConnect(apiKeyController.text);
-      if (!testResult.success) {
-        statusMessage.value = testResult.error ?? 'Connection failed';
-        isError.value = true;
-        isProcessing.value = false;
-        return;
+      switch (testResult) {
+        case Failure(:final message):
+          statusMessage.value = message;
+          isError.value = true;
+          isProcessing.value = false;
+          return;
+        case Success():
+          break;
       }
       statusMessage.value = 'Saving configuration...';
-      final saved = await webshareService.saveApiKey(apiKeyController.text);
-      if (!saved) {
-        statusMessage.value = 'Failed to save API key';
-        isError.value = true;
-        isProcessing.value = false;
-        return;
+      final saveResult =
+          await webshareService.saveApiKey(apiKeyController.text);
+      switch (saveResult) {
+        case Failure(:final message):
+          statusMessage.value = message;
+          isError.value = true;
+          isProcessing.value = false;
+          return;
+        case Success():
+          break;
       }
       statusMessage.value = 'Syncing proxy slots...';
       bool syncSuccess = false;
