@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-13
+
+### Features
+
+- add auto-rotation settings UI section
+- add notification bell with badge to window title bar
+- add notification card and flyout UI components
+- add NotificationController
+- integrate auto-rotation into scoring controller with startup trigger
+- add ProxyAutoRotationService with score-triggered replacement
+- add auto-rotation config keys to AppConfigService
+- add NotificationService with tests
+- add notification repository with Drift implementation and tests
+- add NotificationEntity and repository interface
+- add notifications table, bump schema to v4 (db)
+
+### Bug Fixes
+
+- address code review findings for auto-rotation feature
+- add per-failure notification in auto-rotation service
 ## [0.6.0] - 2026-03-13
 
 ### Features
