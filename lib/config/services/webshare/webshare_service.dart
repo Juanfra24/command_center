@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/webshare/webshare_api_client.dart';
+import 'package:command_center/config/services/webshare/webshare_replacement_handler.dart';
 
 // Re-export models so existing imports still work
 export 'package:command_center/config/services/webshare/webshare_api_client.dart'
@@ -18,6 +18,7 @@ export 'package:command_center/config/services/webshare/webshare_api_client.dart
 /// API Documentation: https://proxy.webshare.io/docs/
 class WebshareService extends GetxService {
   final _apiClient = WebshareApiClient();
+  late final WebshareReplacementHandler _replacementHandler;
 
   var isConfigured = false.obs;
   var isLoading = false.obs;
@@ -29,6 +30,7 @@ class WebshareService extends GetxService {
   AppConfigService? _configService;
 
   Future<WebshareService> init() async {
+    _replacementHandler = WebshareReplacementHandler(_apiClient);
     await _loadApiKey();
     return this;
   }
@@ -163,7 +165,6 @@ class WebshareService extends GetxService {
   }
 
   /// Replace a proxy IP via the v3 Proxy Replacement API.
-  /// Orchestrates: create replacement -> poll until complete/failed.
   Future<Result<void>> replaceProxyIp(
     String ipAddress, {
     String? countryCode,
@@ -172,66 +173,11 @@ class WebshareService extends GetxService {
       return Result.failure('Webshare API key not configured');
     }
 
-    try {
-      logger.i('Creating proxy replacement for IP: $ipAddress');
-
-      final data = await _apiClient.createProxyReplacement(
-        _apiKey!,
-        ipAddress,
-        countryCode: countryCode,
-      );
-
-      final replacementId = data['id'];
-      final state = data['state'] as String?;
-      logger.i('Replacement created with ID: $replacementId, state: $state');
-
-      return await _pollReplacementStatus(replacementId);
-    } on WebshareApiException catch (e) {
-      final errorMsg = _parseErrorMessage(e.responseBody) ??
-          'Failed to create replacement: HTTP ${e.statusCode}';
-      logger.e('Failed to create replacement: $errorMsg');
-      return Result.failure(errorMsg, e);
-    } catch (e) {
-      logger.e('Error replacing proxy: $e');
-      return Result.failure('Error replacing proxy: $e', e);
-    }
-  }
-
-  /// Poll the replacement status until completed or failed.
-  Future<Result<void>> _pollReplacementStatus(
-      dynamic replacementId) async {
-    const maxAttempts = 30;
-    const pollInterval = Duration(seconds: 2);
-
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      await Future.delayed(pollInterval);
-
-      try {
-        final data =
-            await _apiClient.getReplacementStatus(_apiKey!, replacementId);
-        final state = data['state'] as String?;
-
-        logger.i('Replacement $replacementId state: $state');
-
-        if (state == 'completed') {
-          logger.i('Replacement completed: '
-              '${data['proxies_removed']} removed, '
-              '${data['proxies_added']} added');
-          return Result.success(null);
-        } else if (state == 'failed') {
-          final error = data['error'] ?? 'Unknown error';
-          final errorCode = data['error_code'] ?? '';
-          logger.e('Replacement failed: $error ($errorCode)');
-          return Result.failure('Replacement failed: $error');
-        }
-        // States: validating, validated, processing — keep polling
-      } catch (e) {
-        logger.w('Error polling replacement: $e');
-      }
-    }
-
-    return Result.failure(
-        'Replacement timed out after ${maxAttempts * pollInterval.inSeconds}s');
+    return _replacementHandler.replaceProxyIp(
+      _apiKey!,
+      ipAddress,
+      countryCode: countryCode,
+    );
   }
 
   /// Legacy: Rotate/replace IP for a specific proxy using v2 API
@@ -276,17 +222,5 @@ class WebshareService extends GetxService {
       logger.e('Error fetching subscription plan: $e');
       return null;
     }
-  }
-
-  /// Parse error message from API response body.
-  String? _parseErrorMessage(String responseBody) {
-    try {
-      final decoded = jsonDecode(responseBody);
-      if (decoded is Map) {
-        return (decoded['detail'] ?? decoded['error'] ?? decoded.toString())
-            .toString();
-      }
-    } catch (_) {}
-    return null;
   }
 }
