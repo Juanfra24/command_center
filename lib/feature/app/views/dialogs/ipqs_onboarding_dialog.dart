@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
+import 'package:command_center/feature/app/views/components/scoring_progress_display.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -42,7 +43,7 @@ class IpqsOnboardingDialog {
                 ),
                 if (statusMessage.value != null) ...[
                   const SizedBox(height: 16),
-                  _buildStatusBar(
+                  ScoringProgressDisplay(
                     statusMessage: statusMessage,
                     isError: isError,
                     isProcessing: isProcessing,
@@ -72,48 +73,6 @@ class IpqsOnboardingDialog {
         ],
       ),
     );
-  }
-
-  static Widget _buildStatusBar({
-    required Rxn<String> statusMessage,
-    required RxBool isError,
-    required RxBool isProcessing,
-  }) {
-    return Obx(() => Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isError.value
-                ? Colors.red.withValues(alpha: 0.1)
-                : Colors.blue.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            children: [
-              if (isProcessing.value)
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: ProgressRing(strokeWidth: 2),
-                )
-              else
-                Icon(
-                  isError.value ? FluentIcons.error_badge : FluentIcons.info,
-                  size: 14,
-                  color: isError.value ? Colors.red : Colors.blue,
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  statusMessage.value ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isError.value ? Colors.red : null,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ));
   }
 
   static Widget _buildConnectButton({
