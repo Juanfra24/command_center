@@ -127,23 +127,27 @@ class ReplaceProxyDialog extends StatelessWidget {
                       );
 
                       if (context.mounted) {
-                        final isSuccess = result is Success;
-                        final errorMessage = result is Failure
-                            ? (result as Failure).message
-                            : null;
+                        final String title;
+                        final String content;
+                        final InfoBarSeverity severity;
+                        switch (result) {
+                          case Success():
+                            title = 'Success';
+                            content =
+                                'Proxy replaced successfully! The new IP has been synced.';
+                            severity = InfoBarSeverity.success;
+                          case Failure(:final message):
+                            title = 'Error';
+                            content = message;
+                            severity = InfoBarSeverity.error;
+                        }
                         displayInfoBar(
                           context,
                           builder: (ctx, close) {
                             return InfoBar(
-                              title: Text(isSuccess ? 'Success' : 'Error'),
-                              content: Text(
-                                isSuccess
-                                    ? 'Proxy replaced successfully! The new IP has been synced.'
-                                    : errorMessage ?? 'Failed to replace proxy',
-                              ),
-                              severity: isSuccess
-                                  ? InfoBarSeverity.success
-                                  : InfoBarSeverity.error,
+                              title: Text(title),
+                              content: Text(content),
+                              severity: severity,
                               action: IconButton(
                                 icon: const Icon(FluentIcons.clear),
                                 onPressed: close,
