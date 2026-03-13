@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-13
+
+### Features
+
+- add cascade delete for characters, bump schema to v3 (db)
+- add file logging with rotation to logger
+- add Result<T> sealed class for unified error handling
+
+### Bug Fixes
+
+- mask account passwords in validation result display (security)
+- remove unnecessary cast in replace_proxy_dialog
+- fix use_build_context_synchronously in proxy_screen (lint)
+- add mounted guards for use_build_context_synchronously (lint)
+- replace deprecated printTime with dateTimeFormat in logger (lint)
+- replace print() calls with logger (lint)
+- comprehensive app audit — 22 bug fixes across all core flows (#8)
 ## [0.5.0] - 2026-03-10
 
 ### Features
