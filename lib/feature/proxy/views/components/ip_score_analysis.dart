@@ -1,5 +1,8 @@
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/feature/proxy/views/components/ip_score_indicator.dart';
+import 'package:command_center/feature/proxy/views/components/score_detail_table.dart';
+import 'package:command_center/feature/proxy/views/components/score_flags.dart';
+import 'package:command_center/feature/proxy/views/components/score_summary.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
@@ -58,10 +61,7 @@ class IpScoreAnalysis extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Not Scored Yet',
-                      style: theme.typography.subtitle,
-                    ),
+                    Text('Not Scored Yet', style: theme.typography.subtitle),
                     const SizedBox(height: 8),
                     Text(
                       'Click "Refresh Score" to analyze this IP address for VPN, proxy, and fraud detection.',
@@ -95,30 +95,21 @@ class IpScoreAnalysis extends StatelessWidget {
   }
 
   Widget _buildScoredCard(BuildContext context, FluentThemeData theme) {
-    final scoreColor =
-        getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
-
     return Card(
       child: Column(
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildScoreGauge(scoreColor),
+              ScoreSummary(ip: ip),
               const SizedBox(width: 24),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildScoreRow('Fraud Score', ip.fraudScore, Colors.red),
-                    const SizedBox(height: 8),
-                    _buildScoreRow(
-                      'Abuse Confidence',
-                      ip.abuseConfidence.toDouble(),
-                      Colors.orange,
-                    ),
+                    ScoreDetailTable(ip: ip),
                     const SizedBox(height: 16),
-                    _buildFlagsSection(theme),
+                    ScoreFlags(ip: ip),
                   ],
                 ),
               ),
@@ -128,75 +119,6 @@ class IpScoreAnalysis extends StatelessWidget {
           _buildBottomActions(context, theme),
         ],
       ),
-    );
-  }
-
-  Widget _buildScoreGauge(AccentColor scoreColor) {
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: scoreColor, width: 4),
-        color: scoreColor.withValues(alpha: 0.1),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              ip.hasBeenScored ? ip.ipScore.toStringAsFixed(0) : '?',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: scoreColor,
-              ),
-            ),
-            Text(
-              ip.scoreLevel.name.toUpperCase(),
-              style: TextStyle(fontSize: 10, color: scoreColor),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFlagsSection(FluentThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              FluentIcons.info,
-              size: 12,
-              color: theme.resources.textFillColorSecondary,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'IP Quality Flags (hover for details)',
-              style: TextStyle(
-                fontSize: 11,
-                color: theme.resources.textFillColorSecondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildFlagChip('VPN', ip.isVpn, tooltip: _getFlagTooltip('VPN')),
-            _buildFlagChip('Proxy', ip.isProxy,
-                tooltip: _getFlagTooltip('Proxy')),
-            _buildFlagChip('Datacenter', ip.isDatacenter,
-                tooltip: _getFlagTooltip('Datacenter')),
-            _buildFlagChip('Tor', ip.isTor, tooltip: _getFlagTooltip('Tor')),
-          ],
-        ),
-      ],
     );
   }
 
@@ -249,111 +171,5 @@ class IpScoreAnalysis extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Widget _buildScoreRow(String label, double value, AccentColor color) {
-    return Row(
-      children: [
-        SizedBox(width: 120, child: Text(label)),
-        Expanded(
-          child: ProgressBar(
-            value: value,
-            backgroundColor: Colors.grey.withValues(alpha: 0.3),
-            activeColor: color,
-          ),
-        ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 40,
-          child: Text(
-            value.toStringAsFixed(0),
-            textAlign: TextAlign.right,
-            style: TextStyle(fontWeight: FontWeight.bold, color: color),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFlagChip(String label, bool isActive, {String? tooltip}) {
-    final color = isActive ? Colors.red : Colors.green;
-    final icon = isActive ? FluentIcons.warning : FluentIcons.check_mark;
-    final statusText = isActive ? 'Detected' : 'Not detected';
-
-    final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-              Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: color.withValues(alpha: 0.8),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    if (tooltip != null) {
-      return Tooltip(
-        message: tooltip,
-        style: const TooltipThemeData(
-          waitDuration: Duration(milliseconds: 300),
-        ),
-        child: chip,
-      );
-    }
-
-    return chip;
-  }
-
-  String _getFlagTooltip(String flag) {
-    switch (flag) {
-      case 'VPN':
-        return 'VPN Detection\n'
-            'Indicates if this IP is from a VPN service.\n'
-            'Red = VPN detected (may be flagged by websites)\n'
-            'Green = No VPN detected (appears as regular connection)';
-      case 'Proxy':
-        return 'Proxy Detection\n'
-            'Indicates if this IP is identified as a proxy server.\n'
-            'Red = Proxy detected (higher risk of blocks)\n'
-            'Green = No proxy detected (better for automation)';
-      case 'Datacenter':
-        return 'Datacenter IP\n'
-            'Indicates if this IP originates from a datacenter.\n'
-            'Red = Datacenter IP (often blocked by anti-bot systems)\n'
-            'Green = Residential/ISP IP (more trusted)';
-      case 'Tor':
-        return 'Tor Network\n'
-            'Indicates if this IP is a known Tor exit node.\n'
-            'Red = Tor detected (highest risk, often blocked)\n'
-            'Green = Not Tor (normal network connection)';
-      default:
-        return flag;
-    }
   }
 }
