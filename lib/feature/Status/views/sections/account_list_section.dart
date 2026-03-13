@@ -1,4 +1,6 @@
 import 'package:command_center/feature/Status/controller/status_controller.dart';
+import 'package:command_center/feature/Status/data/character_model.dart';
+import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/views/components/process_status_badge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -65,7 +67,7 @@ class AccountListSection extends StatelessWidget {
                   _buildTableCell('\u2014'),
                   _buildTableCell(account.proxyAddress),
                   const ProcessStatusBadge(isRunning: false),
-                  _buildTableCell(''),
+                  _buildEmptyAccountActions(context, account),
                 ],
               ),
             ];
@@ -124,10 +126,20 @@ class AccountListSection extends StatelessWidget {
     );
   }
 
+  Widget _buildEmptyAccountActions(BuildContext context, JagexAccount account) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Tooltip(
+        message: 'No characters — create one to get started',
+        child: Icon(FluentIcons.info, size: 14, color: Colors.grey[100]),
+      ),
+    );
+  }
+
   Widget _buildActionsCell(
     BuildContext context,
-    dynamic account,
-    dynamic character,
+    JagexAccount account,
+    Character character,
     bool isRunning,
   ) {
     return Padding(

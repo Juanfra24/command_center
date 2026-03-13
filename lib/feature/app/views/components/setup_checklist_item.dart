@@ -44,9 +44,7 @@ class SetupChecklistItem extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  isComplete
-                      ? FluentIcons.check_mark
-                      : FluentIcons.circle_ring,
+                  isComplete ? FluentIcons.check_mark : FluentIcons.circle_ring,
                   color: isComplete
                       ? Colors.green
                       : (isEnabled ? theme.accentColor : Colors.grey),

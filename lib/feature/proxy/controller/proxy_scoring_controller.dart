@@ -76,8 +76,11 @@ class ProxyScoringController extends GetxController {
 
   // --- Score actions ---
 
-  /// Score a single IP address using IPQualityScore
-  Future<bool> scoreIpWithIpqs(ProxyIpAddressEntity ip) async {
+  /// Score a single IP address using IPQualityScore.
+  /// When [skipReload] is true, skips reloading IP addresses from DB
+  /// (useful during batch scoring to avoid N+1 reloads).
+  Future<bool> scoreIpWithIpqs(ProxyIpAddressEntity ip,
+      {bool skipReload = false}) async {
     if (!_ipqsService.isConfigured.value) {
       logger.w('IPQS not configured');
       return false;
@@ -105,14 +108,15 @@ class ProxyScoringController extends GetxController {
           ),
         );
 
-        await _proxyController.loadIpAddresses();
+        if (!skipReload) {
+          await _proxyController.loadIpAddresses();
 
-        // Refresh selected slot history if applicable
-        if (_proxyController.selectedSlot.value != null &&
-            _proxyController.selectedSlot.value!.id != null) {
-          _proxyController.selectedSlotIpHistory.value =
-              _proxyController
-                  .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
+          // Refresh selected slot history if applicable
+          if (_proxyController.selectedSlot.value != null &&
+              _proxyController.selectedSlot.value!.id != null) {
+            _proxyController.selectedSlotIpHistory.value = _proxyController
+                .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
+          }
         }
 
         return true;
@@ -138,16 +142,26 @@ class ProxyScoringController extends GetxController {
 
     try {
       for (final slot in _proxyController.proxySlots) {
+        if (isClosed) break;
         final currentIp = _proxyController.getCurrentIpForSlot(slot);
         if (currentIp != null) {
-          final success = await scoreIpWithIpqs(currentIp);
+          final success = await scoreIpWithIpqs(currentIp, skipReload: true);
           if (success) successCount++;
           // Small delay to avoid rate limiting
           await Future.delayed(const Duration(milliseconds: 300));
         }
       }
 
+      // Single reload after all scoring is done
       await _proxyController.loadIpAddresses();
+
+      // Refresh selected slot history
+      if (_proxyController.selectedSlot.value != null &&
+          _proxyController.selectedSlot.value!.id != null) {
+        _proxyController.selectedSlotIpHistory.value = _proxyController
+            .getIpHistoryForSlot(_proxyController.selectedSlot.value!.id!);
+      }
+
       return successCount;
     } catch (e) {
       logger.e('Error scoring all IPs: $e');

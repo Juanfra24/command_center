@@ -1,7 +1,6 @@
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:command_center/feature/proxy/views/components/ip_score_indicator.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
@@ -10,8 +9,9 @@ class SlotHeader extends StatelessWidget {
   final ProxyIpAddressEntity? currentIp;
   final RxBool isReplacing;
   final ProxyIpAddressEntity? Function(ProxySlotEntity) getCurrentIpForSlot;
-  final void Function(BuildContext context, ProxySlotEntity slot,
-      ProxyIpAddressEntity ip) onShowReplaceDialog;
+  final void Function(
+          BuildContext context, ProxySlotEntity slot, ProxyIpAddressEntity ip)
+      onShowReplaceDialog;
   final void Function(BuildContext context, ProxySlotEntity slot)
       onLaunchBrowser;
   final void Function(BuildContext context, ProxySlotEntity slot)
@@ -82,8 +82,7 @@ class SlotHeader extends StatelessWidget {
                             slot.isActive ? 'Active' : 'Inactive',
                             style: TextStyle(
                               fontSize: 12,
-                              color:
-                                  slot.isActive ? Colors.green : Colors.grey,
+                              color: slot.isActive ? Colors.green : Colors.grey,
                             ),
                           ),
                         ),
@@ -169,8 +168,7 @@ class SlotHeader extends StatelessWidget {
       final automationService = Get.find<AutomationService>();
       final isRunning = automationService.isRunning.value;
       return Button(
-        onPressed:
-            isRunning ? null : () => onLaunchBrowser(context, slot),
+        onPressed: isRunning ? null : () => onLaunchBrowser(context, slot),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -188,50 +186,5 @@ class SlotHeader extends StatelessWidget {
         ),
       );
     });
-  }
-}
-
-class CurrentIpCard extends StatelessWidget {
-  final ProxyIpAddressEntity ip;
-
-  const CurrentIpCard({super.key, required this.ip});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSimpleInfoRow('IP Address', ip.ipAddress),
-          const SizedBox(height: 12),
-          _buildSimpleInfoRow(
-              'Location', '${ip.cityName}, ${ip.countryCode}'),
-          const SizedBox(height: 12),
-          _buildSimpleInfoRow('Timezone', ip.ipTimezone),
-          const SizedBox(height: 12),
-          _buildSimpleInfoRow('Provider', ip.asnName),
-          const SizedBox(height: 12),
-          _buildSimpleInfoRow('ASN', ip.asnNumber.toString()),
-          const SizedBox(height: 12),
-          _buildSimpleInfoRow('Assigned', formatDate(ip.assignedAt)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleInfoRow(String title, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        Expanded(child: Text(value)),
-      ],
-    );
   }
 }

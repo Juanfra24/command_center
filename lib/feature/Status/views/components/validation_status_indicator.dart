@@ -67,9 +67,9 @@ class ValidationStatusIndicator extends StatelessWidget {
             ),
           ),
           HyperlinkButton(
-            onPressed: () {
+            onPressed: () async {
               final automationService = Get.find<AutomationService>();
-              automationService.cancelCurrentTask();
+              await automationService.cancelCurrentTask();
               isValidating.value = false;
               validationResult.value =
                   AutomationResult.error('Validation cancelled');
@@ -85,8 +85,7 @@ class ValidationStatusIndicator extends StatelessWidget {
     final isSuccess = result.isSuccess;
     final isAccountCreated = result.isAccountCreated;
     final color = isSuccess ? Colors.green : Colors.red;
-    final icon =
-        isSuccess ? FluentIcons.check_mark : FluentIcons.error_badge;
+    final icon = isSuccess ? FluentIcons.check_mark : FluentIcons.error_badge;
 
     String title;
     if (isAccountCreated) {
@@ -114,8 +113,7 @@ class ValidationStatusIndicator extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style:
-                      theme.typography.bodyStrong?.copyWith(color: color),
+                  style: theme.typography.bodyStrong?.copyWith(color: color),
                 ),
                 if (result.actualIp != null)
                   Text(
@@ -135,15 +133,14 @@ class ValidationStatusIndicator extends StatelessWidget {
                     ),
                   if (result.data!['password'] != null)
                     Text(
-                      'Password: ${result.data!['password']}',
+                      'Password: \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
                       style: theme.typography.caption,
                     ),
                 ],
                 if (!isSuccess)
                   Text(
                     result.message,
-                    style:
-                        theme.typography.caption?.copyWith(color: color),
+                    style: theme.typography.caption?.copyWith(color: color),
                   ),
               ],
             ),

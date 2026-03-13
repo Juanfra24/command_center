@@ -1,3 +1,4 @@
+import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_replacement_controller.dart';
@@ -82,8 +83,7 @@ class ReplaceProxyDialog extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: InfoBar(
-                    title:
-                        Text('Replacements: $available / $total remaining'),
+                    title: Text('Replacements: $available / $total remaining'),
                     content: Text(
                       'You have used ${total - available} of $total replacements this period.',
                     ),
@@ -127,21 +127,27 @@ class ReplaceProxyDialog extends StatelessWidget {
                       );
 
                       if (context.mounted) {
+                        final String title;
+                        final String content;
+                        final InfoBarSeverity severity;
+                        switch (result) {
+                          case Success():
+                            title = 'Success';
+                            content =
+                                'Proxy replaced successfully! The new IP has been synced.';
+                            severity = InfoBarSeverity.success;
+                          case Failure(:final message):
+                            title = 'Error';
+                            content = message;
+                            severity = InfoBarSeverity.error;
+                        }
                         displayInfoBar(
                           context,
                           builder: (ctx, close) {
                             return InfoBar(
-                              title:
-                                  Text(result.success ? 'Success' : 'Error'),
-                              content: Text(
-                                result.success
-                                    ? 'Proxy replaced successfully! The new IP has been synced.'
-                                    : result.error ??
-                                        'Failed to replace proxy',
-                              ),
-                              severity: result.success
-                                  ? InfoBarSeverity.success
-                                  : InfoBarSeverity.error,
+                              title: Text(title),
+                              content: Text(content),
+                              severity: severity,
                               action: IconButton(
                                 icon: const Icon(FluentIcons.clear),
                                 onPressed: close,

@@ -68,8 +68,7 @@ class IntegrationTile extends StatelessWidget {
                         ),
                         child: Text(
                           'Coming Soon',
-                          style:
-                              TextStyle(fontSize: 10, color: Colors.orange),
+                          style: TextStyle(fontSize: 10, color: Colors.orange),
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
+import 'package:command_center/feature/app/views/components/scoring_progress_display.dart';
 import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -10,6 +11,7 @@ class IpqsOnboardingDialog {
   static void show(BuildContext context) {
     final apiKeyController = TextEditingController();
     final isProcessing = false.obs;
+    final isCancelled = false.obs;
     final statusMessage = Rxn<String>();
     final isError = false.obs;
 
@@ -41,7 +43,7 @@ class IpqsOnboardingDialog {
                 ),
                 if (statusMessage.value != null) ...[
                   const SizedBox(height: 16),
-                  _buildStatusBar(
+                  ScoringProgressDisplay(
                     statusMessage: statusMessage,
                     isError: isError,
                     isProcessing: isProcessing,
@@ -50,17 +52,21 @@ class IpqsOnboardingDialog {
               ],
             )),
         actions: [
-          Button(
-            onPressed: isProcessing.value
-                ? null
-                : () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
+          Obx(() => Button(
+                onPressed: isProcessing.value
+                    ? () {
+                        isCancelled.value = true;
+                        statusMessage.value = 'Cancelling...';
+                      }
+                    : () => Navigator.of(dialogContext).pop(),
+                child: Text(isProcessing.value ? 'Cancel Scoring' : 'Cancel'),
+              )),
           _buildConnectButton(
             context: context,
             dialogContext: dialogContext,
             apiKeyController: apiKeyController,
             isProcessing: isProcessing,
+            isCancelled: isCancelled,
             statusMessage: statusMessage,
             isError: isError,
           ),
@@ -69,55 +75,12 @@ class IpqsOnboardingDialog {
     );
   }
 
-  static Widget _buildStatusBar({
-    required Rxn<String> statusMessage,
-    required RxBool isError,
-    required RxBool isProcessing,
-  }) {
-    return Obx(() => Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isError.value
-                ? Colors.red.withValues(alpha: 0.1)
-                : Colors.blue.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            children: [
-              if (isProcessing.value)
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: ProgressRing(strokeWidth: 2),
-                )
-              else
-                Icon(
-                  isError.value
-                      ? FluentIcons.error_badge
-                      : FluentIcons.info,
-                  size: 14,
-                  color: isError.value ? Colors.red : Colors.blue,
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  statusMessage.value ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isError.value ? Colors.red : null,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ));
-  }
-
   static Widget _buildConnectButton({
     required BuildContext context,
     required BuildContext dialogContext,
     required TextEditingController apiKeyController,
     required RxBool isProcessing,
+    required RxBool isCancelled,
     required Rxn<String> statusMessage,
     required RxBool isError,
   }) {
@@ -132,14 +95,15 @@ class IpqsOnboardingDialog {
                   }
 
                   isProcessing.value = true;
+                  isCancelled.value = false;
                   statusMessage.value = 'Testing connection...';
                   isError.value = false;
 
                   try {
                     final ipqsService = Get.find<IpqsService>();
 
-                    final testResult = await ipqsService
-                        .testAndConnect(apiKeyController.text);
+                    final testResult =
+                        await ipqsService.testAndConnect(apiKeyController.text);
 
                     if (!testResult.success) {
                       statusMessage.value =
@@ -149,21 +113,22 @@ class IpqsOnboardingDialog {
                       return;
                     }
 
-                    statusMessage.value = 'Scoring all proxy IPs...';
-                    try {
-                      final scoringController =
-                          Get.find<ProxyScoringController>();
-                      final scored =
-                          await scoringController.scoreAllCurrentIps();
-                      statusMessage.value =
-                          'Scored $scored IPs successfully!';
-                    } catch (e) {
-                      // Non-fatal
+                    if (!isCancelled.value) {
+                      statusMessage.value = 'Scoring all proxy IPs...';
+                      try {
+                        final scoringController =
+                            Get.find<ProxyScoringController>();
+                        final scored =
+                            await scoringController.scoreAllCurrentIps();
+                        statusMessage.value =
+                            'Scored $scored IPs successfully!';
+                      } catch (e) {
+                        // Non-fatal
+                      }
                     }
 
                     try {
-                      final onboardingService =
-                          Get.find<OnboardingService>();
+                      final onboardingService = Get.find<OnboardingService>();
                       await onboardingService.markInitialSyncComplete();
                     } catch (_) {}
 
@@ -177,8 +142,9 @@ class IpqsOnboardingDialog {
                           builder: (ctx, close) {
                             return InfoBar(
                               title: const Text('Setup Complete'),
-                              content: const Text(
-                                  'IPQualityScore connected and all IPs scored!'),
+                              content: Text(isCancelled.value
+                                  ? 'IPQualityScore connected! Scoring was cancelled.'
+                                  : 'IPQualityScore connected and all IPs scored!'),
                               severity: InfoBarSeverity.success,
                               action: IconButton(
                                 icon: const Icon(FluentIcons.clear),

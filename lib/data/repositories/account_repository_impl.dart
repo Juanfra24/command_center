@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../core/helper/logger.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/character.dart';
 import '../../domain/entities/skills.dart';
@@ -188,17 +189,34 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   CharacterEntity _mapCharacterRow(CharactersTableData row) {
+    SkillsEntity actualSkills;
+    SkillsEntity targetSkills;
+
+    try {
+      actualSkills = SkillsEntity.fromJson(
+        jsonDecode(row.actualSkillsJson) as Map<String, dynamic>,
+      );
+    } catch (e) {
+      logger.e('Failed to parse actualSkillsJson for character ${row.id}: $e');
+      actualSkills = SkillsEntity.empty();
+    }
+
+    try {
+      targetSkills = SkillsEntity.fromJson(
+        jsonDecode(row.targetSkillsJson) as Map<String, dynamic>,
+      );
+    } catch (e) {
+      logger.e('Failed to parse targetSkillsJson for character ${row.id}: $e');
+      targetSkills = SkillsEntity.empty();
+    }
+
     return CharacterEntity(
       id: row.id,
       accountId: row.accountId,
       name: row.name,
       banned: row.banned,
-      actualSkills: SkillsEntity.fromJson(
-        jsonDecode(row.actualSkillsJson) as Map<String, dynamic>,
-      ),
-      targetSkills: SkillsEntity.fromJson(
-        jsonDecode(row.targetSkillsJson) as Map<String, dynamic>,
-      ),
+      actualSkills: actualSkills,
+      targetSkills: targetSkills,
     );
   }
 }

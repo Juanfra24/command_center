@@ -149,8 +149,7 @@ class WebshareApiClient {
   }
 
   /// GET /subscription/plan/ — fetch subscription plans.
-  Future<List<Map<String, dynamic>>> getSubscriptionPlans(
-      String apiKey) async {
+  Future<List<Map<String, dynamic>>> getSubscriptionPlans(String apiKey) async {
     final response = await http.get(
       Uri.parse('$_baseUrlV2/subscription/plan/'),
       headers: _headers(apiKey),

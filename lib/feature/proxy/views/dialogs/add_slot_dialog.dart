@@ -67,13 +67,43 @@ class AddSlotDialog extends StatelessWidget {
         ),
         FilledButton(
           onPressed: () async {
+            // Validate required fields
+            if (nameController.text.trim().isEmpty) {
+              await displayInfoBar(context, builder: (ctx, close) {
+                return const InfoBar(
+                  title: Text('Slot name is required'),
+                  severity: InfoBarSeverity.error,
+                );
+              });
+              return;
+            }
+            if (usernameController.text.trim().isEmpty ||
+                passwordController.text.trim().isEmpty) {
+              await displayInfoBar(context, builder: (ctx, close) {
+                return const InfoBar(
+                  title: Text('Username and password are required'),
+                  severity: InfoBarSeverity.error,
+                );
+              });
+              return;
+            }
+            final port = int.tryParse(portController.text);
+            if (port == null || port < 1 || port > 65535) {
+              await displayInfoBar(context, builder: (ctx, close) {
+                return const InfoBar(
+                  title: Text('Port must be between 1 and 65535'),
+                  severity: InfoBarSeverity.error,
+                );
+              });
+              return;
+            }
             final newSlot = ProxySlotEntity(
               id: null,
-              slotName: nameController.text,
+              slotName: nameController.text.trim(),
               slotNumber: controller.totalSlots + 1,
-              username: usernameController.text,
-              password: passwordController.text,
-              port: int.tryParse(portController.text) ?? 8080,
+              username: usernameController.text.trim(),
+              password: passwordController.text.trim(),
+              port: port,
               createdAt: DateTime.now(),
               lastUpdated: DateTime.now(),
               totalIpChanges: 0,

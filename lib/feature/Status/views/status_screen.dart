@@ -101,8 +101,7 @@ class StatusScreen extends GetView<StatusController> {
             const SizedBox(height: 12),
             Text(
               'Connect Webshare first to sync proxy slots',
-              style: theme.typography.caption
-                  ?.copyWith(color: Colors.orange),
+              style: theme.typography.caption?.copyWith(color: Colors.orange),
             ),
           ],
         ],

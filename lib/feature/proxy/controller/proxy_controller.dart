@@ -69,7 +69,13 @@ class ProxyController extends GetxController {
 
   void _initSyncService() {
     if (_proxyRepository != null && _webshareService != null) {
-      _syncService = ProxySyncService(_proxyRepository!, _webshareService!);
+      try {
+        final db = Get.find<DatabaseService>().database;
+        _syncService =
+            ProxySyncService(_proxyRepository!, _webshareService!, db);
+      } catch (_) {
+        _syncService = ProxySyncService(_proxyRepository!, _webshareService!);
+      }
     }
   }
 
@@ -133,8 +139,17 @@ class ProxyController extends GetxController {
     lastSyncError.value = null;
 
     try {
+      final previousSelectedId = selectedSlot.value?.id;
       await _syncService!.syncWithWebshare();
       await loadData();
+      // Re-select the previously selected slot by ID
+      if (previousSelectedId != null) {
+        final restored =
+            proxySlots.firstWhereOrNull((s) => s.id == previousSelectedId);
+        if (restored != null) {
+          selectSlot(restored);
+        }
+      }
     } catch (e) {
       logger.e('Error syncing with Webshare: $e');
       lastSyncError.value = 'Failed to sync: ${e.toString()}';

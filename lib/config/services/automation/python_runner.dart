@@ -11,6 +11,7 @@ import 'package:path/path.dart' as path;
 /// Manages Python process lifecycle: spawning, output capture, timeout, cancellation.
 class PythonRunner {
   Process? _currentProcess;
+  final List<int> _detachedSessionPids = [];
   final isCancelling = false.obs;
 
   /// Callback for log lines from Python stdout
@@ -79,8 +80,8 @@ class PythonRunner {
   /// Log redacted command for debugging
   void logCommand(List<String> args) {
     onLog('Full Python command:');
-    onLog('  python ${args.join(' ')}'
-        .replaceAll(RegExp(r':[^:@]+@'), ':***@'));
+    onLog(
+        '  python ${args.join(' ')}'.replaceAll(RegExp(r':[^:@]+@'), ':***@'));
   }
 
   /// Run a Python script with timeout and cancellation support.
@@ -169,7 +170,10 @@ class PythonRunner {
     final output = outputBuffer.toString();
     final exited = output.contains('RESULT');
 
-    // Detach — we don't manage this process further
+    // Track the detached PID for cleanup on app close
+    if (_currentProcess != null) {
+      _detachedSessionPids.add(_currentProcess!.pid);
+    }
     _currentProcess = null;
 
     return (output: output, exited: exited);
@@ -194,4 +198,17 @@ class PythonRunner {
   }
 
   bool get isProcessRunning => _currentProcess != null;
+
+  /// Clean up any detached session processes.
+  /// Call this on app close to avoid orphaned browser processes.
+  void cleanupDetachedSessions() {
+    for (final pid in _detachedSessionPids) {
+      try {
+        Process.killPid(pid, ProcessSignal.sigterm);
+      } catch (_) {
+        // Process may have already exited
+      }
+    }
+    _detachedSessionPids.clear();
+  }
 }

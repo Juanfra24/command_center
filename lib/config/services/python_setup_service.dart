@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:command_center/config/services/python_dependency_checker.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/helper/scripts_path.dart';
 import 'package:get/get.dart';
@@ -25,36 +26,27 @@ class PythonSetupService extends GetxService {
   final currentStep = SetupStep.idle.obs;
   final setupProgressPercent = 0.0.obs;
 
-  /// Get the scripts directory path (cached, shared with AutomationService)
+  late final PythonDependencyChecker _checker;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _checker = Get.put(PythonDependencyChecker());
+  }
+
   String get _scriptsPath => scriptsPath;
 
   /// Check if Python is available
-  Future<bool> checkPythonAvailable() async {
-    try {
-      final result = await Process.run('python', ['--version']);
-      if (result.exitCode == 0) {
-        final version = result.stdout.toString().trim();
-        logger.i('Python found: $version');
-        return true;
-      }
-    } catch (e) {
-      logger.e('Python not found: $e');
-    }
-    return false;
-  }
+  Future<bool> checkPythonAvailable() => _checker.checkPythonAvailable();
 
   /// Check if pip is available
-  Future<bool> checkPipAvailable() async {
-    try {
-      final result = await Process.run('python', ['-m', 'pip', '--version']);
-      if (result.exitCode == 0) {
-        logger.i('pip is available');
-        return true;
-      }
-    } catch (e) {
-      logger.e('pip not found: $e');
-    }
-    return false;
+  Future<bool> checkPipAvailable() => _checker.checkPipAvailable();
+
+  /// Check if dependencies are already installed
+  Future<bool> checkDependenciesInstalled() async {
+    final result = await _checker.checkDependenciesInstalled();
+    if (result) isSetupComplete.value = true;
+    return result;
   }
 
   /// Install Python dependencies
@@ -69,7 +61,6 @@ class PythonSetupService extends GetxService {
     try {
       setupProgress.value = 'Checking Python installation...';
 
-      // Check Python
       if (!await checkPythonAvailable()) {
         setupError.value =
             'Python not found. Please install Python 3.8 or higher.';
@@ -79,7 +70,6 @@ class PythonSetupService extends GetxService {
 
       setupProgressPercent.value = 0.2;
 
-      // Check pip
       if (!await checkPipAvailable()) {
         setupError.value = 'pip not found. Please reinstall Python with pip.';
         currentStep.value = SetupStep.failed;
@@ -100,7 +90,6 @@ class PythonSetupService extends GetxService {
 
       logger.i('Installing from: $requirementsPath');
 
-      // Install dependencies with upgrade flag
       final process = await Process.start(
         'python',
         [
@@ -115,7 +104,6 @@ class PythonSetupService extends GetxService {
         workingDirectory: _scriptsPath,
       );
 
-      // Capture output
       final output = StringBuffer();
       process.stdout.listen((data) {
         final text = String.fromCharCodes(data);
@@ -126,7 +114,6 @@ class PythonSetupService extends GetxService {
       process.stderr.listen((data) {
         final text = String.fromCharCodes(data);
         output.write(text);
-        // Using logger.w here is fine for pip warnings
         logger.w(text);
       });
 
@@ -143,7 +130,6 @@ class PythonSetupService extends GetxService {
       setupProgressPercent.value = 0.6;
       logger.i('Python dependencies installed successfully');
 
-      // Install Chromium driver
       currentStep.value = SetupStep.installingChromium;
       setupProgress.value = 'Installing Chromium browser driver...';
 
@@ -156,7 +142,6 @@ class PythonSetupService extends GetxService {
       currentStep.value = SetupStep.verifying;
       setupProgress.value = 'Verifying installation...';
 
-      // Verify the installation
       final verified = await checkDependenciesInstalled();
       if (!verified) {
         setupError.value = 'Installation verification failed';
@@ -204,65 +189,10 @@ class PythonSetupService extends GetxService {
     }
   }
 
-  /// Verify Patchright Chromium works by launching headless
   Future<bool> _verifyChromiumWorks() async {
-    try {
-      logger.i('Opening browser to verify Patchright installation...');
-      final result = await Process.run(
-        'python',
-        [
-          '-c',
-          '''
-import asyncio
-from patchright.async_api import async_playwright
-
-async def verify():
-    pw = await async_playwright().start()
-    browser = await pw.chromium.launch(headless=True)
-    page = await browser.new_page()
-    await page.goto("about:blank")
-    print("CHROMIUM_OK")
-    await browser.close()
-    await pw.stop()
-
-asyncio.run(verify())
-'''
-        ],
-        workingDirectory: _scriptsPath,
-      ).timeout(const Duration(seconds: 60));
-
-      final output = result.stdout.toString();
-      if (output.contains('CHROMIUM_OK')) {
-        logger.i('Patchright Chromium verification successful');
-        isChromiumInstalled.value = true;
-        return true;
-      }
-      logger.w('Chromium verification failed: $output');
-      return false;
-    } catch (e) {
-      logger.w('Chromium verification error: $e');
-      return false;
-    }
-  }
-
-  /// Check if dependencies are already installed
-  Future<bool> checkDependenciesInstalled() async {
-    try {
-      final result = await Process.run(
-        'python',
-        ['-c', 'import patchright; print("OK")'],
-      );
-
-      if (result.exitCode == 0 &&
-          result.stdout.toString().trim().contains('OK')) {
-        logger.i('Python dependencies already installed');
-        isSetupComplete.value = true;
-        return true;
-      }
-    } catch (e) {
-      logger.w('Dependencies check failed: $e');
-    }
-    return false;
+    final result = await _checker.verifyChromiumWorks();
+    if (result) isChromiumInstalled.value = true;
+    return result;
   }
 
   /// Initialize and setup if needed
@@ -271,11 +201,9 @@ asyncio.run(verify())
 
     logger.i('Checking Python setup...');
 
-    // First check if the python packages exist
     if (await checkDependenciesInstalled()) {
       logger.i('Dependencies found, visually verifying browser...');
 
-      // FORCED CHECK: Even if packages exist, make sure Chrome actually opens!
       final browserWorks = await _verifyChromiumWorks();
 
       if (browserWorks) {
@@ -283,11 +211,9 @@ asyncio.run(verify())
         return;
       } else {
         logger.w('Browser verification failed! Re-running full setup...');
-        // If the browser fails to open, fall through and reinstall everything
       }
     }
 
-    // If not installed, or if browser verification failed, install them
     logger.i('Installing/Repairing Python dependencies and drivers...');
     await installDependencies();
   }

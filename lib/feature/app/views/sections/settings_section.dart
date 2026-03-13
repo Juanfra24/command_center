@@ -99,8 +99,7 @@ class SettingsSection extends StatelessWidget {
                   onChanged: (value) {
                     musicController.setVolume(value / 100);
                   },
-                  label:
-                      '${(musicController.volume.value * 100).round()}%',
+                  label: '${(musicController.volume.value * 100).round()}%',
                 ),
               ),
               const SizedBox(width: 8),
@@ -132,8 +131,7 @@ class SettingsSection extends StatelessWidget {
                   style: FluentTheme.of(context).typography.bodyLarge),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.red.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),

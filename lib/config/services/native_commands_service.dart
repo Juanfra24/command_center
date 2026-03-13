@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +19,7 @@ class NativeCommandsService extends GetxController {
       final bytes = base64Decode(encoded);
       return ProcessClient.parseProcessData(bytes);
     } on PlatformException catch (e) {
-      print('Failed to get Java processes: ${e.message}');
+      logger.e('Failed to get Java processes: ${e.message}');
       return [];
     }
   }
@@ -46,11 +47,11 @@ class NativeCommandsService extends GetxController {
         'proxyAddress': proxyAddress ?? 'none',
         'scriptName': scriptName ?? 'Tutorial Journey',
       });
-      print('Success: $result');
+      logger.i('Game client started: $result');
     } on PlatformException catch (e) {
-      print('Failed to run game client: ${e.message}');
+      logger.e('Failed to run game client: ${e.message}');
     } catch (e) {
-      print('An unexpected error occurred: $e');
+      logger.e('Unexpected error running game client: $e');
     }
   }
 

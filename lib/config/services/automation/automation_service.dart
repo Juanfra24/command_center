@@ -26,6 +26,12 @@ class AutomationService extends GetxService {
   late final PythonRunner _runner = PythonRunner(onLog: _log);
   RxBool get isCancelling => _runner.isCancelling;
 
+  @override
+  void onClose() {
+    _runner.cleanupDetachedSessions();
+    super.onClose();
+  }
+
   void _log(String message) {
     final timestamp = DateTime.now().toIso8601String().substring(11, 19);
     logs.add('[$timestamp] $message');
@@ -65,7 +71,7 @@ class AutomationService extends GetxService {
     if (!await ps.checkDependenciesInstalled()) {
       return AutomationResult.error(
         'Python dependencies verification failed. '
-        'Please check that seleniumbase is properly installed.',
+        'Please check that patchright is properly installed.',
       );
     }
     _log('Python dependencies verified successfully');
@@ -160,8 +166,12 @@ class AutomationService extends GetxService {
         timeoutMessage: 'Proxy validation timed out. The browser may be stuck. '
             'Try again or check your proxy settings.',
         body: (ip, proxy) => _runAndParse([
-              _runner.scriptFile, 'validate', proxy, ip, '--debug',
-            ]),
+          _runner.scriptFile,
+          'validate',
+          proxy,
+          ip,
+          '--debug',
+        ]),
       );
 
   /// Create a new Jagex account through the proxy.
@@ -180,7 +190,11 @@ class AutomationService extends GetxService {
           final imapPass = await cfg.getImapPass();
           final result = await _runAndParse(
             [
-              _runner.scriptFile, 'create-account', proxy, ip, '--debug',
+              _runner.scriptFile,
+              'create-account',
+              proxy,
+              ip,
+              '--debug',
               if (imapHost != null) ...['--imap-host', imapHost],
               if (imapUser != null) ...['--imap-user', imapUser],
               if (imapPass != null) ...['--imap-pass', imapPass],
@@ -204,11 +218,17 @@ class AutomationService extends GetxService {
         slot: slot,
         body: (ip, proxy) async {
           final args = [
-            _runner.scriptFile, 'session', proxy, ip, '--keep-open', '--debug',
+            _runner.scriptFile,
+            'session',
+            proxy,
+            ip,
+            '--keep-open',
+            '--debug',
           ];
           _runner.logCommand(args);
           final session = await _runner.startSession(
-            args, workingDirectory: _runner.scriptsPath,
+            args,
+            workingDirectory: _runner.scriptsPath,
           );
           if (session.exited) {
             final json = ResultParser.extractJsonResult(session.output);
@@ -220,7 +240,8 @@ class AutomationService extends GetxService {
           }
           final r = AutomationResult(
             status: AutomationStatus.success,
-            message: 'Browser launched with proxy - close browser window when done',
+            message:
+                'Browser launched with proxy - close browser window when done',
             expectedIp: ip,
           );
           lastResult.value = r;

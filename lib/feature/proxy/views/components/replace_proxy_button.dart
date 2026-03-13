@@ -7,8 +7,9 @@ class ReplaceProxyButton extends StatelessWidget {
   final RxBool isReplacing;
   final ProxyIpAddressEntity ip;
   final ProxySlotEntity slot;
-  final void Function(BuildContext context, ProxySlotEntity slot,
-      ProxyIpAddressEntity ip) onReplace;
+  final void Function(
+          BuildContext context, ProxySlotEntity slot, ProxyIpAddressEntity ip)
+      onReplace;
 
   const ReplaceProxyButton({
     super.key,
@@ -32,8 +33,7 @@ class ReplaceProxyButton extends StatelessWidget {
           style: ButtonStyle(
             backgroundColor: WidgetStatePropertyAll(Colors.orange),
           ),
-          onPressed:
-              replacing ? null : () => onReplace(context, slot, ip),
+          onPressed: replacing ? null : () => onReplace(context, slot, ip),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

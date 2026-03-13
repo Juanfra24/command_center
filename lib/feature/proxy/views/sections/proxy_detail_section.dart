@@ -3,6 +3,7 @@ import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/components/ip_history_list.dart';
 import 'package:command_center/feature/proxy/views/components/ip_score_analysis.dart';
+import 'package:command_center/feature/proxy/views/components/current_ip_card.dart';
 import 'package:command_center/feature/proxy/views/components/slot_header.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -10,8 +11,9 @@ import 'package:get/get.dart';
 class ProxyDetailSection extends StatelessWidget {
   final ProxyController controller;
   final RxBool isReplacing;
-  final void Function(BuildContext context, ProxySlotEntity slot,
-      ProxyIpAddressEntity ip) onShowReplaceDialog;
+  final void Function(
+          BuildContext context, ProxySlotEntity slot, ProxyIpAddressEntity ip)
+      onShowReplaceDialog;
   final void Function(BuildContext context, ProxySlotEntity slot)
       onLaunchBrowser;
   final void Function(BuildContext context, ProxySlotEntity slot)

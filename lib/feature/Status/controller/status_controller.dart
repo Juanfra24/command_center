@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/data/database_service.dart';
+import 'package:command_center/domain/entities/skills.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
@@ -19,7 +19,6 @@ class StatusController extends GetxController {
   var isLoading = true.obs;
   Timer? _processCheckTimer;
   List<JagexAccount> accountList = <JagexAccount>[].obs;
-  List<int> processList = <int>[].obs;
   RxMap<String, ProcessClient> processClients =
       <String, ProcessClient>{}.obs; // Maps character names to their processes
 
@@ -90,13 +89,16 @@ class StatusController extends GetxController {
               birthday: account.birthday,
               email: account.email,
               password: account.password,
-              proxyAddress: _resolveProxyAddress(account.proxySlotId, proxyController),
-              characters: account.characters.map((c) => Character(
-                banned: c.banned,
-                name: c.name,
-                actualSkills: _mapSkills(c.actualSkills),
-                targetSkills: _mapSkills(c.targetSkills),
-              )).toList(),
+              proxyAddress:
+                  _resolveProxyAddress(account.proxySlotId, proxyController),
+              characters: account.characters
+                  .map((c) => Character(
+                        banned: c.banned,
+                        name: c.name,
+                        actualSkills: _mapSkills(c.actualSkills),
+                        targetSkills: _mapSkills(c.targetSkills),
+                      ))
+                  .toList(),
             )
         ]);
     } catch (err) {
@@ -104,10 +106,12 @@ class StatusController extends GetxController {
     }
   }
 
-  String _resolveProxyAddress(int? proxySlotId, ProxyController? proxyController) {
+  String _resolveProxyAddress(
+      int? proxySlotId, ProxyController? proxyController) {
     if (proxySlotId == null || proxyController == null) return 'No proxy';
     try {
-      final slot = proxyController.proxySlots.firstWhereOrNull((s) => s.id == proxySlotId);
+      final slot = proxyController.proxySlots
+          .firstWhereOrNull((s) => s.id == proxySlotId);
       if (slot == null) return 'No proxy';
       final currentIp = proxyController.getCurrentIpForSlot(slot);
       return currentIp?.ipAddress ?? 'No IP';
@@ -116,7 +120,7 @@ class StatusController extends GetxController {
     }
   }
 
-  Skills _mapSkills(dynamic skillsEntity) {
+  Skills _mapSkills(SkillsEntity skillsEntity) {
     return Skills(
       attack: skillsEntity.attack,
       defence: skillsEntity.defence,
@@ -157,27 +161,27 @@ class StatusController extends GetxController {
         proxyAddress: proxy,
         scriptName: null,
       );
-      sleep(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       await updateRunningProcesses(); // Update immediately after starting
       _startProcessCheckTimer(); // Restart the timer to ensure it's running
     } catch (e) {
-      print('Failed to run game script: $e');
+      logger.e('Failed to run game script: $e');
     }
   }
 
   Future<void> stopGameClient(ProcessClient? process) async {
     if (process != null) {
       await _nativeCommandsService.killProcess(process.processId);
-      sleep(const Duration(milliseconds: 100));
-      updateRunningProcesses(); // Refresh the running process list
+      await Future.delayed(const Duration(milliseconds: 100));
+      await updateRunningProcesses(); // Refresh the running process list
       _startProcessCheckTimer(); // Restart the timer to ensure it's running
     }
   }
 
   @override
   void onClose() async {
-    for (var processId in processList) {
-      await _nativeCommandsService.killProcess(processId);
+    for (var entry in processClients.entries) {
+      await _nativeCommandsService.killProcess(entry.value.processId);
     }
     _processCheckTimer?.cancel();
     super.onClose();

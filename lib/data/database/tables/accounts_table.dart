@@ -36,8 +36,10 @@ class CharactersTable extends Table {
   /// Auto-increment primary key
   IntColumn get id => integer().autoIncrement()();
 
-  /// Reference to the account this character belongs to
-  IntColumn get accountId => integer().references(AccountsTable, #id)();
+  /// Reference to the account this character belongs to.
+  /// Cascade delete: when an account is deleted, its characters are removed.
+  IntColumn get accountId =>
+      integer().references(AccountsTable, #id, onDelete: KeyAction.cascade)();
 
   /// Character name
   TextColumn get name => text()();
