@@ -66,7 +66,7 @@ A "Remember last used" checkbox stores the most recent `LaunchConfig` in memory 
 
 ### Bulk launch ("Start All")
 
-The bot farm summary bar includes a "Start All" button that opens the Launch Dialog once. The selected config is applied to all launchable characters (those with status `stopped` or no tracked state, excluding `banned` and `awaiting_account`).
+The bot farm summary bar includes a "Start All" button that opens the Launch Dialog once. The selected config is applied to all launchable characters (those with status `stopped` or no tracked state, excluding `running`, `restarting`, `banned`, and `awaitingAccount`).
 
 ### Data flow
 
@@ -103,7 +103,9 @@ Currently accepts 3 strings (`characterName`, `proxyAddress`, `scriptName`). Exp
 }
 ```
 
-Builds the command string by iterating the map. The existing `isValidInput()` regex validation applies to each value. `-params` is always appended last per DreamBot requirements.
+Builds the command string by iterating the map. `-params` is always appended last per DreamBot requirements.
+
+**Input validation:** The existing `isValidInput()` regex (`^[a-zA-Z0-9_\-\.\\: ]+$`) is too restrictive — it rejects `@` (proxy addresses), `=` (DreamBot flags), `/` (paths), and `"` (quoted args). Replace it with a blocklist approach: reject shell metacharacters (`&`, `|`, `;`, `>`, `<`, `` ` ``, `$`, `(`, `)`, `{`, `}`) while allowing everything else. Apply validation per field value, not to the assembled command string. The `advancedFlags` field bypasses validation since it's free-form by design — advanced users accept the risk.
 
 ### `ListJavaProcesses()` (C++ side)
 
@@ -149,9 +151,9 @@ enum ClientStatus { running, restarting, stopped, banned, awaitingAccount }
 class TrackedClient {
   final String characterName;
   final int accountId;
-  final int proxySlotId;
+  final int proxySlotId;        // From AccountEntity.proxySlotId (see note below)
   final LaunchConfig launchConfig;
-  int? pid;
+  int? pid;                     // null until first poll match discovers the process
   ClientStatus status;
   DateTime? launchedAt;
   int retryCount;
@@ -159,25 +161,30 @@ class TrackedClient {
 }
 ```
 
-One `TrackedClient` per bot. No streams, no timers per client — just a `Map<String, TrackedClient>` keyed by character name.
+**Note on `proxySlotId`:** The UI uses `JagexAccount` (which only has `proxyAddress` string). The launch flow must resolve `proxySlotId` from the underlying `AccountEntity` stored in the controller. `StatusController` already holds `AccountEntity` objects from the DB — `launchCharacter()` extracts `proxySlotId` from there before constructing the `TrackedClient`.
+
+**PID assignment:** A newly launched client starts with `pid = null`. On the next poll cycle, the watchdog matches unassigned clients by scanning process command lines for `-account "characterName"`. Once matched, the PID is stored for subsequent fast-path checks by PID.
+
+One `TrackedClient` per bot. No streams, no timers per client — just a `Map<String, TrackedClient>` keyed by character name. `TrackedClient` is a mutable in-memory model, not a domain entity (see File Structure for placement).
 
 ### Core Loop
 
 Single `Timer.periodic` at adaptive interval (10s active / 30s idle):
 
 1. **Poll:** Call `NativeCommandsService.listJavaProcesses()` → set of live `{pid, commandLine}` entries
-2. **Match:** For each `TrackedClient` with a non-null PID, check if PID exists in the live set
-3. **Classify death** (PID gone):
+2. **Discover:** For tracked clients with `pid == null` (just launched), scan process command lines for `-account "characterName"` match. On match, assign the PID and set `launchedAt` to now.
+3. **Match:** For each `TrackedClient` with a non-null PID, check if PID exists in the live set
+4. **Classify death** (PID gone):
    - **Quick death** (alive < 30s since `launchedAt`): likely ban, bad credentials, or missing script → mark `banned`
    - **Normal death** (alive ≥ 30s): script ended or crash → mark `restarting`
-4. **Handle restarts** (status `restarting`):
+5. **Handle restarts** (status `restarting`):
    - If `retryCount < maxRetries` (default 3): wait cooldown `30s × 2^retryCount` (capped at 5 min), then relaunch with same `LaunchConfig`
    - If `retryCount >= maxRetries`: mark `stopped`, fire notification "Max retries reached for [character]"
-5. **Handle bans** (status `banned`):
-   - Set `character.banned = true` in DB
-   - Trigger proxy IP rotation on the slot via `ProxyAutoRotationService`
+6. **Handle bans** (status `banned`):
+   - Update the character's `banned` flag in DB via `StatusController.markCharacterBanned(accountId, characterName)` which calls `accountRepository.updateCharacterBanned(characterName, true)` — a new repository method (single UPDATE query by character name)
+   - Trigger proxy IP rotation on the slot via `ProxyAutoRotationService.rotateSlot(slotId)` — a new method that calls `ProxyReplacementService.replaceIp(slot)` directly, bypassing the score-threshold flow
    - Set status to `awaitingAccount` — watchdog ignores this client until user creates a new account
-6. **Stability reset:** When a client has been alive > 5 minutes continuously, reset `retryCount` to 0
+7. **Stability reset:** When a client has been alive > 5 minutes continuously, reset `retryCount` to 0
 
 ### Relaunch Cooldown Schedule
 
@@ -193,8 +200,9 @@ Single `Timer.periodic` at adaptive interval (10s active / 30s idle):
 | System | Integration |
 |--------|-------------|
 | `StatusController` | Removes its own poll timer. Reads `watchdog.trackedClients` observable for UI |
-| `NotificationService` | Watchdog fires notifications for: ban detected, max retries reached, relaunch success |
-| `ProxyAutoRotationService` | Called on ban to rotate the proxy slot's IP |
+| `NotificationService` | Watchdog fires notifications using new `NotificationType` values: `banDetected`, `maxRetriesReached`, `clientRelaunched` (added to the existing enum in `domain/entities/notification.dart`) |
+| `ProxyAutoRotationService` | New `rotateSlot(int slotId)` method called on ban — delegates to `ProxyReplacementService.replaceIp(slot)` directly |
+| `AccountRepository` | New `updateCharacterBanned(String characterName, bool banned)` method for setting ban flag |
 | `NativeCommandsService` | Watchdog calls `runGameClient()` for relaunches, `killProcess()` for stops |
 
 ### Observable State
@@ -217,7 +225,7 @@ int get bannedCount => ...;
 
 ### Account List Section (modified)
 
-- **Play button:** Opens `LaunchDialog` instead of immediately launching. On dialog submit, calls `statusController.launchCharacter(account, config)`
+- **Play button:** Opens `LaunchDialog` instead of immediately launching. On dialog submit, calls `statusController.launchCharacter(account, config)` — this replaces the existing `runGameClient(JagexAccount)` method. All callers updated.
 - **Stop button:** Calls `watchdog.stop(characterName)` which kills the process and removes tracking (no auto-relaunch)
 - **Status badge:** New `BotStatusBadge` component replaces the existing `ProcessStatusBadge`. Shows:
   - `Running` (green) — bot is alive
@@ -262,14 +270,23 @@ lib/
 │
 ├── config/services/
 │   └── watchdog/
-│       └── watchdog_service.dart                    # NEW ~200 lines
-│
-├── domain/entities/
-│   ├── launch_config_entity.dart                    # NEW ~30 lines
-│   └── tracked_client_entity.dart                   # NEW ~40 lines
+│       ├── watchdog_service.dart                    # NEW ~200 lines
+│       ├── launch_config.dart                       # NEW ~30 lines (presentation model, not domain entity)
+│       └── tracked_client.dart                      # NEW ~40 lines (mutable in-memory model, not domain entity)
 │
 ├── config/services/
-│   └── native_commands_service.dart                 # MODIFIED: structured response, expanded runGameClient
+│   ├── native_commands_service.dart                 # MODIFIED: structured response, expanded runGameClient
+│   └── proxy/
+│       └── proxy_auto_rotation_service.dart         # MODIFIED: add rotateSlot(int slotId)
+│
+├── domain/
+│   ├── entities/
+│   │   └── notification.dart                        # MODIFIED: add banDetected, maxRetriesReached, clientRelaunched
+│   └── repositories/
+│       └── account_repository.dart                  # MODIFIED: add updateCharacterBanned()
+│
+├── data/repositories/
+│   └── account_repository_impl.dart                 # MODIFIED: implement updateCharacterBanned()
 │
 └── core/resource/
     └── dependency_injection.dart                    # MODIFIED: register WatchdogService
@@ -280,20 +297,24 @@ windows/runner/
 
 All files within size ceilings. No new DB tables.
 
+**Note on model placement:** `LaunchConfig` and `TrackedClient` live in the watchdog service directory, not `domain/entities/`. `LaunchConfig` is a presentation concern (dialog form values, session-scoped). `TrackedClient` is a mutable in-memory model that doesn't follow the `Equatable` convention used by domain entities.
+
 ---
 
 ## 7. DI Registration
 
+`WatchdogService` depends on `NativeCommandsService` (permanent), `NotificationService` (async), and `ProxyAutoRotationService` (lazy). Since `ProxyAutoRotationService` is registered with `Get.lazyPut` in `dependencies()`, the watchdog must also be registered as a lazy service, not in `initializeAsyncServices()`.
+
 ```dart
-// In AppBindings.initializeAsyncServices(), after NotificationService:
-final watchdog = WatchdogService(
+// In AppBindings.dependencies(), after ProxyAutoRotationService lazyPut:
+Get.lazyPut(() => WatchdogService(
   nativeCommandsService: Get.find<NativeCommandsService>(),
   notificationService: Get.find<NotificationService>(),
   autoRotationService: Get.find<ProxyAutoRotationService>(),
-);
-Get.put(watchdog);
-await watchdog.init();
+), fenix: true);
 ```
+
+The watchdog initializes on first access (when `StatusController` is created), which is after all async services are ready.
 
 ---
 
