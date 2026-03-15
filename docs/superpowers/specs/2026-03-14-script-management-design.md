@@ -24,7 +24,7 @@ Replace `wmic` with the **WMI COM API** directly in `main.cpp`. This queries pro
 
 **Why WMI COM over `NtQueryInformationProcess`:** Reading command lines via `NtQueryInformationProcess` requires manually defining undocumented structs (`PEB`, `RTL_USER_PROCESS_PARAMETERS`, `PROCESS_BASIC_INFORMATION`), handling 32/64-bit WoW64 PEB layout differences, and calling `ReadProcessMemory` on each target process. The WMI COM API is well-documented, handles all process architectures, and returns command lines directly — more code but significantly more robust.
 
-**Note:** `CoInitializeEx` is already called in `wWinMain` (line 195 of current `main.cpp`), so COM is available. The WMI query replaces the entire `wmic` + temp file + base64 pipeline with a single in-process COM call.
+**COM threading:** `CoInitializeEx` is already called in `wWinMain` (line 195 of current `main.cpp`), so COM is available on the main thread. Flutter's platform channel handler (`HandleMethodCall`) runs on the main thread, so WMI COM calls work directly. The WMI query runs synchronously, blocking the UI for ~50-200ms per poll — acceptable at 10-30s intervals. If moved to a background thread in the future, that thread must call `CoInitializeEx` independently.
 
 **Dart side:** `listJavaProcesses()` receives structured data directly. The current `ProcessClient.parseProcessData(bytes)` base64 decoding is replaced with direct map deserialization. The existing Dart-side filter for `client.jar` in command lines is replaced: the C++ WMI query already filters by `java.exe`/`javaw.exe`, and the watchdog further filters by checking for `-account` in the command line to identify DreamBot clients specifically.
 
@@ -85,7 +85,7 @@ The dialog stores the most recent `LaunchConfig` in memory (session-scoped) so t
 
 ### Bulk launch ("Start All")
 
-The bot farm summary bar includes a "Start All" button that opens the Launch Dialog once. The selected config is applied to all launchable characters (those with status `stopped` or no tracked state, excluding `running`, `restarting`, `failed`, `banned`, and `awaitingAccount`). Each character launches with its own account's proxy — all characters are launched, including multiple characters from the same account.
+The bot farm summary bar includes a "Start All" button that opens the Launch Dialog once. The selected config is applied to all launchable characters — those with watchdog status `stopped` or no tracked state, excluding `running`, `restarting`, `failed`, `banned`, and `awaitingAccount`. Additionally, characters with `banned == true` in the database are excluded (covers bans from previous sessions where in-memory watchdog state was lost). Each character launches with its own account's proxy — all characters are launched, including multiple characters from the same account.
 
 ### Data flow
 
@@ -99,7 +99,9 @@ Launch Dialog → LaunchConfig
       → TrackedClient.pid = returnedPid
 ```
 
-**Note on `proxySlotId`:** `JagexAccount` does not carry `proxySlotId`. Add `proxySlotId` as a field to `JagexAccount` (populated during the `AccountEntity` → `JagexAccount` mapping in `StatusController`). This is the simplest fix — one field addition, one mapping change.
+**Note on view model changes:** Two fields must be added to the UI models:
+- Add `proxySlotId` (int?) to `JagexAccount` — populated during the `AccountEntity` → `JagexAccount` mapping in `StatusController`. Update the `Equatable` `props` list to include it.
+- Add `id` (int?) to the `Character` view model — populated from `CharacterEntity.id` during the same mapping. Required so `TrackedClient.characterId` can be set for reliable DB updates. Update `Character.props` as well.
 
 ---
 
@@ -184,6 +186,7 @@ class TrackedClient {
   final int characterId;          // DB primary key for reliable updates
   final int accountId;
   final int? proxySlotId;         // Nullable — accounts without proxy can still launch
+  String? proxyAddress;           // Resolved at launch, updated after proxy rotation
   final LaunchConfig launchConfig;
   int? pid;                       // Set from CreateProcess return, or from poll discovery
   ClientStatus status;
@@ -195,6 +198,8 @@ class TrackedClient {
 ```
 
 **`proxySlotId` nullable:** Accounts without a linked proxy can still be launched (proxy flag is omitted). On ban, the watchdog skips proxy rotation if `proxySlotId` is null.
+
+**`proxyAddress`:** Resolved at launch time from the account's proxy slot and stored on the `TrackedClient`. Used by the watchdog for relaunches without needing a `ProxyController` dependency. After a ban-triggered proxy rotation, the watchdog re-resolves the address via `proxyRepository.getActiveIpForSlot(slotId)` to get the new IP.
 
 **`characterId` for DB updates:** Used instead of `characterName` for the `updateCharacterBanned()` call, avoiding ambiguity if character names are not unique across accounts.
 
@@ -253,6 +258,8 @@ On app launch, after all services are initialized, the watchdog runs a **recaptu
 
 Recaptured clients get full watchdog protection (death detection, auto-relaunch). The `LaunchConfig` may be incomplete (no world/render/params info from the command line), but it's sufficient for relaunching with the detected script name.
 
+**Assumption:** DreamBot propagates the `-account`, `-script`, and other CLI flags into the spawned `java.exe` command line (as is typical for Java process launchers). If DreamBot strips or rewrites these flags, the recapture scan will not find matches — this will be verified during implementation and the matching strategy adjusted if needed.
+
 ### Relaunch Cooldown Schedule
 
 | Retry | Cooldown | Cumulative wait |
@@ -272,8 +279,9 @@ Cooldowns are measured from `lastDeathAt`, not from previous launch.
 |--------|-------------|
 | `StatusController` | Removes its own poll timer. Reads `watchdog.trackedClients` observable for UI. Replaces `runGameClient()` with `launchCharacter()`. |
 | `NotificationService` | Watchdog fires notifications using new `NotificationType` values: `banDetected`, `maxRetriesReached`, `clientRelaunched`, `clientFailed` (added to the existing enum in `domain/entities/notification.dart`) |
-| `ProxyAutoRotationService` | New `rotateSlot(int slotId)` method: looks up `ProxySlotEntity` via `_proxyRepository.getSlotById(slotId)`, gets active IP via `_proxyController.getCurrentIpForSlot(slot)`, then calls `_replacementService.replaceProxyIp(currentIp)`. Same pattern already used in `processScoreResults()`. |
-| `AccountRepository` | New `updateCharacterBanned(int characterId, bool banned)` method — single UPDATE by primary key |
+| `ProxyAutoRotationService` | New `rotateSlot(int slotId)` method: looks up `ProxySlotEntity` via `_proxyRepository.getSlotById(slotId)`, gets active IP via `_proxyRepository.getActiveIpForSlot(slotId)`, then calls `_replacementService.replaceProxyIp(currentIp)`. Uses repository (not controller) — same pattern as `_processResults()` at line 113 of `proxy_auto_rotation_service.dart`. |
+| `AccountRepository` | New `updateCharacterBanned(int characterId, bool banned)` method — single UPDATE on `charactersTable` by primary key. Doc comment clarifies it targets characters, not accounts. |
+| `ProxyRepository` | Watchdog uses `getActiveIpForSlot(slotId)` to re-resolve proxy address after rotation |
 | `NativeCommandsService` | Watchdog calls `runGameClient()` for relaunches (returns PID), `killProcess()` for stops |
 
 ### Observable State
@@ -320,7 +328,7 @@ All watchdog state transitions are logged at appropriate levels:
 - **Stop button:** Calls `watchdog.stop(characterName)` which kills the process and removes tracking (no auto-relaunch)
 - **Status badge:** New `BotStatusBadge` component replaces the existing `ProcessStatusBadge`. Shows:
   - `Running` (green) — bot is alive
-  - `Restarting 1/3` (amber) — died, waiting to relaunch, shows retry count
+  - `Restarting 1/5` (amber) — died, waiting to relaunch, shows retry/maxRetries
   - `Failed 1/5` (orange) — quick death, retrying (not yet classified as ban)
   - `Stopped` (gray) — manually stopped or max retries reached
   - `Banned` (red) — 3+ consecutive quick deaths
@@ -394,23 +402,35 @@ All files within size ceilings. No new DB tables.
 
 **Note on model placement:** `LaunchConfig` and `TrackedClient` live in the watchdog service directory, not `domain/entities/`. `LaunchConfig` is a presentation concern (dialog form values, session-scoped). `TrackedClient` is a mutable in-memory model that doesn't follow the `Equatable` convention used by domain entities.
 
+**WatchdogService line budget:** The ~250 line estimate is tight given recapture logic + death classification + relaunch scheduling. If it exceeds the 250-line service ceiling during implementation, extract the death classification and relaunch scheduling into a private helper method or a small `_WatchdogClassifier` utility in the same directory — not a separate service.
+
+**Dead code cleanup during implementation:**
+- `NativeCommandsService`: remove the dead `output.obs` field and drop the unnecessary `GetxController` base class (convert to plain class with DI)
+- `StatusController`: remove `_processCheckTimer`, the polling logic, and the `onClose()` process-killing behavior — all replaced by the watchdog
+
+**Launch dialog pattern:** Follow the `ReplaceProxyDialog` pattern (constructor params in, result out via `Navigator.pop`) as established in the proxy feature.
+
 ---
 
 ## 7. DI Registration
 
-`WatchdogService` depends on `NativeCommandsService` (permanent), `NotificationService` (async), and `ProxyAutoRotationService` (lazy). Since `ProxyAutoRotationService` is registered with `Get.lazyPut` in `dependencies()`, the watchdog must also be registered as a lazy service, not in `initializeAsyncServices()`.
+`WatchdogService` needs **eager initialization** so the startup recapture scan runs immediately on app launch — before the user navigates to the Status screen. It depends on `NativeCommandsService`, `NotificationService`, `ProxyAutoRotationService`, `AccountRepository`, `ProxyRepository`, and `AppConfigService`.
+
+Since `ProxyAutoRotationService` is registered with `Get.lazyPut`, the watchdog cannot be placed in `initializeAsyncServices()`. Instead, register it eagerly with `Get.put` at the end of `dependencies()`, after all its dependencies are registered:
 
 ```dart
-// In AppBindings.dependencies(), after ProxyAutoRotationService lazyPut:
-Get.lazyPut(() => WatchdogService(
+// In AppBindings.dependencies(), at the end (after all lazyPut registrations):
+Get.put(WatchdogService(
   nativeCommandsService: Get.find<NativeCommandsService>(),
   notificationService: Get.find<NotificationService>(),
   autoRotationService: Get.find<ProxyAutoRotationService>(),
-  appConfigService: Get.find<AppConfigService>(),  // for script registry
-), fenix: true);
+  accountRepository: Get.find<AccountRepository>(),     // for updateCharacterBanned + character lookups
+  proxyRepository: Get.find<ProxyRepository>(),          // for getActiveIpForSlot
+  appConfigService: Get.find<AppConfigService>(),        // for script registry
+));
 ```
 
-The watchdog initializes on first access (when `StatusController` is created), which is after all async services are ready.
+`Get.put` triggers `onInit()` immediately, which runs the recapture scan. This ensures running bots are discovered even if the user hasn't opened the Status screen yet.
 
 ---
 
