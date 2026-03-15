@@ -3,18 +3,15 @@ import 'dart:async';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
-import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_handlers.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
-import 'package:command_center/feature/Status/data/process_model.dart';
 import 'package:get/get.dart';
 
 class WatchdogService extends GetxService {
   final NativeCommandsService _nativeCommandsService;
-  final AccountRepository _accountRepository;
   late final WatchdogHandlers _handlers;
 
   static const int maxRetries = 5;
@@ -35,8 +32,7 @@ class WatchdogService extends GetxService {
     required ProxyAutoRotationService autoRotationService,
     required AccountRepository accountRepository,
     required ProxyRepository proxyRepository,
-  }) : _nativeCommandsService = nativeCommandsService,
-       _accountRepository = accountRepository {
+  }) : _nativeCommandsService = nativeCommandsService {
     _handlers = WatchdogHandlers(
       nativeCommandsService: nativeCommandsService,
       notificationService: notificationService,
@@ -49,7 +45,7 @@ class WatchdogService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    _recaptureRunningClients();
+    _handlers.recaptureRunningClients(trackedClients);
     _startPolling();
   }
 
@@ -144,7 +140,7 @@ class WatchdogService extends GetxService {
 
         // Discovery: client launched but PID not yet confirmed
         if (client.pid == null) {
-          final match = _discoverPid(client, liveProcesses);
+          final match = _handlers.discoverPid(client, liveProcesses);
           if (match != null) {
             client.pid = match;
             client.resetDiscoveryMisses();
@@ -201,78 +197,4 @@ class WatchdogService extends GetxService {
     }
   }
 
-  // ===== PID Discovery =====
-
-  int? _discoverPid(TrackedClient client, List<ProcessClient> liveProcesses) {
-    for (final process in liveProcesses) {
-      if (process.commandLine.contains('-account "${client.characterName}"') ||
-          process.commandLine
-              .contains("-account '${client.characterName}'") ||
-          process.commandLine
-              .contains('-account ${client.characterName}')) {
-        return process.processId;
-      }
-    }
-    return null;
-  }
-
-  // ===== Startup Recapture =====
-
-  Future<void> _recaptureRunningClients() async {
-    try {
-      final processes = await _nativeCommandsService.listJavaProcesses();
-      final accounts = await _accountRepository.getAllAccounts();
-
-      // Build character lookup: name → (characterId, accountId, proxySlotId)
-      final characterLookup =
-          <String, ({int characterId, int accountId, int? proxySlotId})>{};
-      for (final account in accounts) {
-        for (final character in account.characters) {
-          if (character.id != null) {
-            characterLookup[character.name] = (
-              characterId: character.id!,
-              accountId: account.id!,
-              proxySlotId: account.proxySlotId,
-            );
-          }
-        }
-      }
-
-      int recaptured = 0;
-      final accountRegex = RegExp(r'-account "([^"]+)"');
-      final scriptRegex = RegExp(r'-script "([^"]+)"');
-
-      for (final process in processes) {
-        final accountMatch = accountRegex.firstMatch(process.commandLine);
-        if (accountMatch == null) continue;
-
-        final charName = accountMatch.group(1)!;
-        final info = characterLookup[charName];
-        if (info == null) continue;
-
-        // Extract script name if available
-        final scriptMatch = scriptRegex.firstMatch(process.commandLine);
-        final scriptName = scriptMatch?.group(1) ?? 'Unknown';
-
-        trackedClients[charName] = TrackedClient(
-          characterName: charName,
-          characterId: info.characterId,
-          accountId: info.accountId,
-          proxySlotId: info.proxySlotId,
-          launchConfig: LaunchConfig(scriptName: scriptName),
-          pid: process.processId,
-          status: ClientStatus.running,
-          launchedAt: DateTime.now(),
-        );
-        recaptured++;
-      }
-
-      if (recaptured > 0) {
-        trackedClients.refresh();
-        logger.i('Recaptured $recaptured running bot clients');
-      }
-    } catch (e) {
-      logger.e('Failed to recapture running clients: $e');
-    }
-  }
 }

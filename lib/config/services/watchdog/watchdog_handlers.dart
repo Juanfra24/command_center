@@ -1,14 +1,18 @@
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
+import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
+import 'package:command_center/feature/Status/data/process_model.dart';
+import 'package:get/get.dart';
 
-/// Handles death classification, restart scheduling, and ban processing.
+/// Handles death classification, restart scheduling, ban processing,
+/// PID discovery, and startup recapture.
 /// Extracted from WatchdogService to respect the 250-line service ceiling.
 class WatchdogHandlers {
   final NativeCommandsService _nativeCommandsService;
@@ -118,6 +122,78 @@ class WatchdogHandlers {
     } catch (e) {
       logger.e('Failed to relaunch ${client.characterName}: $e');
       return false;
+    }
+  }
+
+  /// Match a tracked client to a live process by character name in command line.
+  int? discoverPid(TrackedClient client, List<ProcessClient> liveProcesses) {
+    for (final process in liveProcesses) {
+      if (process.commandLine.contains('-account "${client.characterName}"') ||
+          process.commandLine
+              .contains("-account '${client.characterName}'") ||
+          process.commandLine
+              .contains('-account ${client.characterName}')) {
+        return process.processId;
+      }
+    }
+    return null;
+  }
+
+  /// Scan running Java processes and recapture any that match known characters.
+  Future<void> recaptureRunningClients(
+      RxMap<String, TrackedClient> trackedClients) async {
+    try {
+      final processes = await _nativeCommandsService.listJavaProcesses();
+      final accounts = await _accountRepository.getAllAccounts();
+
+      final characterLookup =
+          <String, ({int characterId, int accountId, int? proxySlotId})>{};
+      for (final account in accounts) {
+        for (final character in account.characters) {
+          if (character.id != null) {
+            characterLookup[character.name] = (
+              characterId: character.id!,
+              accountId: account.id!,
+              proxySlotId: account.proxySlotId,
+            );
+          }
+        }
+      }
+
+      int recaptured = 0;
+      final accountRegex = RegExp(r'-account "([^"]+)"');
+      final scriptRegex = RegExp(r'-script "([^"]+)"');
+
+      for (final process in processes) {
+        final accountMatch = accountRegex.firstMatch(process.commandLine);
+        if (accountMatch == null) continue;
+
+        final charName = accountMatch.group(1)!;
+        final info = characterLookup[charName];
+        if (info == null) continue;
+
+        final scriptMatch = scriptRegex.firstMatch(process.commandLine);
+        final scriptName = scriptMatch?.group(1) ?? 'Unknown';
+
+        trackedClients[charName] = TrackedClient(
+          characterName: charName,
+          characterId: info.characterId,
+          accountId: info.accountId,
+          proxySlotId: info.proxySlotId,
+          launchConfig: LaunchConfig(scriptName: scriptName),
+          pid: process.processId,
+          status: ClientStatus.running,
+          launchedAt: DateTime.now(),
+        );
+        recaptured++;
+      }
+
+      if (recaptured > 0) {
+        trackedClients.refresh();
+        logger.i('Recaptured $recaptured running bot clients');
+      }
+    } catch (e) {
+      logger.e('Failed to recapture running clients: $e');
     }
   }
 
