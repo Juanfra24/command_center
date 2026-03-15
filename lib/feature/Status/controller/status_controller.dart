@@ -26,9 +26,13 @@ class StatusController extends GetxController {
   WatchdogService? _watchdog;
 
   @override
-  void onInit() async {
+  void onInit() {
     super.onInit();
     _initDependencies();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
     await getAccountsData();
     isLoading.value = false;
   }

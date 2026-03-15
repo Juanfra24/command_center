@@ -2,15 +2,22 @@ import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
-class BotFarmSummaryBar extends StatelessWidget {
-  final VoidCallback onStartAll;
-  final VoidCallback onStopAll;
+class BotFarmSummaryBar extends StatefulWidget {
+  final Future<void> Function() onStartAll;
+  final Future<void> Function() onStopAll;
 
   const BotFarmSummaryBar({
     super.key,
     required this.onStartAll,
     required this.onStopAll,
   });
+
+  @override
+  State<BotFarmSummaryBar> createState() => _BotFarmSummaryBarState();
+}
+
+class _BotFarmSummaryBarState extends State<BotFarmSummaryBar> {
+  bool _busy = false;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +40,7 @@ class BotFarmSummaryBar extends StatelessWidget {
             _statChip('Banned', watchdog.bannedCount, Colors.red),
             const Spacer(),
             FilledButton(
-              onPressed: onStartAll,
+              onPressed: _busy ? null : () => _run(widget.onStartAll),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -45,7 +52,7 @@ class BotFarmSummaryBar extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Button(
-              onPressed: onStopAll,
+              onPressed: _busy ? null : () => _run(widget.onStopAll),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -59,6 +66,15 @@ class BotFarmSummaryBar extends StatelessWidget {
         ),
       );
     });
+  }
+
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Widget _statChip(String label, int count, Color color) {

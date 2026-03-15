@@ -45,16 +45,48 @@ class ScriptSelector extends StatelessWidget {
                   placeholder: const Text('Select script'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(FluentIcons.add, size: 14),
                 onPressed: () => _showAddDialog(context, configService),
               ),
+              if (current != null && scripts.length > 1)
+                IconButton(
+                  icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
+                  onPressed: () => _confirmRemove(
+                      context, configService, current, scripts),
+                ),
             ],
           ),
         ],
       );
     });
+  }
+
+  Future<void> _confirmRemove(BuildContext context,
+      AppConfigService configService, String script, List<String> scripts) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ContentDialog(
+        title: const Text('Remove Script'),
+        content: Text('Remove "$script" from the registry?'),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await configService.removeScript(script);
+      final remaining = configService.scriptRegistry;
+      if (remaining.isNotEmpty) onChanged(remaining.first);
+    }
   }
 
   Future<void> _showAddDialog(
