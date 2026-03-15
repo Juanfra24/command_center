@@ -7,15 +7,9 @@ import 'package:get/get.dart';
 class LaunchDialog extends StatefulWidget {
   const LaunchDialog({super.key});
 
-  /// Show the dialog and return a LaunchConfig, or null if cancelled.
-  static Future<LaunchConfig?> show(BuildContext context) {
-    return showDialog<LaunchConfig>(
-      context: context,
-      builder: (_) => const LaunchDialog(),
-    );
-  }
+  static Future<LaunchConfig?> show(BuildContext context) =>
+      showDialog<LaunchConfig>(context: context, builder: (_) => const LaunchDialog());
 
-  /// Session-scoped last used config for pre-filling.
   static LaunchConfig? _lastConfig;
 
   @override
@@ -75,13 +69,56 @@ class _LaunchDialogState extends State<LaunchDialog> {
             const SizedBox(height: 12),
             _buildWorldSelector(),
             const SizedBox(height: 12),
-            _buildCovertToggle(),
+            Row(
+              children: [
+                const Text('Covert mode'),
+                const Spacer(),
+                ToggleSwitch(
+                  checked: _covert,
+                  onChanged: (v) => setState(() => _covert = v),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            _buildRenderSelector(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Render mode'),
+                const SizedBox(height: 4),
+                ComboBox<String>(
+                  value: _selectedRender,
+                  items: const [
+                    ComboBoxItem(value: 'NONE', child: Text('None')),
+                    ComboBoxItem(value: 'ALL', child: Text('All')),
+                    ComboBoxItem(value: 'GAME', child: Text('Game')),
+                    ComboBoxItem(value: 'SCRIPT', child: Text('Script')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _selectedRender = v);
+                  },
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            _buildScriptParams(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Script parameters'),
+                const SizedBox(height: 4),
+                TextBox(
+                  controller: _scriptParamsController,
+                  placeholder: 'e.g. tree oak',
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            _buildAdvancedFlags(),
+            Expander(
+              header: const Text('Advanced flags'),
+              content: TextBox(
+                controller: _advancedFlagsController,
+                placeholder: 'e.g. -fps 15',
+              ),
+            ),
           ],
         ),
       ),
@@ -136,65 +173,6 @@ class _LaunchDialogState extends State<LaunchDialog> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildCovertToggle() {
-    return Row(
-      children: [
-        const Text('Covert mode'),
-        const Spacer(),
-        ToggleSwitch(
-          checked: _covert,
-          onChanged: (v) => setState(() => _covert = v),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRenderSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Render mode'),
-        const SizedBox(height: 4),
-        ComboBox<String>(
-          value: _selectedRender,
-          items: const [
-            ComboBoxItem(value: 'NONE', child: Text('None')),
-            ComboBoxItem(value: 'ALL', child: Text('All')),
-            ComboBoxItem(value: 'GAME', child: Text('Game')),
-            ComboBoxItem(value: 'SCRIPT', child: Text('Script')),
-          ],
-          onChanged: (v) {
-            if (v != null) setState(() => _selectedRender = v);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildScriptParams() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Script parameters'),
-        const SizedBox(height: 4),
-        TextBox(
-          controller: _scriptParamsController,
-          placeholder: 'e.g. tree oak',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAdvancedFlags() {
-    return Expander(
-      header: const Text('Advanced flags'),
-      content: TextBox(
-        controller: _advancedFlagsController,
-        placeholder: 'e.g. -fps 15',
-      ),
     );
   }
 

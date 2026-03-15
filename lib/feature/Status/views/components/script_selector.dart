@@ -1,4 +1,5 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/core/resource/result.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
@@ -53,30 +54,36 @@ class ScriptSelector extends StatelessWidget {
   Future<void> _showAddDialog(
       BuildContext context, AppConfigService configService) async {
     final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => ContentDialog(
-        title: const Text('Add Script'),
-        content: TextBox(
-          controller: controller,
-          placeholder: 'Script name',
-          autofocus: true,
+    try {
+      final name = await showDialog<String>(
+        context: context,
+        builder: (ctx) => ContentDialog(
+          title: const Text('Add Script'),
+          content: TextBox(
+            controller: controller,
+            placeholder: 'Script name',
+            autofocus: true,
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Add'),
+            ),
+          ],
         ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    if (name != null && name.isNotEmpty) {
-      await configService.addScript(name);
-      onChanged(name);
+      );
+      if (name != null && name.isNotEmpty) {
+        final result = await configService.addScript(name);
+        if (result is Success) {
+          onChanged(name);
+        }
+      }
+    } finally {
+      controller.dispose();
     }
   }
 }
