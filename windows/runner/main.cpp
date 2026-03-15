@@ -54,14 +54,42 @@ void ExecuteCommandAsync(const std::string &command)
         .detach(); // Detach the thread to run independently
 }
 
-bool isValidInput(const std::string &input)
+bool containsShellMetachars(const std::string &input)
 {
-    return std::regex_match(input, std::regex("^[a-zA-Z0-9_\\-\\.\\:\\\\ ]+$"));
+    return input.find_first_of("&|;<>`$") != std::string::npos;
 }
 
-void RunGameClient(const std::string &characterName, const std::string &proxyAddress, const std::string &scriptName = "Tutorial Journey")
+int RunGameClient(const flutter::EncodableMap &args)
 {
-    if (!isValidInput(characterName) || !isValidInput(proxyAddress) || !isValidInput(scriptName))
+    auto getString = [&](const char *key) -> std::string {
+        auto it = args.find(flutter::EncodableValue(key));
+        if (it != args.end() && std::holds_alternative<std::string>(it->second))
+            return std::get<std::string>(it->second);
+        return "";
+    };
+    auto getBool = [&](const char *key, bool defaultVal = false) -> bool {
+        auto it = args.find(flutter::EncodableValue(key));
+        if (it != args.end() && std::holds_alternative<bool>(it->second))
+            return std::get<bool>(it->second);
+        return defaultVal;
+    };
+
+    std::string characterName = getString("characterName");
+    std::string proxyAddress = getString("proxyAddress");
+    std::string scriptName = getString("scriptName");
+    std::string world = getString("world");
+    std::string render = getString("render");
+    std::string scriptParams = getString("scriptParams");
+    std::string advancedFlags = getString("advancedFlags");
+    bool covert = getBool("covert");
+    bool destroyOnBan = getBool("destroyOnBan", true);
+    bool destroy = getBool("destroy", true);
+    bool minimized = getBool("minimized", true);
+
+    // Validate structured fields against shell metacharacters
+    if (containsShellMetachars(characterName) || containsShellMetachars(proxyAddress) ||
+        containsShellMetachars(scriptName) || containsShellMetachars(world) ||
+        containsShellMetachars(render) || containsShellMetachars(scriptParams))
     {
         throw std::invalid_argument("Unsafe characters in input.");
     }
@@ -74,8 +102,64 @@ void RunGameClient(const std::string &characterName, const std::string &proxyAdd
     {
         command += " -proxy \"" + proxyAddress + "\"";
     }
+    if (!world.empty() && world != "auto")
+    {
+        command += " -world " + world;
+    }
+    if (covert)
+    {
+        command += " -covert";
+    }
+    if (!render.empty() && render != "NONE")
+    {
+        command += " -render " + render;
+    }
+    if (destroy)
+    {
+        command += " -destroy";
+    }
+    if (destroyOnBan)
+    {
+        command += " -destroy-on-ban";
+    }
+    if (minimized)
+    {
+        command += " -minimized";
+    }
+    if (!advancedFlags.empty())
+    {
+        command += " " + advancedFlags;
+    }
+    // -params must be last per DreamBot requirements
+    if (!scriptParams.empty())
+    {
+        command += " -params " + scriptParams;
+    }
 
-    ExecuteCommandAsync(command); // Run the command asynchronously
+    // Use CreateProcess instead of system() — no CMD shell, returns PID directly
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    // CreateProcess needs a mutable copy of the command string
+    std::vector<char> cmdBuf(command.begin(), command.end());
+    cmdBuf.push_back('\0');
+
+    if (!CreateProcessA(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+    {
+        throw std::runtime_error("CreateProcess failed with error " + std::to_string(GetLastError()));
+    }
+
+    int pid = static_cast<int>(pi.dwProcessId);
+
+    // Close handles — we don't need to wait on the process
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return pid;
 }
 
 void ListJavaProcesses(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> &result)
@@ -217,20 +301,21 @@ void HandleMethodCall(
         const auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
         if (!arguments)
         {
-            result->Error("Invalid arguments", "Expected arguments for character name, proxy, and optionally script name.");
+            result->Error("Invalid arguments", "Expected arguments map.");
             return;
         }
-        std::string characterName = std::get<std::string>(arguments->at(flutter::EncodableValue("characterName")));
-        std::string proxyAddress = std::get<std::string>(arguments->at(flutter::EncodableValue("proxyAddress")));
-        std::string scriptName = arguments->find(flutter::EncodableValue("scriptName")) != arguments->end() ? std::get<std::string>(arguments->at(flutter::EncodableValue("scriptName"))) : "Tutorial Journey";
         try
         {
-            RunGameClient(characterName, proxyAddress, scriptName);
-            result->Success(flutter::EncodableValue("Game client launched successfully"));
+            int pid = RunGameClient(*arguments);
+            result->Success(flutter::EncodableValue(pid));
         }
         catch (const std::invalid_argument &e)
         {
             result->Error("Invalid Input", e.what());
+        }
+        catch (const std::runtime_error &e)
+        {
+            result->Error("Launch Error", e.what());
         }
     }
     else
