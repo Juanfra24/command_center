@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
@@ -24,6 +22,7 @@ class StatusController extends GetxController {
 
   AccountRepository? _accountRepository;
   ProxyRepository? _proxyRepository;
+  NativeCommandsService? _nativeService;
   WatchdogService? _watchdog;
 
   @override
@@ -41,6 +40,11 @@ class StatusController extends GetxController {
       _proxyRepository = dbService.proxyRepository;
     } catch (e) {
       logger.e('DatabaseService not initialized: $e');
+    }
+    try {
+      _nativeService = Get.find<NativeCommandsService>();
+    } catch (e) {
+      logger.e('NativeCommandsService not available: $e');
     }
     try {
       _watchdog = Get.find<WatchdogService>();
@@ -97,7 +101,7 @@ class StatusController extends GetxController {
     Character character,
     LaunchConfig config,
   ) async {
-    if (_watchdog == null) return;
+    if (_watchdog == null || _nativeService == null) return;
 
     // Resolve proxy address
     String? proxyAddress;
@@ -110,8 +114,7 @@ class StatusController extends GetxController {
     }
 
     try {
-      final nativeService = Get.find<NativeCommandsService>();
-      final pid = await nativeService.runGameClient(
+      final pid = await _nativeService!.runGameClient(
         characterName: character.name,
         proxyAddress: proxyAddress,
         scriptName: config.scriptName,
