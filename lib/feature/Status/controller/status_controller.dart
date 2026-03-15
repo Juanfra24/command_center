@@ -1,12 +1,13 @@
-import 'dart:async';
-
 import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:command_center/config/services/watchdog/launch_config.dart';
+import 'package:command_center/config/services/watchdog/tracked_client.dart';
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/skills.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
+import 'package:command_center/domain/repositories/proxy_repository.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
-import 'package:command_center/feature/Status/data/process_model.dart';
 import 'package:command_center/feature/Status/data/skills_model.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -17,56 +18,46 @@ import '../../../core/helper/logger.dart';
 
 class StatusController extends GetxController {
   var isLoading = true.obs;
-  Timer? _processCheckTimer;
   final accountList = <JagexAccount>[].obs;
-  RxMap<String, ProcessClient> processClients =
-      <String, ProcessClient>{}.obs; // Maps character names to their processes
 
   AccountRepository? _accountRepository;
-  final NativeCommandsService _nativeCommandsService = Get.find();
+  ProxyRepository? _proxyRepository;
+  NativeCommandsService? _nativeService;
+  WatchdogService? _watchdog;
 
   @override
-  void onInit() async {
+  void onInit() {
     super.onInit();
-    _initRepositories();
-    await getAccountsData().then((_) {
-      updateRunningProcesses();
-      _startProcessCheckTimer();
-    });
+    _initDependencies();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await getAccountsData();
     isLoading.value = false;
   }
 
-  void _initRepositories() {
+  void _initDependencies() {
     try {
       final dbService = Get.find<DatabaseService>();
       _accountRepository = dbService.accountRepository;
+      _proxyRepository = dbService.proxyRepository;
     } catch (e) {
       logger.e('DatabaseService not initialized: $e');
     }
-  }
-
-  void _startProcessCheckTimer() {
-    _processCheckTimer?.cancel(); // Cancel any existing timer
-    _processCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      updateRunningProcesses();
-    });
-  }
-
-  Future<void> updateRunningProcesses() async {
-    var javaProcesses = await _nativeCommandsService.listJavaProcesses();
-    var newRunningProcesses = <String, ProcessClient>{};
-    for (var process in javaProcesses) {
-      var match = RegExp(r'-script "(.*?)" -account "(.*?)"')
-          .firstMatch(process.commandLine);
-      if (match != null) {
-        var characterName = match.group(2);
-        if (characterName != null) {
-          newRunningProcesses[characterName] = process;
-        }
-      }
+    try {
+      _nativeService = Get.find<NativeCommandsService>();
+    } catch (e) {
+      logger.e('NativeCommandsService not available: $e');
     }
-    processClients.value = newRunningProcesses;
+    try {
+      _watchdog = Get.find<WatchdogService>();
+    } catch (e) {
+      logger.e('WatchdogService not available: $e');
+    }
   }
+
+  WatchdogService? get watchdog => _watchdog;
 
   Future<void> getAccountsData() async {
     if (_accountRepository == null) return;
@@ -74,7 +65,6 @@ class StatusController extends GetxController {
     try {
       final accounts = await _accountRepository!.getAllAccounts();
 
-      // Resolve proxy addresses
       ProxyController? proxyController;
       try {
         proxyController = Get.find<ProxyController>();
@@ -90,10 +80,12 @@ class StatusController extends GetxController {
               birthday: account.birthday,
               email: account.email,
               password: account.password,
+              proxySlotId: account.proxySlotId,
               proxyAddress:
                   _resolveProxyAddress(account.proxySlotId, proxyController),
               characters: account.characters
                   .map((c) => Character(
+                        id: c.id,
                         banned: c.banned,
                         name: c.name,
                         actualSkills: _mapSkills(c.actualSkills),
@@ -105,6 +97,86 @@ class StatusController extends GetxController {
     } catch (err) {
       logger.e(err);
     }
+  }
+
+  /// Launch a single character with the given config.
+  Future<void> launchCharacter(
+    JagexAccount account,
+    Character character,
+    LaunchConfig config,
+  ) async {
+    if (_watchdog == null || _nativeService == null) return;
+    if (character.id == null || account.id == null) {
+      logger.e('Cannot launch ${character.name}: missing DB id');
+      return;
+    }
+
+    // Resolve proxy address
+    String? proxyAddress;
+    if (account.proxySlotId != null && _proxyRepository != null) {
+      final ip =
+          await _proxyRepository!.getActiveIpForSlot(account.proxySlotId!);
+      if (ip != null) {
+        proxyAddress = ip.ipAddress;
+      }
+    }
+
+    try {
+      final pid = await _nativeService!.runGameClient(
+        characterName: character.name,
+        proxyAddress: proxyAddress,
+        scriptName: config.scriptName,
+        world: config.world,
+        covert: config.covert,
+        render: config.render,
+        scriptParams: config.scriptParams,
+        advancedFlags: config.advancedFlags,
+      );
+
+      final tracked = TrackedClient(
+        characterName: character.name,
+        characterId: character.id!,
+        accountId: account.id!,
+        proxySlotId: account.proxySlotId,
+        proxyAddress: proxyAddress,
+        launchConfig: config,
+        pid: pid,
+        status: ClientStatus.running,
+        launchedAt: DateTime.now(),
+      );
+      _watchdog!.track(tracked);
+    } catch (e) {
+      logger.e('Failed to launch ${character.name}: $e');
+    }
+  }
+
+  /// Launch all launchable characters with the given config.
+  Future<void> launchAll(LaunchConfig config) async {
+    for (final account in accountList) {
+      for (final character in account.characters) {
+        // Skip if already tracked (running, restarting, etc.)
+        if (_watchdog?.trackedClients.containsKey(character.name) == true) {
+          final existing = _watchdog!.trackedClients[character.name]!;
+          if (existing.status != ClientStatus.stopped) continue;
+        }
+        // Skip banned characters (DB flag)
+        if (character.banned) continue;
+
+        await launchCharacter(account, character, config);
+        // Small delay between launches to avoid overwhelming
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+    }
+  }
+
+  /// Stop a specific character.
+  Future<void> stopCharacter(String characterName) async {
+    await _watchdog?.stop(characterName);
+  }
+
+  /// Stop all tracked characters.
+  Future<void> stopAll() async {
+    await _watchdog?.stopAll();
   }
 
   String _resolveProxyAddress(
@@ -151,7 +223,6 @@ class StatusController extends GetxController {
 
   void copyToClipboard(String text, BuildContext context) {
     Clipboard.setData(ClipboardData(text: text));
-    // Note: InfoBar display is handled in the UI layer for Fluent UI
   }
 
   Future<void> deleteAccount(int accountId) async {
@@ -162,39 +233,5 @@ class StatusController extends GetxController {
     } catch (e) {
       logger.e('Failed to delete account: $e');
     }
-  }
-
-  Future<void> runGameClient(JagexAccount account) async {
-    try {
-      var proxy = account.proxyAddress == "none" ? null : account.proxyAddress;
-      await _nativeCommandsService.runGameClient(
-        characterName: account.characters[0].name,
-        proxyAddress: proxy,
-        scriptName: null,
-      );
-      await Future.delayed(const Duration(milliseconds: 100));
-      await updateRunningProcesses(); // Update immediately after starting
-      _startProcessCheckTimer(); // Restart the timer to ensure it's running
-    } catch (e) {
-      logger.e('Failed to run game script: $e');
-    }
-  }
-
-  Future<void> stopGameClient(ProcessClient? process) async {
-    if (process != null) {
-      await _nativeCommandsService.killProcess(process.processId);
-      await Future.delayed(const Duration(milliseconds: 100));
-      await updateRunningProcesses(); // Refresh the running process list
-      _startProcessCheckTimer(); // Restart the timer to ensure it's running
-    }
-  }
-
-  @override
-  void onClose() async {
-    for (var entry in processClients.entries) {
-      await _nativeCommandsService.killProcess(entry.value.processId);
-    }
-    _processCheckTimer?.cancel();
-    super.onClose();
   }
 }

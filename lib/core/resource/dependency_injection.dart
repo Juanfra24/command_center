@@ -8,6 +8,7 @@ import 'package:command_center/config/services/proxy/proxy_auto_rotation_service
 import 'package:command_center/config/services/proxy/proxy_replacement_service.dart';
 import 'package:command_center/config/services/proxy/proxy_sync_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
@@ -122,5 +123,21 @@ class AppBindings extends Bindings {
         NotificationService(databaseService.notificationRepository);
     await notificationService.init();
     Get.put<NotificationService>(notificationService, permanent: true);
+
+    // 9. WatchdogService (depends on NotificationService, DatabaseService)
+    // Eager init triggers startup recapture scan via onInit().
+    // Get.find<ProxyAutoRotationService> triggers its lazyPut factory, which
+    // chains through ProxyReplacementService → ProxySyncService → WebshareService
+    // + DatabaseService — all already registered in dependencies().
+    Get.put<WatchdogService>(
+      WatchdogService(
+        nativeCommandsService: Get.find<NativeCommandsService>(),
+        notificationService: notificationService,
+        autoRotationService: Get.find<ProxyAutoRotationService>(),
+        accountRepository: databaseService.accountRepository,
+        proxyRepository: databaseService.proxyRepository,
+      ),
+      permanent: true,
+    );
   }
 }

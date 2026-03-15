@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -57,19 +58,14 @@ class CharactersStatusSection extends StatelessWidget {
       final ctrl = statusController ?? Get.find<StatusController>();
       final accounts = ctrl.accountList;
       final total = accounts.length;
-      final runningProcesses = ctrl.processClients;
-      int running = 0;
 
-      for (final account in accounts) {
-        for (final character in account.characters) {
-          if (runningProcesses.containsKey(character.name)) {
-            final processInfo = runningProcesses[character.name];
-            if (processInfo != null && processInfo.processId > 0) {
-              running++;
-            }
-          }
-        }
-      }
+      int running = 0;
+      try {
+        final watchdog = Get.find<WatchdogService>();
+        // Force reactive read inside Obx
+        watchdog.trackedClients.length;
+        running = watchdog.runningCount;
+      } catch (_) {}
 
       return {'total': total, 'running': running, 'stopped': total - running};
     } catch (_) {

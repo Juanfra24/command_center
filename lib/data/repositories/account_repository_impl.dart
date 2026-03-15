@@ -148,6 +148,16 @@ class AccountRepositoryImpl implements AccountRepository {
     return result;
   }
 
+  @override
+  Future<void> updateCharacterBanned(int characterId, bool banned) async {
+    await (_db.update(_db.charactersTable)
+          ..where((tbl) => tbl.id.equals(characterId)))
+        .write(CharactersTableCompanion(
+      banned: Value(banned),
+      lastUpdated: Value(DateTime.now()),
+    ));
+  }
+
   // ============ Character Operations (Private) ============
 
   Future<List<CharacterEntity>> _getCharactersForAccount(int accountId) async {

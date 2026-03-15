@@ -8,6 +8,7 @@ class JagexAccount extends Equatable {
   final String email;
   final String password;
   final String proxyAddress;
+  final int? proxySlotId;
   final List<Character> characters;
 
   const JagexAccount({
@@ -17,6 +18,7 @@ class JagexAccount extends Equatable {
     this.email = 'default@example.com',
     this.password = 'defaultPassword123',
     this.proxyAddress = '0.0.0.0',
+    this.proxySlotId,
     this.characters = const <Character>[],
   });
 
@@ -38,6 +40,7 @@ class JagexAccount extends Equatable {
       email: json['email'] ?? "default@example.com",
       password: json['password'] ?? "defaultPassword123",
       proxyAddress: json['proxyAddress'] ?? "0.0.0.0",
+      proxySlotId: json['proxySlotId'] as int?,
       characters: (json['characters'] as List? ?? [])
           .map((characterJson) => Character.fromJson(characterJson))
           .toList(),
@@ -46,5 +49,5 @@ class JagexAccount extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, accountName, birthday, email, password, proxyAddress, characters];
+      [id, accountName, birthday, email, password, proxyAddress, proxySlotId, characters];
 }

@@ -21,7 +21,7 @@ Clean Architecture with 4 layers:
 lib/
 ├── domain/          # Entities + abstract repository interfaces (pure Dart)
 ├── data/            # Drift tables, DB config, concrete repository implementations
-├── feature/         # UI screens + GetX controllers (Status, Proxy, MainMenu, Music)
+├── feature/         # UI screens + GetX controllers (Status, Proxy, MainMenu, Music, Notification, DevTools)
 ├── config/          # Services, routes, theme
 └── core/            # Constants, helpers, DI bindings, shared widgets
 ```
@@ -108,24 +108,39 @@ Automated semantic releases via GitHub Actions (`.github/workflows/release.yml`)
 Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `build`, `revert`
 
 
-## Database Schema (v2)
+## Database Schema (v4)
 
-- **AppConfigTable** - Key-value config store (webshare_api_key, ipqs_api_key, theme_mode)
-- **ProxySlotsTable** - Webshare proxy slots with soft delete
-- **ProxyIpAddressesTable** - IP history per slot with IPQS scoring
+- **AppConfigTable** - Key-value config store (webshare_api_key, ipqs_api_key, theme_mode, auto_rotation_*)
+- **ProxySlotsTable** - Webshare proxy slots with soft delete, IP rotation tracking
+- **ProxyIpAddressesTable** - IP history per slot with IPQS scoring, geo-location, fraud indicators
 - **AccountsTable** - Jagex accounts (email, password, birthday, proxy_slot_id)
-- **CharactersTable** - Game characters linked to accounts (skills JSON, banned flag)
+- **CharactersTable** - Game characters linked to accounts (skills JSON, banned flag, CASCADE delete on account)
+- **NotificationsTable** - Persistent notifications (type, severity, read status, timestamps)
+
+Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notifications table
 
 ## Services
 
+### Core Services
 - **DatabaseService** - Aggregates DB + all repositories
-- **AppConfigService** - Reads/writes app config from SQLite
-- **WebshareService** - Webshare API (proxy list, replace IP, plan info)
-- **IpqsService** - IPQualityScore API (IP fraud scoring)
+- **AppConfigService** - Reads/writes app config from SQLite (extends GetxService)
+- **WebshareService** - Webshare API (proxy list, replace IP, plan info) (extends GetxService)
+- **IpqsService** - IPQualityScore API (IP fraud scoring) (extends GetxService)
 - **AutomationService** - Orchestrates Python browser automation (validate IP, create account)
 - **PythonSetupService** - Python + Patchright dependency installer
+- **PythonDependencyChecker** - Chromium installation verification
 - **NativeCommandsService** - Windows platform channel (list/kill processes, run game client)
-- **OnboardingService** - Tracks setup completion (Webshare + IPQS configured)
+- **OnboardingService** - Tracks setup completion (Webshare + IPQS configured) (extends GetxService)
+- **NotificationService** - Notification persistence & UI dispatch (extends GetxService)
+
+### Proxy Domain Services
+- **ProxyReplacementService** - IP rotation orchestration
+- **ProxySyncService** - Sync Webshare slots with local DB
+- **ProxyAutoRotationService** - Score-triggered automatic IP replacement
+
+### API Clients (HTTP transport only)
+- **WebshareApiClient** - Webshare REST API
+- **IpqsApiClient** - IPQualityScore REST API
 
 ## Python Automation (`scripts/`)
 
@@ -141,10 +156,23 @@ Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`
 - Results communicated via stdout JSON after `=== RESULT ===` marker
 - Dependencies: `patchright>=1.49.0`, `requests>=2.32.0` (see `scripts/requirements.txt`)
 
-## Current State & Known Issues
+## Features
 
-- Account creation flow persists accounts to DB via AutomationService.createAccount()
-- Automation migrated from SeleniumBase to Patchright (patched Playwright) for stealth browser automation
-- AutomationService decomposed: PythonRunner handles process management, ResultParser handles output parsing
-- Version in pubspec.yaml (0.2.1) is behind CHANGELOG (0.4.0)
-- Architecture refactor in progress: decomposing heavy files per layered atomic design (see docs/plans/)
+| Feature | Path | Controllers | Key Functionality |
+|---------|------|-------------|-------------------|
+| **Status** | `feature/Status/` | StatusController | Account list, character creation, process management |
+| **Proxy** | `feature/proxy/` | ProxyController, ProxyScoringController, ProxyReplacementController | Proxy slots, IP scoring, auto-rotation, replacement |
+| **App Shell** | `feature/app/` | — | Navigation, settings, onboarding, about |
+| **MainMenu** | `feature/main_menu/` | MainMenuController | Dashboard: system overview, character status, recent activity |
+| **Music** | `feature/music/` | MusicController | Background audio player |
+| **Notification** | `feature/notification/` | NotificationController | Bell + flyout in title bar, persistent notifications |
+| **DevTools** | `feature/dev_tools/` | DevToolsController | Database viewer, SQL runner (debug only) |
+
+## Current State
+
+- **Version:** 0.7.0 (pubspec.yaml and CHANGELOG in sync)
+- **Test suite:** 18 test files covering services, repositories, controllers, UI components, and helpers
+- Layered atomic architecture enforced across all features
+- Performance optimized: cached IP lookups, batched DB queries, scoped Obx rebuilds
+- Rx lifecycle clean: no leaked workers, no dead observables, proper disposal throughout
+- AutomationService decomposed: PythonRunner (process management) + ResultParser (output parsing)

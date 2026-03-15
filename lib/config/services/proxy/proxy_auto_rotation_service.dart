@@ -192,4 +192,33 @@ class ProxyAutoRotationService {
       );
     }
   }
+
+  /// Rotate the IP for a specific slot (triggered by watchdog on ban detection).
+  /// Looks up the active IP via repository (not controller — services don't depend on controllers).
+  Future<bool> rotateSlot(int slotId) async {
+    final currentIp = await _proxyRepository.getActiveIpForSlot(slotId);
+    if (currentIp == null) {
+      logger.w('rotateSlot: no active IP for slot $slotId');
+      return false;
+    }
+
+    final result = await _replacementService.replaceProxyIp(
+      currentIp,
+      keepSameCountry: true,
+    );
+
+    switch (result) {
+      case Success():
+        try {
+          await _syncService.syncWithWebshare();
+        } catch (e) {
+          logger.w('rotateSlot: sync after replacement failed: $e');
+        }
+        logger.i('rotateSlot: replaced IP for slot $slotId');
+        return true;
+      case Failure(:final message):
+        logger.w('rotateSlot: failed for slot $slotId: $message');
+        return false;
+    }
+  }
 }

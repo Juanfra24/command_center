@@ -1,9 +1,13 @@
+import 'package:command_center/config/services/watchdog/tracked_client.dart';
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
-import 'package:command_center/feature/Status/views/components/process_status_badge.dart';
+import 'package:command_center/feature/Status/views/components/bot_status_badge.dart';
 import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
+import 'package:command_center/feature/Status/views/dialogs/launch_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:get/get.dart';
 
 class AccountListSection extends StatelessWidget {
   final StatusController controller;
@@ -78,8 +82,6 @@ class AccountListSection extends StatelessWidget {
             itemCount: rows.length,
             itemBuilder: (context, index) {
               final row = rows[index];
-              final isRunning = row.character != null &&
-                  controller.processClients.containsKey(row.character!.name);
               return Container(
                 decoration: BoxDecoration(
                   border: Border(
@@ -113,16 +115,29 @@ class AccountListSection extends StatelessWidget {
                       child: _buildTableCell(row.account.proxyAddress),
                     ),
                     Expanded(
-                      child: ProcessStatusBadge(isRunning: isRunning),
+                      child: Obx(() {
+                        final trackedReactive = Get.find<WatchdogService>()
+                            .trackedClients[row.character?.name];
+                        return BotStatusBadge(
+                          status: trackedReactive?.status,
+                          retryCount: trackedReactive?.retryCount ?? 0,
+                        );
+                      }),
                     ),
                     Expanded(
                       child: row.character != null
-                          ? _buildActionsCell(
-                              context,
-                              row.account,
-                              row.character!,
-                              isRunning,
-                            )
+                          ? Obx(() {
+                              final tracked = Get.find<WatchdogService>()
+                                  .trackedClients[row.character?.name];
+                              final isRunning = tracked != null &&
+                                  tracked.status == ClientStatus.running;
+                              return _buildActionsCell(
+                                context,
+                                row.account,
+                                row.character!,
+                                isRunning,
+                              );
+                            })
                           : _buildEmptyAccountActions(context, row.account),
                     ),
                   ],
@@ -235,9 +250,7 @@ class AccountListSection extends StatelessWidget {
               child: IconButton(
                 icon: Icon(FluentIcons.stop, color: Colors.red),
                 onPressed: () async {
-                  await controller.stopGameClient(
-                    controller.processClients[character.name],
-                  );
+                  await controller.stopCharacter(character.name);
                 },
               ),
             )
@@ -247,7 +260,10 @@ class AccountListSection extends StatelessWidget {
               child: IconButton(
                 icon: Icon(FluentIcons.play, color: Colors.green),
                 onPressed: () async {
-                  await controller.runGameClient(account);
+                  final config = await LaunchDialog.show(context);
+                  if (config != null) {
+                    await controller.launchCharacter(account, character, config);
+                  }
                 },
               ),
             ),

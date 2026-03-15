@@ -1,6 +1,9 @@
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
+import 'package:command_center/feature/Status/views/components/bot_farm_summary_bar.dart';
 import 'package:command_center/feature/Status/views/components/summary_cards.dart';
 import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
+import 'package:command_center/feature/Status/views/dialogs/launch_dialog.dart';
 import 'package:command_center/feature/Status/views/sections/account_list_section.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -30,7 +33,6 @@ class StatusScreen extends GetView<StatusController> {
               label: const Text('Refresh'),
               onPressed: () async {
                 await controller.getAccountsData();
-                await controller.updateRunningProcesses();
               },
             ),
           ],
@@ -110,18 +112,33 @@ class StatusScreen extends GetView<StatusController> {
   }
 
   Widget _buildAccountsContent(BuildContext context) {
-    final totalCharacters = controller.accountList
-        .fold<int>(0, (sum, account) => sum + account.characters.length);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SummaryCards(
-            totalAccounts: controller.accountList.length,
-            totalCharacters: totalCharacters,
-            runningProcesses: controller.processClients.length,
+          Obx(() {
+            final watchdog = Get.find<WatchdogService>();
+            watchdog.trackedClients.length; // register dependency
+            final totalCharacters = controller.accountList
+                .fold<int>(0, (sum, a) => sum + a.characters.length);
+            return SummaryCards(
+              totalAccounts: controller.accountList.length,
+              totalCharacters: totalCharacters,
+              runningProcesses: watchdog.runningCount,
+            );
+          }),
+          const SizedBox(height: 16),
+          BotFarmSummaryBar(
+            onStartAll: () async {
+              final config = await LaunchDialog.show(context);
+              if (config != null) {
+                await controller.launchAll(config);
+              }
+            },
+            onStopAll: () async {
+              await controller.stopAll();
+            },
           ),
           const SizedBox(height: 24),
           AccountListSection(controller: controller),

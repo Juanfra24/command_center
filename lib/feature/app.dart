@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
@@ -353,20 +351,8 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   void onWindowClose() async {
-    // Properly close all resources and processes
+    // Clean up controllers — bots are left running for recapture on next launch
     try {
-      // Stop any running bots/processes
-      try {
-        final statusController = Get.find<StatusController>();
-        // Kill all running processes
-        for (final process in statusController.processClients.values) {
-          try {
-            Process.killPid(process.processId);
-          } catch (_) {}
-        }
-      } catch (_) {}
-
-      // Clean up controllers
       try {
         await Get.delete<StatusController>(force: true);
       } catch (_) {}

@@ -4,6 +4,10 @@ enum NotificationType {
   rotationCompleted,
   rotationFailed,
   quotaExhausted,
+  banDetected,
+  maxRetriesReached,
+  clientRelaunched,
+  clientFailed,
 }
 
 enum NotificationSeverity { info, warning, error }
