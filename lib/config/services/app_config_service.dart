@@ -202,10 +202,16 @@ class AppConfigService extends GetxService {
     if (scriptRegistry.contains(scriptName)) {
       return Result.failure('Script already exists');
     }
-    scriptRegistry.add(scriptName);
-    await _configRepository!
-        .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
-    return Result.success(null);
+    try {
+      scriptRegistry.add(scriptName);
+      await _configRepository!
+          .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
+      return Result.success(null);
+    } catch (e) {
+      scriptRegistry.remove(scriptName);
+      logger.e('Error saving script registry: $e');
+      return Result.failure('Failed to save script registry: $e', e);
+    }
   }
 
   /// Remove a script name from the registry
@@ -213,10 +219,19 @@ class AppConfigService extends GetxService {
     if (_configRepository == null) {
       return Result.failure('Config repository not initialized');
     }
-    scriptRegistry.remove(scriptName);
-    await _configRepository!
-        .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
-    return Result.success(null);
+    if (!scriptRegistry.contains(scriptName)) {
+      return Result.failure('Script not found');
+    }
+    try {
+      scriptRegistry.remove(scriptName);
+      await _configRepository!
+          .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
+      return Result.success(null);
+    } catch (e) {
+      scriptRegistry.add(scriptName);
+      logger.e('Error saving script registry: $e');
+      return Result.failure('Failed to save script registry: $e', e);
+    }
   }
 
   /// Get ThemeMode from string
