@@ -86,15 +86,6 @@ class AppBindings extends Bindings {
         fenix: true,
       );
     }
-
-    // Watchdog — eager init for startup recapture scan
-    Get.put<WatchdogService>(WatchdogService(
-      nativeCommandsService: Get.find<NativeCommandsService>(),
-      notificationService: Get.find<NotificationService>(),
-      autoRotationService: Get.find<ProxyAutoRotationService>(),
-      accountRepository: Get.find<DatabaseService>().accountRepository,
-      proxyRepository: Get.find<DatabaseService>().proxyRepository,
-    ));
   }
 
   /// Initialize async services in proper order
@@ -132,5 +123,18 @@ class AppBindings extends Bindings {
         NotificationService(databaseService.notificationRepository);
     await notificationService.init();
     Get.put<NotificationService>(notificationService, permanent: true);
+
+    // 9. WatchdogService (depends on NotificationService, DatabaseService)
+    // Eager init triggers startup recapture scan via onInit()
+    Get.put<WatchdogService>(
+      WatchdogService(
+        nativeCommandsService: Get.find<NativeCommandsService>(),
+        notificationService: notificationService,
+        autoRotationService: Get.find<ProxyAutoRotationService>(),
+        accountRepository: databaseService.accountRepository,
+        proxyRepository: databaseService.proxyRepository,
+      ),
+      permanent: true,
+    );
   }
 }

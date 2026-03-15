@@ -112,13 +112,10 @@ class WatchdogService extends GetxService {
     _pollTimer = Timer.periodic(interval, (_) => _tick());
   }
 
+  /// Re-evaluate and apply the correct polling interval.
+  /// Called after state changes — _startPolling reads current state.
   void _adjustPollingRate() {
-    final shouldBeActive = trackedClients.isNotEmpty;
-    final currentInterval = trackedClients.isEmpty ? 30 : 10;
-    final desiredInterval = shouldBeActive ? 10 : 30;
-    if (currentInterval != desiredInterval) {
-      _startPolling();
-    }
+    _startPolling();
   }
 
   Future<void> _tick() async {
@@ -294,6 +291,9 @@ class WatchdogService extends GetxService {
   // ===== Ban Handling =====
 
   Future<void> _handleBan(TrackedClient client) async {
+    // Transition immediately to prevent re-entry on next tick
+    client.status = ClientStatus.awaitingAccount;
+
     // Mark character banned in DB
     await _accountRepository.updateCharacterBanned(client.characterId, true);
 
@@ -318,8 +318,6 @@ class WatchdogService extends GetxService {
         }
       }
     }
-
-    client.status = ClientStatus.awaitingAccount;
   }
 
   // ===== PID Discovery =====
