@@ -1,68 +1,75 @@
-import 'dart:convert';
-
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
-import 'package:get/get.dart';
 import 'package:flutter/services.dart';
 
-class NativeCommandsService extends GetxController {
-  // Platform channel setup
-  static const platform = MethodChannel('com.onemanco/commands');
+class NativeCommandsService {
+  static const _platform = MethodChannel('com.onemanco/commands');
 
-  // Rx variable to hold the output of commands
-  var output = ''.obs;
-
-  // Method to list Java processes
+  /// List running Java processes via WMI COM API.
+  /// Returns structured data directly — no base64 decoding.
   Future<List<ProcessClient>> listJavaProcesses() async {
     try {
-      final String encoded = await platform.invokeMethod('listJavaProcesses');
-      final bytes = base64Decode(encoded);
-      return ProcessClient.parseProcessData(bytes);
+      final List<dynamic> result =
+          await _platform.invokeMethod('listJavaProcesses');
+      return ProcessClient.fromPlatformList(result);
     } on PlatformException catch (e) {
       logger.e('Failed to get Java processes: ${e.message}');
       return [];
     }
   }
 
-  // Method to kill a process and al his decendants
+  /// Kill a process and its children via taskkill.
   Future<void> killProcess(int pid) async {
     try {
-      final String result =
-          await platform.invokeMethod('killProcessAndChilds', {'pid': pid});
-      output.value = result;
+      await _platform.invokeMethod('killProcessAndChilds', {'pid': pid});
     } on PlatformException catch (e) {
-      output.value = "Failed to kill those process: '${e.message}'.";
+      logger.e('Failed to kill process $pid: ${e.message}');
     }
   }
 
-  // Method that run a game client with an specific script
-  Future<void> runGameClient({
+  /// Launch a DreamBot game client via CreateProcess.
+  /// Returns the child process PID.
+  Future<int> runGameClient({
     required String characterName,
     required String? proxyAddress,
-    String? scriptName = 'Tutorial Journey',
+    required String scriptName,
+    String world = 'auto',
+    bool covert = true,
+    String render = 'NONE',
+    String scriptParams = '',
+    String advancedFlags = '',
   }) async {
     try {
-      final String result = await platform.invokeMethod('runGameClient', {
+      final int pid = await _platform.invokeMethod('runGameClient', {
         'characterName': characterName,
         'proxyAddress': proxyAddress ?? 'none',
-        'scriptName': scriptName ?? 'Tutorial Journey',
+        'scriptName': scriptName,
+        'world': world,
+        'covert': covert,
+        'render': render,
+        'scriptParams': scriptParams,
+        'advancedFlags': advancedFlags,
+        'destroyOnBan': true,
+        'destroy': true,
+        'minimized': true,
       });
-      logger.i('Game client started: $result');
+      logger.i('Game client started for $characterName (PID: $pid)');
+      return pid;
     } on PlatformException catch (e) {
       logger.e('Failed to run game client: ${e.message}');
-    } catch (e) {
-      logger.e('Unexpected error running game client: $e');
+      rethrow;
     }
   }
 
-  // Method to run a generic CMD command
-  Future<void> runCmdCommand(String command) async {
+  /// Run a generic CMD command.
+  Future<String> runCmdCommand(String command) async {
     try {
       final String result =
-          await platform.invokeMethod('runCmdCommand', {'command': command});
-      output.value = result;
+          await _platform.invokeMethod('runCmdCommand', {'command': command});
+      return result;
     } on PlatformException catch (e) {
-      output.value = "Failed to run CMD command: '${e.message}'.";
+      logger.e('Failed to run CMD command: ${e.message}');
+      rethrow;
     }
   }
 }

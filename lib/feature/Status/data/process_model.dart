@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-
-import 'package:command_center/core/helper/logger.dart';
 import 'package:equatable/equatable.dart';
 
 class ProcessClient extends Equatable {
@@ -9,29 +6,16 @@ class ProcessClient extends Equatable {
 
   const ProcessClient({required this.commandLine, required this.processId});
 
-  static List<ProcessClient> parseProcessData(Uint8List data) {
-    String decodedString = String.fromCharCodes(data.buffer.asUint16List());
-
-    List<String> lines = decodedString.split('\n');
-    List<ProcessClient> processes = [];
-
-    String? currentCommand;
-    for (var line in lines) {
-      if (line.startsWith('CommandLine=')) {
-        currentCommand = line.substring(12);
-      } else if (line.startsWith('ProcessId=') && currentCommand != null) {
-        int processId =
-            int.tryParse(line.substring(10).replaceAll(RegExp('"'), '')) ?? 0;
-
-        if (currentCommand.contains('client.jar')) {
-          processes.add(
-              ProcessClient(commandLine: currentCommand, processId: processId));
-        }
-        currentCommand = null; // Reset for the next command line
-      }
-    }
-    logger.d('Parsed ${processes.length} Java processes');
-    return processes;
+  /// Parse from WMI COM API structured response (list of maps)
+  static List<ProcessClient> fromPlatformList(List<dynamic> data) {
+    return data
+        .whereType<Map>()
+        .map((entry) => ProcessClient(
+              commandLine: entry['commandLine'] as String? ?? '',
+              processId: entry['pid'] as int? ?? 0,
+            ))
+        .where((p) => p.commandLine.isNotEmpty)
+        .toList();
   }
 
   @override
