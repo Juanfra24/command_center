@@ -92,8 +92,10 @@ class StatusController extends GetxController {
               password: account.password,
               proxyAddress:
                   _resolveProxyAddress(account.proxySlotId, proxyController),
+              proxySlotId: account.proxySlotId,
               characters: account.characters
                   .map((c) => Character(
+                        id: c.id,
                         banned: c.banned,
                         name: c.name,
                         actualSkills: _mapSkills(c.actualSkills),

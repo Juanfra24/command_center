@@ -3,12 +3,14 @@ import 'package:equatable/equatable.dart';
 
 // ignore: must_be_immutable
 class Character extends Equatable {
+  int? id;
   bool banned = false;
   String name = 'Default Character';
   Skills actualSkills = Skills.empty();
   Skills targetSkills = Skills.empty();
 
   Character({
+    this.id,
     required this.banned,
     required this.name,
     required this.actualSkills,
@@ -25,6 +27,7 @@ class Character extends Equatable {
       );
     }
     return Character(
+      id: json['id'] as int?,
       banned: json['banned'] ?? false,
       name: json['name'] ?? 'Jhon Doe',
       actualSkills:
@@ -35,5 +38,5 @@ class Character extends Equatable {
   }
 
   @override
-  List<Object?> get props => [banned, name, actualSkills, targetSkills];
+  List<Object?> get props => [id, banned, name, actualSkills, targetSkills];
 }
