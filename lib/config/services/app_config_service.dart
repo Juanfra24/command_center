@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/data/database_service.dart';
@@ -17,6 +19,7 @@ class AppConfigService extends GetxService {
   static const String _keyImapPass = 'imap_pass';
   static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
   static const String _keyAutoRotationThreshold = 'auto_rotation_threshold';
+  static const String _keyScriptRegistry = 'script_registry';
 
   ConfigRepository? _configRepository;
 
@@ -27,6 +30,7 @@ class AppConfigService extends GetxService {
   bool isLoading = true;
   final autoRotationEnabled = true.obs;
   final autoRotationThreshold = 40.obs;
+  final scriptRegistry = <String>['Tutorial Journey'].obs;
 
   Future<AppConfigService> init() async {
     try {
@@ -70,6 +74,17 @@ class AppConfigService extends GetxService {
       final threshold =
           await _configRepository!.getValue(_keyAutoRotationThreshold);
       autoRotationThreshold.value = int.tryParse(threshold ?? '') ?? 40;
+
+      final registryJson =
+          await _configRepository!.getValue(_keyScriptRegistry);
+      if (registryJson != null) {
+        try {
+          final decoded = jsonDecode(registryJson) as List;
+          scriptRegistry.value = decoded.cast<String>();
+        } catch (e) {
+          logger.e('Error parsing script registry: $e');
+        }
+      }
     } catch (e) {
       logger.e('Error loading config: $e');
     } finally {
@@ -177,6 +192,31 @@ class AppConfigService extends GetxService {
       logger.e('Error saving auto-rotation threshold: $e');
       return Result.failure('Failed to save auto-rotation threshold: $e', e);
     }
+  }
+
+  /// Add a script name to the registry
+  Future<Result<void>> addScript(String scriptName) async {
+    if (_configRepository == null) {
+      return Result.failure('Config repository not initialized');
+    }
+    if (scriptRegistry.contains(scriptName)) {
+      return Result.failure('Script already exists');
+    }
+    scriptRegistry.add(scriptName);
+    await _configRepository!
+        .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
+    return Result.success(null);
+  }
+
+  /// Remove a script name from the registry
+  Future<Result<void>> removeScript(String scriptName) async {
+    if (_configRepository == null) {
+      return Result.failure('Config repository not initialized');
+    }
+    scriptRegistry.remove(scriptName);
+    await _configRepository!
+        .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
+    return Result.success(null);
   }
 
   /// Get ThemeMode from string
