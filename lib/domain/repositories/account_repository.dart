@@ -26,4 +26,7 @@ abstract class AccountRepository {
 
   /// Get accounts by proxy slot ID
   Future<List<AccountEntity>> getAccountsByProxySlot(int proxySlotId);
+
+  /// Update a character's banned flag by character ID (not account ID)
+  Future<void> updateCharacterBanned(int characterId, bool banned);
 }
