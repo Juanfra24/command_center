@@ -82,10 +82,6 @@ class AccountListSection extends StatelessWidget {
             itemCount: rows.length,
             itemBuilder: (context, index) {
               final row = rows[index];
-              final watchdog = Get.find<WatchdogService>();
-              final tracked = watchdog.trackedClients[row.character?.name];
-              final isRunning =
-                  tracked != null && tracked.status == ClientStatus.running;
               return Container(
                 decoration: BoxDecoration(
                   border: Border(
@@ -130,12 +126,18 @@ class AccountListSection extends StatelessWidget {
                     ),
                     Expanded(
                       child: row.character != null
-                          ? _buildActionsCell(
-                              context,
-                              row.account,
-                              row.character!,
-                              isRunning,
-                            )
+                          ? Obx(() {
+                              final tracked = Get.find<WatchdogService>()
+                                  .trackedClients[row.character?.name];
+                              final isRunning = tracked != null &&
+                                  tracked.status == ClientStatus.running;
+                              return _buildActionsCell(
+                                context,
+                                row.account,
+                                row.character!,
+                                isRunning,
+                              );
+                            })
                           : _buildEmptyAccountActions(context, row.account),
                     ),
                   ],

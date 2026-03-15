@@ -115,21 +115,20 @@ class StatusScreen extends GetView<StatusController> {
     final totalCharacters = controller.accountList
         .fold<int>(0, (sum, account) => sum + account.characters.length);
 
-    WatchdogService? watchdog;
-    try {
-      watchdog = Get.find<WatchdogService>();
-    } catch (_) {}
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SummaryCards(
-            totalAccounts: controller.accountList.length,
-            totalCharacters: totalCharacters,
-            runningProcesses: watchdog?.runningCount ?? 0,
-          ),
+          Obx(() {
+            final watchdog = Get.find<WatchdogService>();
+            watchdog.trackedClients.length; // register dependency
+            return SummaryCards(
+              totalAccounts: controller.accountList.length,
+              totalCharacters: totalCharacters,
+              runningProcesses: watchdog.runningCount,
+            );
+          }),
           const SizedBox(height: 16),
           BotFarmSummaryBar(
             onStartAll: () async {
