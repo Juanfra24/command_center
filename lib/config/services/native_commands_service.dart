@@ -60,16 +60,4 @@ class NativeCommandsService {
       rethrow;
     }
   }
-
-  /// Run a generic CMD command.
-  Future<String> runCmdCommand(String command) async {
-    try {
-      final String result =
-          await _platform.invokeMethod('runCmdCommand', {'command': command});
-      return result;
-    } on PlatformException catch (e) {
-      logger.e('Failed to run CMD command: ${e.message}');
-      rethrow;
-    }
-  }
 }

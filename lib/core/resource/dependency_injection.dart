@@ -125,7 +125,10 @@ class AppBindings extends Bindings {
     Get.put<NotificationService>(notificationService, permanent: true);
 
     // 9. WatchdogService (depends on NotificationService, DatabaseService)
-    // Eager init triggers startup recapture scan via onInit()
+    // Eager init triggers startup recapture scan via onInit().
+    // Get.find<ProxyAutoRotationService> triggers its lazyPut factory, which
+    // chains through ProxyReplacementService → ProxySyncService → WebshareService
+    // + DatabaseService — all already registered in dependencies().
     Get.put<WatchdogService>(
       WatchdogService(
         nativeCommandsService: Get.find<NativeCommandsService>(),
