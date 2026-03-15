@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
@@ -11,6 +9,7 @@ import 'package:command_center/config/theme/fluent_app_theme.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
 import 'package:command_center/core/resource/dependency_injection.dart';
 import 'package:command_center/core/widgets/window_title_bar.dart';
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/views/status_screen.dart';
 import 'package:command_center/feature/main_menu/views/main_menu_screen.dart';
@@ -357,13 +356,8 @@ class _AppState extends State<App> with WindowListener {
     try {
       // Stop any running bots/processes
       try {
-        final statusController = Get.find<StatusController>();
-        // Kill all running processes
-        for (final process in statusController.processClients.values) {
-          try {
-            Process.killPid(process.processId);
-          } catch (_) {}
-        }
+        final watchdog = Get.find<WatchdogService>();
+        await watchdog.stopAll();
       } catch (_) {}
 
       // Clean up controllers
