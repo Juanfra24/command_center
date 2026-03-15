@@ -9,7 +9,6 @@ import 'package:command_center/config/theme/fluent_app_theme.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
 import 'package:command_center/core/resource/dependency_injection.dart';
 import 'package:command_center/core/widgets/window_title_bar.dart';
-import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/views/status_screen.dart';
 import 'package:command_center/feature/main_menu/views/main_menu_screen.dart';
@@ -352,15 +351,8 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   void onWindowClose() async {
-    // Properly close all resources and processes
+    // Clean up controllers — bots are left running for recapture on next launch
     try {
-      // Stop any running bots/processes
-      try {
-        final watchdog = Get.find<WatchdogService>();
-        await watchdog.stopAll();
-      } catch (_) {}
-
-      // Clean up controllers
       try {
         await Get.delete<StatusController>(force: true);
       } catch (_) {}

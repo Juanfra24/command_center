@@ -104,23 +104,19 @@ class WatchdogService extends GetxService {
 
   // ===== Polling =====
 
-  void _startPolling() {
+  void _startPolling({Duration? interval}) {
     _pollTimer?.cancel();
-    final interval = trackedClients.isEmpty
+    interval ??= trackedClients.isEmpty
         ? const Duration(seconds: 30)
         : const Duration(seconds: 10);
     _pollTimer = Timer.periodic(interval, (_) => _tick());
   }
 
-  /// Re-evaluate and apply the correct polling interval.
-  /// Called after state changes — _startPolling reads current state.
-  void _adjustPollingRate() {
-    _startPolling();
-  }
-
   Future<void> _tick() async {
     if (trackedClients.isEmpty || _tickInProgress) return;
     _tickInProgress = true;
+
+    final wasEmpty = trackedClients.isEmpty;
 
     try {
       final liveProcesses = await _nativeCommandsService.listJavaProcesses();
@@ -190,8 +186,13 @@ class WatchdogService extends GetxService {
 
       if (changed) {
         trackedClients.refresh();
-        _adjustPollingRate();
+        // Only restart timer if empty/non-empty state changed
+        if (wasEmpty != trackedClients.isEmpty) {
+          _startPolling();
+        }
       }
+    } catch (e) {
+      logger.e('Watchdog tick error: $e');
     } finally {
       _tickInProgress = false;
     }

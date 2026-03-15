@@ -11,10 +11,8 @@
 #include <algorithm>
 #include <regex>
 #include <thread>
-#include <chrono>
-#include <random>
 #include <sstream>
-#include <fstream>
+#include <vector>
 #include <comdef.h>
 #include <Wbemidl.h>
 #pragma comment(lib, "wbemuuid.lib")
@@ -32,26 +30,26 @@ std::string GetEnvironmentVariable(const std::string &var)
     return "";
 }
 
-void ExecuteCommandAsync(const std::string &command)
+void RunDetachedProcess(const std::string &command)
 {
     std::thread([command]()
                 {
-        // Generate a unique filename for the temporary file
-        auto now = std::chrono::high_resolution_clock::now();
-        auto duration = now.time_since_epoch();
-        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        STARTUPINFOA si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
 
-        std::random_device rd;  // Will be used to obtain a seed for the random number engine
-        std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-        std::uniform_int_distribution<> distrib(1, 1000);
+        std::vector<char> cmdBuf(command.begin(), command.end());
+        cmdBuf.push_back('\0');
 
-        std::stringstream ss;
-        ss << "temp_" << milliseconds << "_" << distrib(gen) << ".txt";
-        std::string tempFileName = ss.str();
-
-        std::string fullCommand = "cmd /c " + command + " > " + tempFileName + " && type " + tempFileName + " && del " + tempFileName;
-        system(fullCommand.c_str()); })
-        .detach(); // Detach the thread to run independently
+        if (CreateProcessA(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE,
+                           CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+        {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+        } })
+        .detach();
 }
 
 bool containsShellMetachars(const std::string &input)
@@ -228,8 +226,13 @@ void ListJavaProcesses(std::unique_ptr<flutter::MethodResult<flutter::EncodableV
         }
         if (SUCCEEDED(pObj->Get(L"CommandLine", 0, &vtCmd, nullptr, nullptr)) && vtCmd.vt == VT_BSTR)
         {
-            _bstr_t bstrCmd(vtCmd.bstrVal);
-            commandLine = std::string((const char *)bstrCmd);
+            int len = WideCharToMultiByte(CP_UTF8, 0, vtCmd.bstrVal, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0)
+            {
+                std::string utf8(len - 1, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, vtCmd.bstrVal, -1, &utf8[0], len, nullptr, nullptr);
+                commandLine = utf8;
+            }
         }
 
         VariantClear(&vtPid);
@@ -254,8 +257,7 @@ void ListJavaProcesses(std::unique_ptr<flutter::MethodResult<flutter::EncodableV
 
 void KillProcessAndChilds(const std::string &pidStr)
 {
-    // Using taskkill to kill a pid and its children
-    ExecuteCommandAsync("taskkill /F /PID " + pidStr + " /T");
+    RunDetachedProcess("taskkill /F /PID " + pidStr + " /T");
 }
 
 void HandleMethodCall(
@@ -283,18 +285,6 @@ void HandleMethodCall(
         // Call the function to kill the process
         KillProcessAndChilds(pidStr);
         result->Success(flutter::EncodableValue("Process and its children terminated successfully"));
-    }
-    else if (method_call.method_name().compare("runCmdCommand") == 0)
-    {
-        const auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
-        if (!arguments || arguments->find(flutter::EncodableValue("command")) == arguments->end())
-        {
-            result->Error("Invalid arguments", "Expected a command string.");
-            return;
-        }
-        std::string cmdCommand = std::get<std::string>(arguments->at(flutter::EncodableValue("command")));
-        ExecuteCommandAsync(cmdCommand);
-        result->Success(flutter::EncodableValue("Command executed successfully"));
     }
     else if (method_call.method_name().compare("runGameClient") == 0)
     {

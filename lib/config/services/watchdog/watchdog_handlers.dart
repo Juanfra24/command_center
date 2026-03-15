@@ -51,21 +51,18 @@ class WatchdogHandlers {
             '(${client.consecutiveQuickDeaths} consecutive quick deaths)');
       } else {
         client.status = ClientStatus.failed;
-        client.retryCount++;
         logger.w(
             'Quick death #${client.consecutiveQuickDeaths} for ${client.characterName}');
         _notificationService.createNotification(
           type: NotificationType.clientFailed,
           severity: NotificationSeverity.warning,
           title: 'Client Failed',
-          message: '${client.characterName} died quickly '
-              '(attempt ${client.retryCount}/${WatchdogService.maxRetries})',
+          message: '${client.characterName} died quickly',
         );
       }
     } else {
       client.consecutiveQuickDeaths = 0;
       client.status = ClientStatus.restarting;
-      client.retryCount++;
       logger.i('Normal death for ${client.characterName}, scheduling restart');
     }
   }
@@ -87,7 +84,7 @@ class WatchdogHandlers {
 
     // Check cooldown: 30s × 2^retryCount, capped at 5 min
     final cooldown = Duration(
-      seconds: (30 * (1 << (client.retryCount - 1)))
+      seconds: (30 * (1 << client.retryCount))
           .clamp(30, WatchdogService.maxCooldownSeconds),
     );
     if (client.lastDeathAt != null &&
@@ -106,11 +103,12 @@ class WatchdogHandlers {
         scriptParams: client.launchConfig.scriptParams,
         advancedFlags: client.launchConfig.advancedFlags,
       );
+      client.retryCount++;
       client.pid = pid;
       client.status = ClientStatus.running;
       client.launchedAt = DateTime.now();
       logger.i(
-          'Relaunched ${client.characterName} (PID: $pid, retry ${client.retryCount})');
+          'Relaunched ${client.characterName} (PID: $pid, attempt ${client.retryCount}/${WatchdogService.maxRetries})');
       await _notificationService.createNotification(
         type: NotificationType.clientRelaunched,
         severity: NotificationSeverity.info,

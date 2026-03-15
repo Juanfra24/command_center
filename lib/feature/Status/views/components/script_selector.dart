@@ -20,6 +20,12 @@ class ScriptSelector extends StatelessWidget {
     return Obx(() {
       final scripts = configService.scriptRegistry.toList();
       final current = scripts.contains(selectedScript) ? selectedScript : null;
+      // Auto-select first script if current selection was removed
+      if (current == null && scripts.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onChanged(scripts.first);
+        });
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

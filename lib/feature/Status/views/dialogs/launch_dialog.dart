@@ -30,19 +30,16 @@ class _LaunchDialogState extends State<LaunchDialog> {
     super.initState();
     final configService = Get.find<AppConfigService>();
     final last = LaunchDialog._lastConfig;
-    _selectedScript = last?.scriptName ?? configService.scriptRegistry.first;
-    _selectedWorld = _worldFromConfig(last);
+    _selectedScript = last?.scriptName ??
+        (configService.scriptRegistry.isNotEmpty
+            ? configService.scriptRegistry.first
+            : '');
+    final w = last?.world ?? 'auto';
+    _selectedWorld = const {'auto', 'f2p', 'members'}.contains(w) ? w : 'specific';
     _covert = last?.covert ?? true;
     _selectedRender = last?.render ?? 'NONE';
     _scriptParamsController.text = last?.scriptParams ?? '';
     _advancedFlagsController.text = last?.advancedFlags ?? '';
-  }
-
-  String _worldFromConfig(LaunchConfig? config) {
-    if (config == null) return 'auto';
-    final w = config.world;
-    if (w == 'auto' || w == 'f2p' || w == 'members') return w;
-    return 'specific';
   }
 
   @override
@@ -128,7 +125,7 @@ class _LaunchDialogState extends State<LaunchDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _onLaunch,
+          onPressed: _selectedScript.isNotEmpty ? _onLaunch : null,
           child: const Text('Launch'),
         ),
       ],

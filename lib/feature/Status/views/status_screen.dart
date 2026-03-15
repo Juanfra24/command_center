@@ -112,9 +112,6 @@ class StatusScreen extends GetView<StatusController> {
   }
 
   Widget _buildAccountsContent(BuildContext context) {
-    final totalCharacters = controller.accountList
-        .fold<int>(0, (sum, account) => sum + account.characters.length);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -123,6 +120,8 @@ class StatusScreen extends GetView<StatusController> {
           Obx(() {
             final watchdog = Get.find<WatchdogService>();
             watchdog.trackedClients.length; // register dependency
+            final totalCharacters = controller.accountList
+                .fold<int>(0, (sum, a) => sum + a.characters.length);
             return SummaryCards(
               totalAccounts: controller.accountList.length,
               totalCharacters: totalCharacters,
