@@ -102,6 +102,10 @@ class StatusController extends GetxController {
     LaunchConfig config,
   ) async {
     if (_watchdog == null || _nativeService == null) return;
+    if (character.id == null || account.id == null) {
+      logger.e('Cannot launch ${character.name}: missing DB id');
+      return;
+    }
 
     // Resolve proxy address
     String? proxyAddress;
@@ -127,8 +131,8 @@ class StatusController extends GetxController {
 
       final tracked = TrackedClient(
         characterName: character.name,
-        characterId: character.id ?? 0,
-        accountId: account.id ?? 0,
+        characterId: character.id!,
+        accountId: account.id!,
         proxySlotId: account.proxySlotId,
         proxyAddress: proxyAddress,
         launchConfig: config,

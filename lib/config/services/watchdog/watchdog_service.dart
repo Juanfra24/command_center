@@ -5,8 +5,8 @@ import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
+import 'package:command_center/config/services/watchdog/watchdog_handlers.dart';
 import 'package:command_center/core/helper/logger.dart';
-import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
@@ -14,19 +14,18 @@ import 'package:get/get.dart';
 
 class WatchdogService extends GetxService {
   final NativeCommandsService _nativeCommandsService;
-  final NotificationService _notificationService;
-  final ProxyAutoRotationService _autoRotationService;
   final AccountRepository _accountRepository;
-  final ProxyRepository _proxyRepository;
+  late final WatchdogHandlers _handlers;
 
   static const int maxRetries = 5;
-  static const Duration _quickDeathThreshold = Duration(seconds: 30);
+  static const Duration quickDeathThreshold = Duration(seconds: 30);
   static const Duration _stabilityThreshold = Duration(minutes: 5);
   static const int _maxDiscoveryMisses = 3;
-  static const int _banEscalationThreshold = 3;
-  static const Duration _maxCooldown = Duration(minutes: 5);
+  static const int banEscalationThreshold = 3;
+  static const int maxCooldownSeconds = 300;
 
   Timer? _pollTimer;
+  bool _tickInProgress = false;
 
   final trackedClients = <String, TrackedClient>{}.obs;
 
@@ -36,11 +35,16 @@ class WatchdogService extends GetxService {
     required ProxyAutoRotationService autoRotationService,
     required AccountRepository accountRepository,
     required ProxyRepository proxyRepository,
-  })  : _nativeCommandsService = nativeCommandsService,
-        _notificationService = notificationService,
-        _autoRotationService = autoRotationService,
-        _accountRepository = accountRepository,
-        _proxyRepository = proxyRepository;
+  }) : _nativeCommandsService = nativeCommandsService,
+       _accountRepository = accountRepository {
+    _handlers = WatchdogHandlers(
+      nativeCommandsService: nativeCommandsService,
+      notificationService: notificationService,
+      autoRotationService: autoRotationService,
+      accountRepository: accountRepository,
+      proxyRepository: proxyRepository,
+    );
+  }
 
   @override
   void onInit() {
@@ -119,204 +123,81 @@ class WatchdogService extends GetxService {
   }
 
   Future<void> _tick() async {
-    if (trackedClients.isEmpty) return;
+    if (trackedClients.isEmpty || _tickInProgress) return;
+    _tickInProgress = true;
 
-    final liveProcesses = await _nativeCommandsService.listJavaProcesses();
-    final livePids = <int>{};
-    for (final p in liveProcesses) {
-      livePids.add(p.processId);
-    }
-
-    bool changed = false;
-
-    for (final client in trackedClients.values.toList()) {
-      // Skip terminal states
-      if (client.status == ClientStatus.stopped ||
-          client.status == ClientStatus.awaitingAccount) {
-        continue;
-      }
-
-      // Discovery: client launched but PID not yet confirmed
-      if (client.pid == null) {
-        final match = _discoverPid(client, liveProcesses);
-        if (match != null) {
-          client.pid = match;
-          client.resetDiscoveryMisses();
-          changed = true;
-        } else {
-          client.incrementDiscoveryMisses();
-          if (client.discoveryMisses >= _maxDiscoveryMisses) {
-            client.status = ClientStatus.failed;
-            client.lastDeathAt = DateTime.now();
-            logger.e('Discovery timeout for ${client.characterName}');
-            changed = true;
-          }
-        }
-        continue;
-      }
-
-      // Check if process is still alive
-      if (livePids.contains(client.pid)) {
-        // Stability reset: alive > 5 min → reset retry counters
-        if (client.launchedAt != null &&
-            DateTime.now().difference(client.launchedAt!) >
-                _stabilityThreshold) {
-          if (client.retryCount > 0 || client.consecutiveQuickDeaths > 0) {
-            client.retryCount = 0;
-            client.consecutiveQuickDeaths = 0;
-            changed = true;
-          }
-        }
-        continue;
-      }
-
-      // Process died — classify death
-      changed = true;
-      _classifyDeath(client);
-    }
-
-    // Handle restarts and bans
-    for (final client in trackedClients.values.toList()) {
-      if (client.status == ClientStatus.restarting ||
-          client.status == ClientStatus.failed) {
-        changed |= await _handleRestart(client);
-      } else if (client.status == ClientStatus.banned) {
-        await _handleBan(client);
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      trackedClients.refresh();
-      _adjustPollingRate();
-    }
-  }
-
-  // ===== Death Classification =====
-
-  void _classifyDeath(TrackedClient client) {
-    final now = DateTime.now();
-    final alive = client.launchedAt != null
-        ? now.difference(client.launchedAt!)
-        : Duration.zero;
-
-    client.pid = null;
-    client.lastDeathAt = now;
-
-    if (alive < _quickDeathThreshold) {
-      client.consecutiveQuickDeaths++;
-      if (client.consecutiveQuickDeaths >= _banEscalationThreshold) {
-        client.status = ClientStatus.banned;
-        logger.e('Ban detected for ${client.characterName} '
-            '(${client.consecutiveQuickDeaths} consecutive quick deaths)');
-      } else {
-        client.status = ClientStatus.failed;
-        client.retryCount++;
-        logger.w(
-            'Quick death #${client.consecutiveQuickDeaths} for ${client.characterName}');
-        _notificationService.createNotification(
-          type: NotificationType.clientFailed,
-          severity: NotificationSeverity.warning,
-          title: 'Client Failed',
-          message: '${client.characterName} died quickly '
-              '(attempt ${client.retryCount}/$maxRetries)',
-        );
-      }
-    } else {
-      // Normal death — restarting
-      client.consecutiveQuickDeaths = 0;
-      client.status = ClientStatus.restarting;
-      client.retryCount++;
-      logger.i('Normal death for ${client.characterName}, scheduling restart');
-    }
-  }
-
-  // ===== Restart Handling =====
-
-  Future<bool> _handleRestart(TrackedClient client) async {
-    if (client.retryCount >= maxRetries) {
-      client.status = ClientStatus.stopped;
-      logger.e('Max retries reached for ${client.characterName}');
-      await _notificationService.createNotification(
-        type: NotificationType.maxRetriesReached,
-        severity: NotificationSeverity.error,
-        title: 'Max Retries Reached',
-        message:
-            '${client.characterName} stopped after $maxRetries attempts.',
-      );
-      return true;
-    }
-
-    // Check cooldown: 30s × 2^retryCount, capped at 5 min
-    final cooldown = Duration(
-      seconds: (30 * (1 << (client.retryCount - 1)))
-          .clamp(30, _maxCooldown.inSeconds),
-    );
-    if (client.lastDeathAt != null &&
-        DateTime.now().difference(client.lastDeathAt!) < cooldown) {
-      return false; // Still cooling down
-    }
-
-    // Relaunch
     try {
-      final pid = await _nativeCommandsService.runGameClient(
-        characterName: client.characterName,
-        proxyAddress: client.proxyAddress,
-        scriptName: client.launchConfig.scriptName,
-        world: client.launchConfig.world,
-        covert: client.launchConfig.covert,
-        render: client.launchConfig.render,
-        scriptParams: client.launchConfig.scriptParams,
-        advancedFlags: client.launchConfig.advancedFlags,
-      );
-      client.pid = pid;
-      client.status = ClientStatus.running;
-      client.launchedAt = DateTime.now();
-      logger.i(
-          'Relaunched ${client.characterName} (PID: $pid, retry ${client.retryCount})');
-      await _notificationService.createNotification(
-        type: NotificationType.clientRelaunched,
-        severity: NotificationSeverity.info,
-        title: 'Client Relaunched',
-        message:
-            '${client.characterName} restarted (attempt ${client.retryCount}/$maxRetries)',
-      );
-      return true;
-    } catch (e) {
-      logger.e('Failed to relaunch ${client.characterName}: $e');
-      return false;
-    }
-  }
+      final liveProcesses = await _nativeCommandsService.listJavaProcesses();
+      final livePids = <int>{};
+      for (final p in liveProcesses) {
+        livePids.add(p.processId);
+      }
 
-  // ===== Ban Handling =====
+      bool changed = false;
 
-  Future<void> _handleBan(TrackedClient client) async {
-    // Transition immediately to prevent re-entry on next tick
-    client.status = ClientStatus.awaitingAccount;
+      for (final client in trackedClients.values.toList()) {
+        // Skip terminal states
+        if (client.status == ClientStatus.stopped ||
+            client.status == ClientStatus.awaitingAccount) {
+          continue;
+        }
 
-    // Mark character banned in DB
-    await _accountRepository.updateCharacterBanned(client.characterId, true);
+        // Discovery: client launched but PID not yet confirmed
+        if (client.pid == null) {
+          final match = _discoverPid(client, liveProcesses);
+          if (match != null) {
+            client.pid = match;
+            client.resetDiscoveryMisses();
+            changed = true;
+          } else {
+            client.incrementDiscoveryMisses();
+            if (client.discoveryMisses >= _maxDiscoveryMisses) {
+              client.status = ClientStatus.failed;
+              client.lastDeathAt = DateTime.now();
+              logger.e('Discovery timeout for ${client.characterName}');
+              changed = true;
+            }
+          }
+          continue;
+        }
 
-    await _notificationService.createNotification(
-      type: NotificationType.banDetected,
-      severity: NotificationSeverity.error,
-      title: 'Ban Detected',
-      message: '${client.characterName} banned after '
-          '${client.consecutiveQuickDeaths} consecutive quick deaths.',
-    );
+        // Check if process is still alive
+        if (livePids.contains(client.pid)) {
+          // Stability reset: alive > 5 min → reset retry counters
+          if (client.launchedAt != null &&
+              DateTime.now().difference(client.launchedAt!) >
+                  _stabilityThreshold) {
+            if (client.retryCount > 0 || client.consecutiveQuickDeaths > 0) {
+              client.retryCount = 0;
+              client.consecutiveQuickDeaths = 0;
+              changed = true;
+            }
+          }
+          continue;
+        }
 
-    // Rotate proxy if available
-    if (client.proxySlotId != null) {
-      final rotated =
-          await _autoRotationService.rotateSlot(client.proxySlotId!);
-      if (rotated) {
-        // Re-resolve proxy address for future relaunches
-        final newIp =
-            await _proxyRepository.getActiveIpForSlot(client.proxySlotId!);
-        if (newIp != null) {
-          client.proxyAddress = newIp.ipAddress;
+        // Process died — classify death
+        changed = true;
+        _handlers.classifyDeath(client);
+      }
+
+      // Handle restarts and bans
+      for (final client in trackedClients.values.toList()) {
+        if (client.status == ClientStatus.restarting ||
+            client.status == ClientStatus.failed) {
+          changed |= await _handlers.handleRestart(client);
+        } else if (client.status == ClientStatus.banned) {
+          await _handlers.handleBan(client);
+          changed = true;
         }
       }
+
+      if (changed) {
+        trackedClients.refresh();
+        _adjustPollingRate();
+      }
+    } finally {
+      _tickInProgress = false;
     }
   }
 

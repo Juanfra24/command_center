@@ -222,9 +222,9 @@ void ListJavaProcesses(std::unique_ptr<flutter::MethodResult<flutter::EncodableV
         int pid = 0;
         std::string commandLine;
 
-        if (SUCCEEDED(pObj->Get(L"ProcessId", 0, &vtPid, nullptr, nullptr)))
+        if (SUCCEEDED(pObj->Get(L"ProcessId", 0, &vtPid, nullptr, nullptr)) && vtPid.vt == VT_UI4)
         {
-            pid = vtPid.intVal;
+            pid = static_cast<int>(vtPid.uintVal);
         }
         if (SUCCEEDED(pObj->Get(L"CommandLine", 0, &vtCmd, nullptr, nullptr)) && vtCmd.vt == VT_BSTR)
         {
