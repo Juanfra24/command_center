@@ -15,6 +15,9 @@
 #include <random>
 #include <sstream>
 #include <fstream>
+#include <comdef.h>
+#include <Wbemidl.h>
+#pragma comment(lib, "wbemuuid.lib")
 
 std::string GetEnvironmentVariable(const std::string &var)
 {
@@ -77,26 +80,92 @@ void RunGameClient(const std::string &characterName, const std::string &proxyAdd
 
 void ListJavaProcesses(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> &result)
 {
-    std::string tempFileName = "temp_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) + ".txt";
-    std::string command = "wmic process where \"name='java.exe' or name='javaw.exe'\" get CommandLine,ProcessId /FORMAT:LIST";
-    std::string fullCommand = "cmd /c " + command + " > " + tempFileName;
-    system(fullCommand.c_str());
+    IWbemLocator *pLocator = nullptr;
+    IWbemServices *pServices = nullptr;
+    IEnumWbemClassObject *pEnumerator = nullptr;
 
-    std::ifstream file(tempFileName, std::ios::binary);
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-    std::remove(tempFileName.c_str());
-
-    std::string encoded = base64_encode(reinterpret_cast<const unsigned char *>(content.data()), content.size());
-
-    if (encoded.empty())
+    HRESULT hr = CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER,
+                                  IID_IWbemLocator, (LPVOID *)&pLocator);
+    if (FAILED(hr))
     {
-        result->Error("No Data", "Failed to retrieve or encode process data.");
+        result->Error("WMI Error", "Failed to create WbemLocator");
+        return;
     }
-    else
+
+    hr = pLocator->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), nullptr, nullptr, nullptr,
+                                  0, nullptr, nullptr, &pServices);
+    if (FAILED(hr))
     {
-        result->Success(flutter::EncodableValue(encoded));
+        pLocator->Release();
+        result->Error("WMI Error", "Failed to connect to WMI");
+        return;
     }
+
+    hr = CoSetProxyBlanket(pServices, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr,
+                           RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
+                           nullptr, EOAC_NONE);
+    if (FAILED(hr))
+    {
+        pServices->Release();
+        pLocator->Release();
+        result->Error("WMI Error", "Failed to set proxy blanket");
+        return;
+    }
+
+    hr = pServices->ExecQuery(
+        bstr_t("WQL"),
+        bstr_t("SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'java.exe' OR Name = 'javaw.exe'"),
+        WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+        nullptr, &pEnumerator);
+    if (FAILED(hr))
+    {
+        pServices->Release();
+        pLocator->Release();
+        result->Error("WMI Error", "WMI query failed");
+        return;
+    }
+
+    flutter::EncodableList processList;
+    IWbemClassObject *pObj = nullptr;
+    ULONG numReturned = 0;
+
+    while (pEnumerator->Next(WBEM_INFINITE, 1, &pObj, &numReturned) == S_OK)
+    {
+        VARIANT vtPid, vtCmd;
+        VariantInit(&vtPid);
+        VariantInit(&vtCmd);
+
+        int pid = 0;
+        std::string commandLine;
+
+        if (SUCCEEDED(pObj->Get(L"ProcessId", 0, &vtPid, nullptr, nullptr)))
+        {
+            pid = vtPid.intVal;
+        }
+        if (SUCCEEDED(pObj->Get(L"CommandLine", 0, &vtCmd, nullptr, nullptr)) && vtCmd.vt == VT_BSTR)
+        {
+            _bstr_t bstrCmd(vtCmd.bstrVal);
+            commandLine = std::string((const char *)bstrCmd);
+        }
+
+        VariantClear(&vtPid);
+        VariantClear(&vtCmd);
+        pObj->Release();
+
+        if (!commandLine.empty())
+        {
+            flutter::EncodableMap entry;
+            entry[flutter::EncodableValue("pid")] = flutter::EncodableValue(pid);
+            entry[flutter::EncodableValue("commandLine")] = flutter::EncodableValue(commandLine);
+            processList.push_back(flutter::EncodableValue(entry));
+        }
+    }
+
+    pEnumerator->Release();
+    pServices->Release();
+    pLocator->Release();
+
+    result->Success(flutter::EncodableValue(processList));
 }
 
 void KillProcessAndChilds(const std::string &pidStr)
