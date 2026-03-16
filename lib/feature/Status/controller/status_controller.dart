@@ -1,7 +1,8 @@
-import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
+import 'package:command_center/core/helper/proxy_url_builder.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/skills.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
@@ -22,7 +23,7 @@ class StatusController extends GetxController {
 
   AccountRepository? _accountRepository;
   ProxyRepository? _proxyRepository;
-  NativeCommandsService? _nativeService;
+  BotEngine? _botEngine;
   WatchdogService? _watchdog;
 
   @override
@@ -46,9 +47,9 @@ class StatusController extends GetxController {
       logger.e('DatabaseService not initialized: $e');
     }
     try {
-      _nativeService = Get.find<NativeCommandsService>();
+      _botEngine = Get.find<BotEngine>();
     } catch (e) {
-      logger.e('NativeCommandsService not available: $e');
+      logger.e('BotEngine not available: $e');
     }
     try {
       _watchdog = Get.find<WatchdogService>();
@@ -106,31 +107,39 @@ class StatusController extends GetxController {
     Character character,
     LaunchConfig config,
   ) async {
-    if (_watchdog == null || _nativeService == null) return;
+    if (_watchdog == null || _botEngine == null) return;
     if (character.id == null || account.id == null) {
       logger.e('Cannot launch ${character.name}: missing DB id');
       return;
     }
 
-    // Resolve proxy address
-    String? proxyAddress;
+    // Build SOCKS5 proxy URL if a proxy slot is assigned
+    String? proxyUrl;
     if (account.proxySlotId != null && _proxyRepository != null) {
-      final ip =
-          await _proxyRepository!.getActiveIpForSlot(account.proxySlotId!);
-      if (ip != null) {
-        proxyAddress = ip.ipAddress;
+      final slot =
+          await _proxyRepository!.getSlotById(account.proxySlotId!);
+      if (slot != null && slot.socksPort != null) {
+        final ip =
+            await _proxyRepository!.getActiveIpForSlot(account.proxySlotId!);
+        if (ip != null) {
+          proxyUrl = ProxyUrlBuilder.buildSocks5Url(
+            username: slot.username,
+            password: slot.password,
+            ipAddress: ip.ipAddress,
+            socksPort: slot.socksPort!,
+          );
+        }
       }
     }
 
     try {
-      final pid = await _nativeService!.runGameClient(
+      final pid = await _botEngine!.launch(
+        characterId: character.id!,
         characterName: character.name,
-        proxyUrl: proxyAddress,
-        scriptName: config.scriptName,
-        world: config.world,
-        scriptParams: config.scriptParams,
-        advancedFlags: config.advancedFlags,
-        jvmArgs: config.jvmArgs,
+        email: account.email,
+        password: account.password,
+        proxyUrl: proxyUrl,
+        config: config,
       );
 
       final tracked = TrackedClient(
@@ -140,7 +149,7 @@ class StatusController extends GetxController {
         proxySlotId: account.proxySlotId,
         email: account.email,
         password: account.password,
-        proxyUrl: proxyAddress,
+        proxyUrl: proxyUrl,
         launchConfig: config,
         pid: pid,
         status: ClientStatus.running,

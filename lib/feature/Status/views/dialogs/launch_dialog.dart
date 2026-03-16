@@ -19,11 +19,10 @@ class LaunchDialog extends StatefulWidget {
 class _LaunchDialogState extends State<LaunchDialog> {
   late String _selectedScript;
   late String _selectedWorld;
-  late bool _covert;
-  late String _selectedRender;
   final _worldNumberController = TextEditingController();
   final _scriptParamsController = TextEditingController();
   final _advancedFlagsController = TextEditingController();
+  final _jvmArgsController = TextEditingController();
 
   @override
   void initState() {
@@ -36,10 +35,9 @@ class _LaunchDialogState extends State<LaunchDialog> {
             : '');
     final w = last?.world ?? 'auto';
     _selectedWorld = const {'auto', 'f2p', 'members'}.contains(w) ? w : 'specific';
-    _covert = last?.covert ?? true;
-    _selectedRender = last?.render ?? 'NONE';
     _scriptParamsController.text = last?.scriptParams ?? '';
     _advancedFlagsController.text = last?.advancedFlags ?? '';
+    _jvmArgsController.text = last?.jvmArgs ?? '';
   }
 
   @override
@@ -47,6 +45,7 @@ class _LaunchDialogState extends State<LaunchDialog> {
     _worldNumberController.dispose();
     _scriptParamsController.dispose();
     _advancedFlagsController.dispose();
+    _jvmArgsController.dispose();
     super.dispose();
   }
 
@@ -66,35 +65,12 @@ class _LaunchDialogState extends State<LaunchDialog> {
             const SizedBox(height: 12),
             _buildWorldSelector(),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text('Covert mode'),
-                const Spacer(),
-                ToggleSwitch(
-                  checked: _covert,
-                  onChanged: (v) => setState(() => _covert = v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Render mode'),
-                const SizedBox(height: 4),
-                ComboBox<String>(
-                  value: _selectedRender,
-                  items: const [
-                    ComboBoxItem(value: 'NONE', child: Text('None')),
-                    ComboBoxItem(value: 'ALL', child: Text('All')),
-                    ComboBoxItem(value: 'GAME', child: Text('Game')),
-                    ComboBoxItem(value: 'SCRIPT', child: Text('Script')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setState(() => _selectedRender = v);
-                  },
-                ),
-              ],
+            InfoLabel(
+              label: 'JVM Arguments',
+              child: TextBox(
+                controller: _jvmArgsController,
+                placeholder: '-Xmx512m (default)',
+              ),
             ),
             const SizedBox(height: 12),
             Column(
@@ -184,10 +160,11 @@ class _LaunchDialogState extends State<LaunchDialog> {
     final config = LaunchConfig(
       scriptName: _selectedScript,
       world: world,
-      covert: _covert,
-      render: _selectedRender,
       scriptParams: _scriptParamsController.text.trim(),
       advancedFlags: _advancedFlagsController.text.trim(),
+      jvmArgs: _jvmArgsController.text.trim().isEmpty
+          ? null
+          : _jvmArgsController.text.trim(),
     );
 
     LaunchDialog._lastConfig = config;
