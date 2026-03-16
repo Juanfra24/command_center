@@ -29,4 +29,7 @@ abstract class AccountRepository {
 
   /// Update a character's banned flag by character ID (not account ID)
   Future<void> updateCharacterBanned(int characterId, bool banned);
+
+  /// Update a character's default script name by character ID
+  Future<void> updateCharacterDefaultScript(int characterId, String? scriptName);
 }

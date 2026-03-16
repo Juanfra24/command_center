@@ -90,6 +90,7 @@ class StatusController extends GetxController {
                         name: c.name,
                         actualSkills: _mapSkills(c.actualSkills),
                         targetSkills: _mapSkills(c.targetSkills),
+                        defaultScriptName: c.defaultScriptName,
                       ))
                   .toList(),
             )
@@ -233,5 +234,10 @@ class StatusController extends GetxController {
     } catch (e) {
       logger.e('Failed to delete account: $e');
     }
+  }
+
+  Future<void> updateDefaultScript(int characterId, String scriptName) async {
+    await _accountRepository?.updateCharacterDefaultScript(characterId, scriptName);
+    await getAccountsData();
   }
 }
