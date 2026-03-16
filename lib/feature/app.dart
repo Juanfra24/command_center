@@ -8,6 +8,7 @@ import 'package:command_center/feature/app/views/sections/settings_section.dart'
 import 'package:command_center/config/theme/fluent_app_theme.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
 import 'package:command_center/core/resource/dependency_injection.dart';
+import 'package:command_center/core/widgets/toast_overlay.dart';
 import 'package:command_center/core/widgets/window_title_bar.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/views/status_screen.dart';
@@ -197,7 +198,7 @@ class _AppState extends State<App> with WindowListener {
             // Main content
             Expanded(
               child: _initialized
-                  ? _buildMainContent(isDark)
+                  ? ToastOverlay(child: _buildMainContent(isDark))
                   : _buildLoadingScreen(),
             ),
           ],

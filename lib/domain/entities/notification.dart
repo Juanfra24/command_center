@@ -8,6 +8,7 @@ enum NotificationType {
   maxRetriesReached,
   clientRelaunched,
   clientFailed,
+  toast, // Toast-originated persistent notifications
 }
 
 enum NotificationSeverity { info, warning, error }
