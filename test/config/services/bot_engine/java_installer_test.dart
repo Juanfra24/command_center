@@ -4,7 +4,7 @@ import 'package:command_center/config/services/bot_engine/java_installer.dart';
 
 void main() {
   group('JavaInstaller', () {
-    test('checkJavaVersion parses version string correctly', () {
+    test('parseJavaMajorVersion parses modern and legacy version strings', () {
       // Java 17 version output: 'openjdk 17.0.9 2023-10-17'
       expect(JavaInstaller.parseJavaMajorVersion('openjdk 17.0.9 2023-10-17'), 17);
       expect(JavaInstaller.parseJavaMajorVersion('openjdk 21.0.1 2023-10-17'), 21);

@@ -1,7 +1,7 @@
 // lib/config/services/bot_engine/java_installer.dart
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/core/helper/logger.dart';
 import 'package:path/path.dart' as p;
 
 /// Downloads and manages Eclipse Temurin JRE 17 for Microbot.
@@ -36,36 +36,43 @@ class JavaInstaller {
 
     final zipPath = p.join(javaDir, 'temurin-jre-17.zip');
 
-    developer.log('Downloading Java 17 JRE from Adoptium...', name: 'JavaInstaller');
+    logger.i('Downloading Java 17 JRE from Adoptium...');
 
     // Download
-    final client = HttpClient();
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(adoptiumDownloadUrl));
       final response = await request.close();
 
-      // Follow redirects are handled automatically by HttpClient
       final totalBytes = response.contentLength;
       var downloadedBytes = 0;
 
       final file = File(zipPath).openWrite();
-      await for (final chunk in response) {
-        file.add(chunk);
-        downloadedBytes += chunk.length;
-        onProgress?.call(downloadedBytes, totalBytes);
+      try {
+        await for (final chunk in response) {
+          file.add(chunk);
+          downloadedBytes += chunk.length;
+          onProgress?.call(downloadedBytes, totalBytes);
+        }
+      } finally {
+        await file.close();
       }
-      await file.close();
     } finally {
       client.close();
     }
 
-    developer.log('Extracting Java JRE...', name: 'JavaInstaller');
+    logger.i('Extracting Java JRE...');
 
     // Extract zip using PowerShell (Windows)
     final extractResult = await Process.run('powershell', [
       '-Command',
       'Expand-Archive -Path "$zipPath" -DestinationPath "$javaDir" -Force',
     ]);
+
+    // Clean up zip regardless of extraction result
+    try {
+      await File(zipPath).delete();
+    } catch (_) {}
 
     if (extractResult.exitCode != 0) {
       throw Exception('Failed to extract Java JRE: ${extractResult.stderr}');
@@ -82,10 +89,7 @@ class JavaInstaller {
     // Store path in config
     await _appConfig.saveMicrobotJavaPath(javaExePath);
 
-    // Clean up zip
-    await File(zipPath).delete();
-
-    developer.log('Java 17 installed at: $javaExePath', name: 'JavaInstaller');
+    logger.i('Java 17 installed at: $javaExePath');
     return javaExePath;
   }
 
