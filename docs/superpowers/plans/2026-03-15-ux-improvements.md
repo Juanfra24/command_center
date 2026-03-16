@@ -264,10 +264,6 @@ git commit -m "feat(entity): add defaultScriptName to CharacterEntity"
 - Modify: `lib/data/repositories/proxy_repository_impl.dart`
 - Test: `test/data/repositories/proxy_repository_impl_test.dart` (update)
 
-- [ ] **Step 0: Remove `abuseConfidence` from ProxyIpAddressEntity**
-
-Now that the repository is being updated in the same commit, remove `abuseConfidence` from `lib/domain/entities/proxy_ip_address.dart`: delete the field, remove it from the constructor, `empty()`, `copyWith()`, and `props`. This keeps the codebase compilable at every commit boundary.
-
 - [ ] **Step 1: Update _mapIpAddressRow (lines 316-347)**
 
 Add new field mappings after the existing fields:
@@ -281,7 +277,7 @@ region: row.region,
 recentAbuse: row.recentAbuse,
 ```
 
-Remove: `abuseConfidence: row.abuseConfidence`
+**Keep `abuseConfidence: row.abuseConfidence` for now** — the entity still has this field. It will be removed in Task 5 alongside the service updates to avoid broken intermediate commits.
 
 - [ ] **Step 2: Update insertIpAddress (lines 193-222)**
 
@@ -296,11 +292,11 @@ region: Value(ip.region),
 recentAbuse: Value(ip.recentAbuse),
 ```
 
-Remove: `abuseConfidence: Value(ip.abuseConfidence)`
+**Keep `abuseConfidence` mapping for now** — removed in Task 5.
 
 - [ ] **Step 3: Update updateIpAddress (lines 225-258)**
 
-Same pattern as insertIpAddress — add new Value() wraps, remove abuseConfidence.
+Same pattern as insertIpAddress — add new Value() wraps, keep abuseConfidence for now.
 
 - [ ] **Step 4: Update existing repository tests**
 
@@ -410,16 +406,30 @@ git commit -m "feat(repo): add defaultScriptName to account repository and chara
 ### Task 5: Update Services (abuseConfidence → recentAbuse, ipScore → fraudScore)
 
 **Files:**
+- Modify: `lib/domain/entities/proxy_ip_address.dart` (remove `abuseConfidence` field)
+- Modify: `lib/data/repositories/proxy_repository_impl.dart` (remove `abuseConfidence` mapping)
 - Modify: `lib/feature/proxy/controller/proxy_scoring_controller.dart`
 - Modify: `lib/config/services/proxy/proxy_auto_rotation_service.dart`
 - Modify: `lib/config/services/proxy/proxy_sync_service.dart`
+- Modify: `lib/config/services/app_config_service.dart` (update threshold default)
+- Modify: `lib/config/services/proxy/scored_ip_result.dart` (add doc comment)
 - Test: Update `test/feature/proxy/controller/proxy_scoring_controller_test.dart`
 - Test: Update `test/config/services/proxy_auto_rotation_service_test.dart`
 - Test: Update `test/config/services/proxy_sync_service_test.dart`
 
+- [ ] **Step 0: Remove `abuseConfidence` from entity and repository atomically**
+
+Now that ALL service consumers are being updated in the same commit:
+
+In `lib/domain/entities/proxy_ip_address.dart`: remove `abuseConfidence` field, constructor param, `empty()`, `copyWith()`, and `props`.
+
+In `lib/data/repositories/proxy_repository_impl.dart`: remove `abuseConfidence: row.abuseConfidence` from `_mapIpAddressRow()`, `abuseConfidence: Value(ip.abuseConfidence)` from `insertIpAddress()` and `updateIpAddress()`.
+
 - [ ] **Step 1: Update ProxyScoringController.scoreIpWithIpqs()**
 
-In `lib/feature/proxy/controller/proxy_scoring_controller.dart`, update the `copyWith` block (around lines 140-152):
+In `lib/feature/proxy/controller/proxy_scoring_controller.dart`, update the `copyWith` block (around lines 139-152):
+
+Replace `final newScore = result.normalizedScore;` (line 139) with `final newScore = result.fraudScore;` — this is the raw IPQS fraud score (0-100, lower is better).
 
 Replace:
 ```dart
@@ -434,6 +444,8 @@ isp: result.isp,
 organization: result.organization,
 region: result.region,
 ```
+
+Also at line 142, keep `ipScore: newScore` for backward compat (the DB column still exists), but now `newScore` is `result.fraudScore` not `result.normalizedScore`. The `fraudScore` field on the entity will be set automatically via `copyWith` since it comes from the `IpqsResult`.
 
 - [ ] **Step 2: Rename `averageIpScore` → `averageFraudScore` and update `_recalculateStats()`**
 
@@ -453,7 +465,9 @@ Update format string to show fraud score.
 
 Also update `scoreAllCurrentIps()` (around lines 233-243): the `ScoredIpResult` constructed there uses `score: currentIp.ipScore`. Change to `score: currentIp.fraudScore`. The auto-rotation threshold comparison in `_processResults()` already uses `score < threshold`, so update it to `score > threshold` (since higher fraud score = worse). The `autoRotationThreshold` config value semantics flip: it now represents the fraud score above which rotation triggers (e.g., 60 instead of 50).
 
-**Important:** Also update the default value for `autoRotationThreshold` in `AppConfigService`. The old default was 50 (normalized score below which rotation triggers). The new default should be 60 (fraud score above which rotation triggers). Check `app_config_service.dart` for the default constant and update it. Users who already have a stored threshold of 50 will get equivalent behavior since the comparison operator also flips.
+**Important:** Also update the default value for `autoRotationThreshold` in `AppConfigService` (line 32, current default is `40`). Change the default from 40 to 60 (fraud score above which rotation triggers). Users who have a persisted value of 40 in the DB will now auto-rotate IPs with fraud score > 40, which is more aggressive than the old behavior. Consider adding a one-time migration in `loadConfig()` that detects a stored value of 40 and upgrades it to 60, OR document this behavioral change and let users adjust manually.
+
+Also document the semantics change in `ScoredIpResult.score` at `lib/config/services/proxy/scored_ip_result.dart`: add a doc comment clarifying it now represents the raw IPQS fraud score (0-100, lower is better) instead of the old normalized score.
 
 - [ ] **Step 4: Update ProxyAutoRotationService**
 
@@ -479,7 +493,18 @@ Lines 63-66 — invert threshold comparison:
 // Now: r.score > threshold (where score is raw fraudScore, higher = worse)
 ```
 
-Line 122 — remove `ProxyIpAddressEntity.getScoreLevel(newScore)` usage, use `getFraudScoreLabel()` if needed.
+Line 118 — change `final newScore = scoreResult.normalizedScore;` to `final newScore = scoreResult.fraudScore;` — so the threshold comparison uses raw fraud score.
+
+Line 121 — change `ipScore: newScore,` to keep backward compat, but since `newScore` is now `fraudScore`, also add `fraudScore: newScore,` if the entity has a separate field. Check entity structure.
+
+Line 122 — remove `ProxyIpAddressEntity.getScoreLevel(newScore)` usage, use `getFraudScoreLabel(newScore)` if needed.
+
+**Line 133** — ALSO invert this threshold comparison:
+```dart
+// Was: if (newScore < threshold) { // "New IP Below Threshold" notification
+// Now: if (newScore > threshold) { // "New IP Above Fraud Threshold" notification
+```
+Update the notification message text to say "above fraud threshold" instead of "below threshold".
 
 - [ ] **Step 5: Update ProxySyncService**
 
@@ -504,8 +529,8 @@ Expected: All tests PASS
 - [ ] **Step 8: Commit**
 
 ```bash
-git add lib/feature/proxy/controller/proxy_scoring_controller.dart lib/config/services/proxy/ test/
-git commit -m "refactor: migrate abuseConfidence→recentAbuse, ipScore→fraudScore in services"
+git add lib/domain/entities/proxy_ip_address.dart lib/data/repositories/proxy_repository_impl.dart lib/feature/proxy/controller/proxy_scoring_controller.dart lib/config/services/proxy/ lib/config/services/app_config_service.dart test/
+git commit -m "refactor: migrate abuseConfidence→recentAbuse, ipScore→fraudScore across services and entity"
 ```
 
 ---
@@ -642,7 +667,7 @@ Future<void> showToast({
   if (severity == ToastSeverity.error ||
       severity == ToastSeverity.warning) {
     await createNotification(
-      type: NotificationType.system,
+      type: NotificationType.toast,
       severity: severity == ToastSeverity.error
           ? NotificationSeverity.error
           : NotificationSeverity.warning,
@@ -652,6 +677,13 @@ Future<void> showToast({
   }
 }
 ```
+
+**Note:** `NotificationType.toast` does not exist yet. Add it to `lib/domain/entities/notification.dart`:
+```dart
+// Add to NotificationType enum:
+toast,  // Toast-originated persistent notifications
+```
+No DB migration needed — notification types are stored as `e.name` strings.
 
 **Note on StreamController lifecycle:** `NotificationService` is a permanent `GetxService` (registered with `permanent: true`). Its `onClose()` is never called by GetX. The broadcast StreamController will be reclaimed by the OS on app exit. Do NOT add an `onClose()` override — it would be dead code. If explicit cleanup is ever needed, call `dispose()` from `App.onWindowClose()` instead.
 
@@ -811,13 +843,14 @@ class _ToastOverlayState extends State<ToastOverlay> {
 
     // Auto-dismiss non-errors after 5s
     if (toast.severity != ToastSeverity.error) {
-      Future.delayed(const Duration(seconds: 5), () {
+      active.autoRemoveTimer = Timer(const Duration(seconds: 5), () {
         _dismiss(active);
       });
     }
   }
 
   void _dismiss(_ActiveToast active) {
+    active.autoRemoveTimer?.cancel();
     if (mounted && _toasts.contains(active)) {
       setState(() => _toasts.remove(active));
     }
@@ -859,6 +892,7 @@ class _ToastOverlayState extends State<ToastOverlay> {
 
 class _ActiveToast {
   final ToastData toast;
+  Timer? autoRemoveTimer;
   _ActiveToast({required this.toast});
 }
 ```
@@ -946,6 +980,10 @@ void main() {
       await tester.tap(find.text('Score IP'));
       await tester.pump();
       expect(find.text('Scoring...'), findsOneWidget);
+
+      // Advance past loading + success states to avoid pending timer warnings
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 3));
     });
   });
 }
@@ -1194,6 +1232,8 @@ git commit -m "feat: add SelectionToolbar widget for multi-select tables"
 **Files:**
 - Create: `lib/core/widgets/collapsible_section.dart`
 
+**Note:** Fluent UI has a built-in `Expander` widget with native styling, animation, keyboard support, and accessibility. `CollapsibleSection` wraps `Expander` with a consistent badge slot pattern used across the app, rather than reimplementing expand/collapse from scratch.
+
 - [ ] **Step 1: Create CollapsibleSection**
 
 Create `lib/core/widgets/collapsible_section.dart`:
@@ -1201,7 +1241,9 @@ Create `lib/core/widgets/collapsible_section.dart`:
 ```dart
 import 'package:fluent_ui/fluent_ui.dart';
 
-class CollapsibleSection extends StatefulWidget {
+/// Thin wrapper around Fluent UI's [Expander] with a consistent badge slot.
+/// Uses the native Expander for styling, animation, keyboard, and accessibility.
+class CollapsibleSection extends StatelessWidget {
   final String title;
   final Widget? badge;
   final Widget content;
@@ -1216,75 +1258,19 @@ class CollapsibleSection extends StatefulWidget {
   });
 
   @override
-  State<CollapsibleSection> createState() => _CollapsibleSectionState();
-}
-
-class _CollapsibleSectionState extends State<CollapsibleSection> {
-  late bool _expanded;
-
-  @override
-  void initState() {
-    super.initState();
-    _expanded = widget.initiallyExpanded;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-
-    return Card(
-      padding: EdgeInsets.zero,
-      child: Column(
+    return Expander(
+      header: Row(
         children: [
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                border: _expanded
-                    ? Border(
-                        bottom: BorderSide(
-                          color: theme.resources.dividerStrokeColorDefault,
-                        ),
-                      )
-                    : null,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _expanded
-                        ? FluentIcons.chevron_down
-                        : FluentIcons.chevron_right,
-                    size: 10,
-                    color: theme.resources.textFillColorSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.title,
-                    style: theme.typography.bodyStrong,
-                  ),
-                  const Spacer(),
-                  if (widget.badge != null) widget.badge!,
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.all(16),
-              child: widget.content,
-            ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
-          ),
+          Text(title),
+          if (badge != null) ...[
+            const Spacer(),
+            badge!,
+          ],
         ],
       ),
+      content: content,
+      initiallyExpanded: initiallyExpanded,
     );
   }
 }
@@ -1633,6 +1619,8 @@ Create `lib/feature/proxy/views/components/linked_characters_section.dart`:
 
 A simple widget that takes a `List<CharacterEntity>` and displays each character's name, status (from WatchdogService), and default script. Each row is clickable (calls `onNavigateToCharacter` callback).
 
+**Data source:** The character list should be fetched in `ProxyController` (not in the widget) using `AccountRepository.getAccountsByProxySlot(slotId)` (exists at `account_repository.dart` line 28), then flattened via `accounts.expand((a) => a.characters).toList()`. Add an observable `linkedCharacters` to `ProxyController` that updates when the selected slot changes.
+
 - [ ] **Step 3: Rewrite proxy_detail_section.dart with collapsible layout**
 
 Replace the current `SingleChildScrollView > Column` layout with:
@@ -1699,9 +1687,11 @@ void main() {
       expect(controller.selectedIds, isEmpty);
     });
 
-    test('selectAll sets all provided IDs', () {
+    test('selectAll replaces with provided IDs (no duplicates)', () {
       controller.selectAll([1, 2, 3]);
       expect(controller.selectedIds.length, 3);
+      controller.selectAll([1, 2, 3, 4]); // replaces, not appends
+      expect(controller.selectedIds.length, 4);
     });
 
     test('clearSelection empties selection', () {
@@ -1747,7 +1737,8 @@ Create `lib/feature/Status/controller/status_selection_controller.dart`:
 import 'package:get/get.dart';
 
 class StatusSelectionController extends GetxController {
-  final selectedIds = <int>{}.obs;
+  // GetX has no RxSet — use RxList with deduplication guards
+  final selectedIds = <int>[].obs;
   final searchQuery = ''.obs;
   final statusFilter = 'all'.obs;
   final scriptFilter = 'all'.obs;
@@ -1763,6 +1754,7 @@ class StatusSelectionController extends GetxController {
   }
 
   void selectAll(List<int> ids) {
+    selectedIds.clear();
     selectedIds.addAll(ids);
   }
 
@@ -1812,7 +1804,7 @@ git commit -m "feat: add StatusSelectionController for multi-select and filterin
 Create `lib/feature/Status/views/components/search_filter_bar.dart`:
 
 A row with:
-- TextBox (search, 300px max-width, debounced 300ms via `debounce()` worker on `searchQuery`)
+- TextBox (search, 300px max-width, debounced 300ms using the existing `Debouncer` utility at `lib/core/helper/debouncer.dart` — same pattern as `proxy_list_section.dart`)
 - ComboBox for status filter (All / Running / Stopped / Banned / Awaiting)
 - ComboBox for script filter (All / list of script names from AppConfigService.scriptRegistry)
 - "Showing X of Y" text aligned right
@@ -1936,6 +1928,8 @@ Same for "Stop All".
 
 - [ ] **Step 4: Update status_screen.dart with SearchFilterBar + SelectionToolbar + BulkStart flow**
 
+**Layout note:** The current `status_screen.dart` uses `SingleChildScrollView > Column` with an `Expanded` child (`AccountListSection`). `Expanded` inside `SingleChildScrollView` is invalid (unbounded height). Since the table has its own internal scroll (`ListView.builder`), remove the `SingleChildScrollView` wrapper and use a `Column` with `Expanded` directly. The search bar and toolbar go above as fixed-height children, and the table fills remaining space via `Expanded`.
+
 Add `SearchFilterBar` between the PageHeader and the table.
 
 Add conditional rendering: `Obx(() => selectionController.hasSelection ? SelectionToolbar(...) : BotFarmSummaryBar(...))`.
@@ -2039,6 +2033,11 @@ class MainMenuController extends GetxController {
   }
 
   // ... tile/health computation methods — use null-aware access on controllers
+
+  // NOTE: Uptime values in BotTileData become stale after computation since
+  // trackedClients only fires on status changes, not on time passing.
+  // Accept stale uptime display (updates on next status change) or add
+  // a periodic 60s timer to refresh tiles if precise uptime is important.
 }
 ```
 
@@ -2094,7 +2093,7 @@ Future<void> stopAll() async {
 Future<void> scoreAllIps() async {
   isScoringAll.value = true;
   try {
-    await Get.find<ProxyScoringController>().scoreAllCurrentIps();
+    await _scoringController?.scoreAllCurrentIps();
   } finally {
     isScoringAll.value = false;
   }
@@ -2103,7 +2102,7 @@ Future<void> scoreAllIps() async {
 Future<void> syncProxies() async {
   isSyncing.value = true;
   try {
-    await Get.find<ProxyController>().syncWithWebshare();
+    await _proxyController?.syncWithWebshare();
   } finally {
     isSyncing.value = false;
   }
@@ -2222,7 +2221,7 @@ class MainMenuScreen extends GetView<MainMenuController> {
 
 - [ ] **Step 2: Update MainMenuScreen call sites**
 
-In `lib/feature/app.dart` (around lines 290-295), update the `MainMenuScreen()` instantiation to remove the old controller params (`statusController`, `proxyController`, `proxyScoringController`) since the new screen reads them via `Get.find()` internally. Keep only `onNavigateToIndex`.
+In `lib/feature/app.dart` (around lines 290-295), update the `MainMenuScreen()` instantiation to remove the old controller params (`statusController`, `proxyController`, `proxyScoringController`) since the new screen reads them via `Get.find()` internally. Keep only `onNavigateToIndex`. **Do NOT remove the `_statusController`, `_proxyController`, `_proxyScoringController` fields from `app.dart`** — they are still used by other screens.
 
 Also update `lib/config/routes/app_routes.dart` (line 18): `MainMenuScreen()` is called with no args there. Since `onNavigateToIndex` is optional, it will still compile. However, quick action clicks would not navigate. Either pass a valid callback or remove `MainMenuScreen` from `app_routes.dart` if navigation is fully handled by `app.dart`'s `NavigationPane` (which it is).
 
@@ -2266,10 +2265,16 @@ Test each feature:
 - Toast notifications appear on actions (score IP, replace proxy, etc.)
 - LoadingButtons show correct states
 
-- [ ] **Step 3: Verify no dead imports**
+- [ ] **Step 3: Verify no dead imports and consistency**
 
 Run: `dart analyze`
 Fix any warnings about unused imports from deleted files.
+
+Also verify:
+- `ip_score_indicator.dart`'s `getScoreColor` uses `fraudScore` ranges (updated in Task 6 Step 2)
+- `proxy_list_section.dart` references `averageFraudScore` (renamed in Task 5 Step 2)
+- `proxy_screen.dart` compiles with updated controller API
+- `IpqsApiClient.qualityRating` getter (line 79) uses different thresholds than `getFraudScoreLabel` — document this inconsistency with a `// TODO:` or align them
 
 - [ ] **Step 4: Final commit**
 
