@@ -1,11 +1,13 @@
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
+import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
+import 'package:command_center/feature/Status/views/components/account_table_cells.dart';
 import 'package:command_center/feature/Status/views/components/bot_status_badge.dart';
-import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
-import 'package:command_center/feature/Status/views/dialogs/launch_dialog.dart';
+import 'package:command_center/feature/Status/views/components/script_chip.dart';
+import 'package:command_center/feature/Status/views/components/script_picker_flyout.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
@@ -22,23 +24,21 @@ class AccountListSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Account List',
-            style: theme.typography.subtitle,
-          ),
+          Text('Account List', style: theme.typography.subtitle),
           const SizedBox(height: 16),
-          Expanded(
-            child: _buildAccountsTable(context),
-          ),
+          Expanded(child: _buildAccountsTable(context)),
         ],
       ),
     );
   }
 
-  Widget _buildAccountsTable(BuildContext context) {
-    final theme = FluentTheme.of(context);
+  List<_AccountRow> _buildFilteredRows() {
+    final selectionCtrl = Get.find<StatusSelectionController>();
+    final watchdog = Get.find<WatchdogService>();
+    final query = selectionCtrl.searchQuery.value.toLowerCase();
+    final statusF = selectionCtrl.statusFilter.value;
+    final scriptF = selectionCtrl.scriptFilter.value;
 
-    // Flatten accounts into displayable rows
     final rows = <_AccountRow>[];
     for (final account in controller.accountList) {
       if (account.characters.isEmpty) {
@@ -50,243 +50,201 @@ class AccountListSection extends StatelessWidget {
       }
     }
 
+    return rows.where((row) {
+      // Search filter
+      if (query.isNotEmpty) {
+        final match = row.account.accountName.toLowerCase().contains(query) ||
+            row.account.email.toLowerCase().contains(query) ||
+            (row.character?.name.toLowerCase().contains(query) ?? false);
+        if (!match) return false;
+      }
+      // Status filter
+      if (statusF != 'all' && row.character != null) {
+        final tracked = watchdog.trackedClients[row.character!.name];
+        final status = tracked?.status;
+        switch (statusF) {
+          case 'running':
+            if (status != ClientStatus.running) return false;
+          case 'stopped':
+            if (status != null && status != ClientStatus.stopped) return false;
+          case 'banned':
+            if (status != ClientStatus.banned && !row.character!.banned) {
+              return false;
+            }
+        }
+      }
+      // Script filter
+      if (scriptF != 'all') {
+        if (row.character?.defaultScriptName != scriptF) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  Widget _buildAccountsTable(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final selectionCtrl = Get.find<StatusSelectionController>();
+
     const columns = [
-      'Account Name',
-      'Email',
-      'Password',
+      '',            // Checkbox
+      'Account',
+      'Credentials',
       'Character',
+      'Script',
       'Proxy',
       'Status',
       'Actions',
     ];
+    const flexes = [1, 3, 4, 3, 3, 3, 3, 2];
 
-    return Column(
-      children: [
-        // Fixed header
-        Container(
-          decoration: BoxDecoration(
-            color: theme.accentColor.withValues(alpha: 0.1),
-            border: Border.all(
-              color: theme.resources.dividerStrokeColorDefault,
+    return Obx(() {
+      final rows = _buildFilteredRows();
+
+      return Column(
+        children: [
+          // Fixed header
+          Container(
+            decoration: BoxDecoration(
+              color: theme.accentColor.withValues(alpha: 0.1),
+              border: Border.all(
+                color: theme.resources.dividerStrokeColorDefault,
+              ),
+            ),
+            child: Row(
+              children: [
+                for (int i = 0; i < columns.length; i++)
+                  Expanded(
+                    flex: flexes[i],
+                    child: _buildTableHeader(columns[i]),
+                  ),
+              ],
             ),
           ),
-          child: Row(
-            children: columns
-                .map((c) => Expanded(child: _buildTableHeader(c)))
-                .toList(),
-          ),
-        ),
-        // Virtualized rows
-        Expanded(
-          child: ListView.builder(
-            itemCount: rows.length,
-            itemBuilder: (context, index) {
-              final row = rows[index];
-              return Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: theme.resources.dividerStrokeColorDefault,
-                      width: 0.5,
+          // Virtualized rows
+          Expanded(
+            child: ListView.builder(
+              itemCount: rows.length,
+              itemBuilder: (context, index) {
+                final row = rows[index];
+                final isBanned = row.character?.banned == true;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isBanned
+                        ? Colors.red.withValues(alpha: 0.06)
+                        : null,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: theme.resources.dividerStrokeColorDefault,
+                        width: 0.5,
+                      ),
                     ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: _buildTableCell(row.account.accountName)),
-                    Expanded(
-                      child: _buildTableCellWithCopy(
-                        context,
-                        row.account.email,
+                  child: Row(
+                    children: [
+                      // Checkbox
+                      Expanded(
+                        flex: flexes[0],
+                        child: row.character != null
+                            ? Obx(() => Checkbox(
+                                  checked: selectionCtrl
+                                      .isSelected(row.character!.id!),
+                                  onChanged: (_) => selectionCtrl
+                                      .toggleSelection(row.character!.id!),
+                                ))
+                            : const SizedBox.shrink(),
                       ),
-                    ),
-                    Expanded(
-                      child: _buildTableCellWithCopy(
-                        context,
-                        row.account.password,
+                      // Account
+                      Expanded(
+                        flex: flexes[1],
+                        child: _buildTableCell(row.account.accountName),
                       ),
-                    ),
-                    Expanded(
-                      child: _buildTableCell(
-                        row.character?.name ?? '\u2014',
+                      // Credentials
+                      Expanded(
+                        flex: flexes[2],
+                        child: CredentialsCell(
+                          email: row.account.email,
+                          password: row.account.password,
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: _buildTableCell(row.account.proxyAddress),
-                    ),
-                    Expanded(
-                      child: Obx(() {
-                        final trackedReactive = Get.find<WatchdogService>()
-                            .trackedClients[row.character?.name];
-                        return BotStatusBadge(
-                          status: trackedReactive?.status,
-                          retryCount: trackedReactive?.retryCount ?? 0,
-                        );
-                      }),
-                    ),
-                    Expanded(
-                      child: row.character != null
-                          ? Obx(() {
-                              final tracked = Get.find<WatchdogService>()
-                                  .trackedClients[row.character?.name];
-                              final isRunning = tracked != null &&
-                                  tracked.status == ClientStatus.running;
-                              return _buildActionsCell(
-                                context,
-                                row.account,
-                                row.character!,
-                                isRunning,
-                              );
-                            })
-                          : _buildEmptyAccountActions(context, row.account),
-                    ),
-                  ],
-                ),
-              );
-            },
+                      // Character
+                      Expanded(
+                        flex: flexes[3],
+                        child: _buildTableCell(
+                            row.character?.name ?? '\u2014'),
+                      ),
+                      // Script
+                      Expanded(
+                        flex: flexes[4],
+                        child: _buildScriptCell(row.character),
+                      ),
+                      // Proxy
+                      Expanded(
+                        flex: flexes[5],
+                        child: ProxyCell(
+                            proxyAddress: row.account.proxyAddress),
+                      ),
+                      // Status
+                      Expanded(
+                        flex: flexes[6],
+                        child: Obx(() {
+                          final tracked = Get.find<WatchdogService>()
+                              .trackedClients[row.character?.name];
+                          return BotStatusBadge(
+                            status: tracked?.status,
+                            retryCount: tracked?.retryCount ?? 0,
+                          );
+                        }),
+                      ),
+                      // Actions
+                      Expanded(
+                        flex: flexes[7],
+                        child: ActionsCell(
+                          controller: controller,
+                          account: row.account,
+                          character: row.character,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildScriptCell(Character? character) {
+    if (character == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: ScriptPickerFlyout(
+        currentScript: character.defaultScriptName ?? '',
+        onScriptSelected: (scriptName) {
+          if (character.id != null) {
+            controller.updateDefaultScript(character.id!, scriptName);
+          }
+        },
+        child: ScriptChip(
+          scriptName: character.defaultScriptName,
+          banned: character.banned,
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildTableHeader(String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
     );
   }
 
   Widget _buildTableCell(String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(text),
-    );
-  }
-
-  Widget _buildTableCellWithCopy(BuildContext context, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(text),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(FluentIcons.copy, size: 14),
-            onPressed: () => _copyToClipboard(context, text),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyAccountActions(BuildContext context, JagexAccount account) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Tooltip(
-            message: 'Create Character',
-            child: IconButton(
-              icon: Icon(FluentIcons.add, color: Colors.green),
-              onPressed: () => CreateCharacterDialog.show(context),
-            ),
-          ),
-          if (account.id != null)
-            Tooltip(
-              message: 'Delete Account',
-              child: IconButton(
-                icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => ContentDialog(
-                      title: const Text('Delete Account'),
-                      content: Text(
-                        'Delete "${account.email}"? This cannot be undone.',
-                      ),
-                      actions: [
-                        Button(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true) {
-                    await controller.deleteAccount(account.id!);
-                  }
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionsCell(
-    BuildContext context,
-    JagexAccount account,
-    Character character,
-    bool isRunning,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isRunning)
-            Tooltip(
-              message: 'Stop',
-              child: IconButton(
-                icon: Icon(FluentIcons.stop, color: Colors.red),
-                onPressed: () async {
-                  await controller.stopCharacter(character.name);
-                },
-              ),
-            )
-          else
-            Tooltip(
-              message: 'Start',
-              child: IconButton(
-                icon: Icon(FluentIcons.play, color: Colors.green),
-                onPressed: () async {
-                  final config = await LaunchDialog.show(context);
-                  if (config != null) {
-                    await controller.launchCharacter(account, character, config);
-                  }
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _copyToClipboard(BuildContext context, String text) {
-    controller.copyToClipboard(text, context);
-    displayInfoBar(
-      context,
-      builder: (context, close) {
-        return InfoBar(
-          title: const Text('Copied!'),
-          content: const Text('Text copied to clipboard'),
-          severity: InfoBarSeverity.success,
-          action: IconButton(
-            icon: const Icon(FluentIcons.clear),
-            onPressed: close,
-          ),
-        );
-      },
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Text(text, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
     );
   }
 }
@@ -294,6 +252,5 @@ class AccountListSection extends StatelessWidget {
 class _AccountRow {
   final JagexAccount account;
   final Character? character;
-
   const _AccountRow({required this.account, this.character});
 }

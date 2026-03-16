@@ -240,4 +240,42 @@ class StatusController extends GetxController {
     await _accountRepository?.updateCharacterDefaultScript(characterId, scriptName);
     await getAccountsData();
   }
+
+  /// Returns (withScripts, withoutScripts) counts for the given character IDs.
+  ({int withScripts, int withoutScripts}) getBulkLaunchReadiness([
+    Set<int>? characterIds,
+  ]) {
+    int withScripts = 0;
+    int withoutScripts = 0;
+    for (final account in accountList) {
+      for (final character in account.characters) {
+        if (characterIds != null && !characterIds.contains(character.id)) {
+          continue;
+        }
+        if (character.defaultScriptName != null) {
+          withScripts++;
+        } else {
+          withoutScripts++;
+        }
+      }
+    }
+    return (withScripts: withScripts, withoutScripts: withoutScripts);
+  }
+
+  /// Launches characters that have default scripts assigned.
+  Future<int> launchWithDefaultScripts([Set<int>? characterIds]) async {
+    int count = 0;
+    for (final account in accountList) {
+      for (final character in account.characters) {
+        if (characterIds != null && !characterIds.contains(character.id)) {
+          continue;
+        }
+        if (character.defaultScriptName == null) continue;
+        final config = LaunchConfig(scriptName: character.defaultScriptName!);
+        await launchCharacter(account, character, config);
+        count++;
+      }
+    }
+    return count;
+  }
 }
