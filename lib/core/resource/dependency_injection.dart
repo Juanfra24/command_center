@@ -1,5 +1,11 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/bot_engine/java_installer.dart';
+import 'package:command_center/config/services/bot_engine/microbot_jar_downloader.dart';
+import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
+import 'package:command_center/config/services/bot_engine/bot_engine.dart';
+import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
@@ -10,6 +16,7 @@ import 'package:command_center/config/services/proxy/proxy_sync_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
+import 'package:command_center/core/helper/app_data_path.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
@@ -32,6 +39,7 @@ class AppBindings extends Bindings {
     _initialized = true;
 
     // Synchronous services first
+    Get.put<AppDataPath>(AppDataPath(), permanent: true);
     Get.put<MusicController>(MusicController(), permanent: true);
     Get.put<NativeCommandsService>(NativeCommandsService(), permanent: true);
 
@@ -111,8 +119,6 @@ class AppBindings extends Bindings {
     // 5. PythonSetupService (check and install Python dependencies)
     final pythonSetupService = PythonSetupService();
     Get.put<PythonSetupService>(pythonSetupService, permanent: true);
-    // Run setup in background (non-blocking)
-    pythonSetupService.initializeSetup();
 
     // 6. AutomationService (depends on Python setup)
     Get.put<AutomationService>(AutomationService(), permanent: true);
@@ -126,15 +132,50 @@ class AppBindings extends Bindings {
     await notificationService.init();
     Get.put<NotificationService>(notificationService, permanent: true);
 
-    // 9. WatchdogService (depends on NotificationService, DatabaseService)
+    // 9. MicrobotSetupService (orchestrates dependency downloads)
+    final appDataPath = Get.find<AppDataPath>();
+    final basePath = await appDataPath.basePath;
+    final javaInstaller = JavaInstaller(appConfig: appConfigService, basePath: basePath);
+    final jarDownloader = MicrobotJarDownloader(appConfig: appConfigService, basePath: basePath);
+    Get.put<MicrobotSetupService>(
+      MicrobotSetupService(
+        pythonSetup: pythonSetupService,
+        javaInstaller: javaInstaller,
+        jarDownloader: jarDownloader,
+      ),
+      permanent: true,
+    );
+
+    // NOTE: WatchdogService moved to initializePostSetup() — it depends on
+    // BotEngine which requires MicrobotSetupService to download dependencies first.
+  }
+
+  /// Phase 2b: Register BotEngine + WatchdogService.
+  /// Called AFTER MicrobotSetupService.ensureDependencies() downloads Java/JAR.
+  static Future<void> initializePostSetup() async {
+    final appDataPath = Get.find<AppDataPath>();
+    final basePath = await appDataPath.basePath;
+    final appConfig = Get.find<AppConfigService>();
+    final javaPath = await appConfig.getMicrobotJavaPath() ?? 'java';
+    final jarPath = await appConfig.getMicrobotJarPath() ?? '';
+
+    final microbotEngine = MicrobotEngine(
+      javaPath: javaPath,
+      jarPath: jarPath,
+      profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
+      nativeCommands: Get.find<NativeCommandsService>(),
+      onLog: (msg) => logger.i(msg),
+    );
+    Get.put<BotEngine>(microbotEngine, permanent: true);
+
+    // WatchdogService (depends on BotEngine, NotificationService, DatabaseService)
     // Eager init triggers startup recapture scan via onInit().
-    // Get.find<ProxyAutoRotationService> triggers its lazyPut factory, which
-    // chains through ProxyReplacementService → ProxySyncService → WebshareService
-    // + DatabaseService — all already registered in dependencies().
+    final databaseService = Get.find<DatabaseService>();
     Get.put<WatchdogService>(
       WatchdogService(
         nativeCommandsService: Get.find<NativeCommandsService>(),
-        notificationService: notificationService,
+        botEngine: Get.find<BotEngine>(),
+        notificationService: Get.find<NotificationService>(),
         autoRotationService: Get.find<ProxyAutoRotationService>(),
         accountRepository: databaseService.accountRepository,
         proxyRepository: databaseService.proxyRepository,

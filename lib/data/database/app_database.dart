@@ -27,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -97,6 +97,9 @@ class AppDatabase extends _$AppDatabase {
             charactersTable,
             charactersTable.defaultScriptName,
           );
+        }
+        if (from < 6) {
+          await m.addColumn(proxySlotsTable, proxySlotsTable.socksPort);
         }
       },
       beforeOpen: (details) async {

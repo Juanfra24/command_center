@@ -1,3 +1,5 @@
+import 'package:command_center/config/services/bot_engine/bot_engine.dart';
+import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
@@ -5,6 +7,7 @@ import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/proxy_url_builder.dart';
 import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
@@ -15,6 +18,7 @@ import 'package:get/get.dart';
 /// PID discovery, and startup recapture.
 /// Extracted from WatchdogService to respect the 250-line service ceiling.
 class WatchdogHandlers {
+  final BotEngine _botEngine;
   final NativeCommandsService _nativeCommandsService;
   final NotificationService _notificationService;
   final ProxyAutoRotationService _autoRotationService;
@@ -22,12 +26,14 @@ class WatchdogHandlers {
   final ProxyRepository _proxyRepository;
 
   WatchdogHandlers({
+    required BotEngine botEngine,
     required NativeCommandsService nativeCommandsService,
     required NotificationService notificationService,
     required ProxyAutoRotationService autoRotationService,
     required AccountRepository accountRepository,
     required ProxyRepository proxyRepository,
-  })  : _nativeCommandsService = nativeCommandsService,
+  })  : _botEngine = botEngine,
+        _nativeCommandsService = nativeCommandsService,
         _notificationService = notificationService,
         _autoRotationService = autoRotationService,
         _accountRepository = accountRepository,
@@ -82,7 +88,7 @@ class WatchdogHandlers {
       return true;
     }
 
-    // Check cooldown: 30s × 2^retryCount, capped at 5 min
+    // Check cooldown: 30s x 2^retryCount, capped at 5 min
     final cooldown = Duration(
       seconds: (30 * (1 << client.retryCount))
           .clamp(30, WatchdogService.maxCooldownSeconds),
@@ -93,15 +99,13 @@ class WatchdogHandlers {
     }
 
     try {
-      final pid = await _nativeCommandsService.runGameClient(
+      final pid = await _botEngine.launch(
+        characterId: client.characterId,
         characterName: client.characterName,
-        proxyAddress: client.proxyAddress,
-        scriptName: client.launchConfig.scriptName,
-        world: client.launchConfig.world,
-        covert: client.launchConfig.covert,
-        render: client.launchConfig.render,
-        scriptParams: client.launchConfig.scriptParams,
-        advancedFlags: client.launchConfig.advancedFlags,
+        email: client.email,
+        password: client.password,
+        proxyUrl: client.proxyUrl,
+        config: client.launchConfig,
       );
       client.retryCount++;
       client.pid = pid;
@@ -123,14 +127,11 @@ class WatchdogHandlers {
     }
   }
 
-  /// Match a tracked client to a live process by character name in command line.
+  /// Match a tracked client to a live process by characterId in command line.
   int? discoverPid(TrackedClient client, List<ProcessClient> liveProcesses) {
+    final profileArg = '--profile=bot-${client.characterId}';
     for (final process in liveProcesses) {
-      if (process.commandLine.contains('-account "${client.characterName}"') ||
-          process.commandLine
-              .contains("-account '${client.characterName}'") ||
-          process.commandLine
-              .contains('-account ${client.characterName}')) {
+      if (process.commandLine.contains(profileArg)) {
         return process.processId;
       }
     }
@@ -144,14 +145,17 @@ class WatchdogHandlers {
       final processes = await _nativeCommandsService.listJavaProcesses();
       final accounts = await _accountRepository.getAllAccounts();
 
-      final characterLookup =
-          <String, ({int characterId, int accountId, int? proxySlotId})>{};
+      // Build lookup: characterId -> (name, accountId, email, password, proxySlotId)
+      final characterLookup = <int,
+          ({String name, int accountId, String email, String password, int? proxySlotId})>{};
       for (final account in accounts) {
         for (final character in account.characters) {
           if (character.id != null) {
-            characterLookup[character.name] = (
-              characterId: character.id!,
+            characterLookup[character.id!] = (
+              name: character.name,
               accountId: account.id!,
+              email: account.email,
+              password: account.password,
               proxySlotId: account.proxySlotId,
             );
           }
@@ -159,36 +163,53 @@ class WatchdogHandlers {
       }
 
       int recaptured = 0;
-      final accountRegex = RegExp(r'-account "([^"]+)"');
-      final scriptRegex = RegExp(r'-script "([^"]+)"');
+      final recapturedCharacterIds = <int>{};
+      final profileRegex = RegExp(r'--profile=bot-(\d+)');
 
       for (final process in processes) {
-        final accountMatch = accountRegex.firstMatch(process.commandLine);
-        if (accountMatch == null) continue;
+        final profileMatch = profileRegex.firstMatch(process.commandLine);
+        if (profileMatch == null) continue;
 
-        final charName = accountMatch.group(1)!;
-        final info = characterLookup[charName];
-        if (info == null) continue;
+        final characterId = int.parse(profileMatch.group(1)!);
+        final info = characterLookup[characterId];
+        if (info == null) {
+          logger.w('Orphaned Microbot process (PID: ${process.processId}, '
+              'characterId: $characterId) — no DB match, skipping');
+          continue;
+        }
 
-        final scriptMatch = scriptRegex.firstMatch(process.commandLine);
-        final scriptName = scriptMatch?.group(1) ?? 'Unknown';
+        // Reconstruct proxyUrl if proxy is assigned
+        String? proxyUrl;
+        if (info.proxySlotId != null) {
+          proxyUrl = await _buildProxyUrl(info.proxySlotId!);
+        }
 
-        trackedClients[charName] = TrackedClient(
-          characterName: charName,
-          characterId: info.characterId,
+        trackedClients[info.name] = TrackedClient(
+          characterName: info.name,
+          characterId: characterId,
           accountId: info.accountId,
           proxySlotId: info.proxySlotId,
-          launchConfig: LaunchConfig(scriptName: scriptName),
+          email: info.email,
+          password: info.password,
+          proxyUrl: proxyUrl,
+          launchConfig: const LaunchConfig(scriptName: 'Unknown'),
           pid: process.processId,
           status: ClientStatus.running,
           launchedAt: DateTime.now(),
         );
+        recapturedCharacterIds.add(characterId);
         recaptured++;
       }
 
       if (recaptured > 0) {
         trackedClients.refresh();
         logger.i('Recaptured $recaptured running bot clients');
+      }
+
+      // Clean stale profiles for characters that are no longer running
+      final engine = _botEngine;
+      if (engine is MicrobotEngine) {
+        await engine.cleanStaleProfiles(recapturedCharacterIds);
       }
     } catch (e) {
       logger.e('Failed to recapture running clients: $e');
@@ -214,12 +235,27 @@ class WatchdogHandlers {
       final rotated =
           await _autoRotationService.rotateSlot(client.proxySlotId!);
       if (rotated) {
-        final newIp =
-            await _proxyRepository.getActiveIpForSlot(client.proxySlotId!);
-        if (newIp != null) {
-          client.proxyAddress = newIp.ipAddress;
+        final newProxyUrl = await _buildProxyUrl(client.proxySlotId!);
+        if (newProxyUrl != null) {
+          client.proxyUrl = newProxyUrl;
         }
       }
     }
+  }
+
+  /// Build a full socks5:// proxy URL from a slot's credentials and active IP.
+  Future<String?> _buildProxyUrl(int proxySlotId) async {
+    final slot = await _proxyRepository.getSlotById(proxySlotId);
+    if (slot == null || slot.socksPort == null) return null;
+
+    final activeIp = await _proxyRepository.getActiveIpForSlot(proxySlotId);
+    if (activeIp == null) return null;
+
+    return ProxyUrlBuilder.buildSocks5Url(
+      username: slot.username,
+      password: slot.password,
+      ipAddress: activeIp.ipAddress,
+      socksPort: slot.socksPort!,
+    );
   }
 }

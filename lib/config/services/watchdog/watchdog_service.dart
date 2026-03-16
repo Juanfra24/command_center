@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
@@ -12,6 +13,7 @@ import 'package:get/get.dart';
 
 class WatchdogService extends GetxService {
   final NativeCommandsService _nativeCommandsService;
+  final BotEngine _botEngine;
   late final WatchdogHandlers _handlers;
 
   static const int maxRetries = 5;
@@ -28,12 +30,15 @@ class WatchdogService extends GetxService {
 
   WatchdogService({
     required NativeCommandsService nativeCommandsService,
+    required BotEngine botEngine,
     required NotificationService notificationService,
     required ProxyAutoRotationService autoRotationService,
     required AccountRepository accountRepository,
     required ProxyRepository proxyRepository,
-  }) : _nativeCommandsService = nativeCommandsService {
+  })  : _nativeCommandsService = nativeCommandsService,
+        _botEngine = botEngine {
     _handlers = WatchdogHandlers(
+      botEngine: botEngine,
       nativeCommandsService: nativeCommandsService,
       notificationService: notificationService,
       autoRotationService: autoRotationService,
@@ -83,11 +88,11 @@ class WatchdogService extends GetxService {
     logger.i('Tracking ${client.characterName} (PID: ${client.pid})');
   }
 
-  /// Stop a client: kill process, remove from tracking.
+  /// Stop a client: kill process (with profile cleanup), remove from tracking.
   Future<void> stop(String characterName) async {
     final client = trackedClients[characterName];
     if (client != null && client.pid != null) {
-      await _nativeCommandsService.killProcess(client.pid!);
+      await _botEngine.stop(client.pid!);
     }
     trackedClients.remove(characterName);
     trackedClients.refresh();

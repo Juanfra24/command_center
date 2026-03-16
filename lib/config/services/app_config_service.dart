@@ -20,6 +20,9 @@ class AppConfigService extends GetxService {
   static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
   static const String _keyAutoRotationThreshold = 'auto_rotation_threshold';
   static const String _keyScriptRegistry = 'script_registry';
+  static const String _keyMicrobotJarPath = 'microbot_jar_path';
+  static const String _keyMicrobotJarVersion = 'microbot_jar_version';
+  static const String _keyMicrobotJavaPath = 'microbot_java_path';
 
   ConfigRepository? _configRepository;
 
@@ -232,6 +235,36 @@ class AppConfigService extends GetxService {
       logger.e('Error saving script registry: $e');
       return Result.failure('Failed to save script registry: $e', e);
     }
+  }
+
+  /// Get Microbot JAR path
+  Future<String?> getMicrobotJarPath() async {
+    return _configRepository?.getValue(_keyMicrobotJarPath);
+  }
+
+  /// Save Microbot JAR path
+  Future<void> saveMicrobotJarPath(String path) async {
+    await _configRepository?.setValue(_keyMicrobotJarPath, path);
+  }
+
+  /// Get Microbot JAR version
+  Future<String?> getMicrobotJarVersion() async {
+    return _configRepository?.getValue(_keyMicrobotJarVersion);
+  }
+
+  /// Save Microbot JAR version
+  Future<void> saveMicrobotJarVersion(String version) async {
+    await _configRepository?.setValue(_keyMicrobotJarVersion, version);
+  }
+
+  /// Get Microbot Java path
+  Future<String?> getMicrobotJavaPath() async {
+    return _configRepository?.getValue(_keyMicrobotJavaPath);
+  }
+
+  /// Save Microbot Java path
+  Future<void> saveMicrobotJavaPath(String path) async {
+    await _configRepository?.setValue(_keyMicrobotJavaPath, path);
   }
 
   /// Get ThemeMode from string

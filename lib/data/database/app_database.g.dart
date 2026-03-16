@@ -347,6 +347,12 @@ class $ProxySlotsTableTable extends ProxySlotsTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _socksPortMeta =
+      const VerificationMeta('socksPort');
+  @override
+  late final GeneratedColumn<int> socksPort = GeneratedColumn<int>(
+      'socks_port', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -407,6 +413,7 @@ class $ProxySlotsTableTable extends ProxySlotsTable
         username,
         password,
         port,
+        socksPort,
         createdAt,
         lastUpdated,
         totalIpChanges,
@@ -470,6 +477,10 @@ class $ProxySlotsTableTable extends ProxySlotsTable
       context.handle(
           _portMeta, port.isAcceptableOrUnknown(data['port']!, _portMeta));
     }
+    if (data.containsKey('socks_port')) {
+      context.handle(_socksPortMeta,
+          socksPort.isAcceptableOrUnknown(data['socks_port']!, _socksPortMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -523,6 +534,8 @@ class $ProxySlotsTableTable extends ProxySlotsTable
           .read(DriftSqlType.string, data['${effectivePrefix}password'])!,
       port: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}port'])!,
+      socksPort: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}socks_port']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       lastUpdated: attachedDatabase.typeMapping
@@ -570,6 +583,9 @@ class ProxySlotsTableData extends DataClass
   /// Proxy port
   final int port;
 
+  /// SOCKS5 proxy port (nullable — only present for SOCKS5-capable proxies)
+  final int? socksPort;
+
   /// When this slot was first created
   final DateTime createdAt;
 
@@ -596,6 +612,7 @@ class ProxySlotsTableData extends DataClass
       required this.username,
       required this.password,
       required this.port,
+      this.socksPort,
       required this.createdAt,
       required this.lastUpdated,
       required this.totalIpChanges,
@@ -615,6 +632,9 @@ class ProxySlotsTableData extends DataClass
     map['username'] = Variable<String>(username);
     map['password'] = Variable<String>(password);
     map['port'] = Variable<int>(port);
+    if (!nullToAbsent || socksPort != null) {
+      map['socks_port'] = Variable<int>(socksPort);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_updated'] = Variable<DateTime>(lastUpdated);
     map['total_ip_changes'] = Variable<int>(totalIpChanges);
@@ -638,6 +658,9 @@ class ProxySlotsTableData extends DataClass
       username: Value(username),
       password: Value(password),
       port: Value(port),
+      socksPort: socksPort == null && nullToAbsent
+          ? const Value.absent()
+          : Value(socksPort),
       createdAt: Value(createdAt),
       lastUpdated: Value(lastUpdated),
       totalIpChanges: Value(totalIpChanges),
@@ -661,6 +684,7 @@ class ProxySlotsTableData extends DataClass
       username: serializer.fromJson<String>(json['username']),
       password: serializer.fromJson<String>(json['password']),
       port: serializer.fromJson<int>(json['port']),
+      socksPort: serializer.fromJson<int?>(json['socksPort']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
       totalIpChanges: serializer.fromJson<int>(json['totalIpChanges']),
@@ -681,6 +705,7 @@ class ProxySlotsTableData extends DataClass
       'username': serializer.toJson<String>(username),
       'password': serializer.toJson<String>(password),
       'port': serializer.toJson<int>(port),
+      'socksPort': serializer.toJson<int?>(socksPort),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
       'totalIpChanges': serializer.toJson<int>(totalIpChanges),
@@ -699,6 +724,7 @@ class ProxySlotsTableData extends DataClass
           String? username,
           String? password,
           int? port,
+          Value<int?> socksPort = const Value.absent(),
           DateTime? createdAt,
           DateTime? lastUpdated,
           int? totalIpChanges,
@@ -716,6 +742,7 @@ class ProxySlotsTableData extends DataClass
         username: username ?? this.username,
         password: password ?? this.password,
         port: port ?? this.port,
+        socksPort: socksPort.present ? socksPort.value : this.socksPort,
         createdAt: createdAt ?? this.createdAt,
         lastUpdated: lastUpdated ?? this.lastUpdated,
         totalIpChanges: totalIpChanges ?? this.totalIpChanges,
@@ -737,6 +764,7 @@ class ProxySlotsTableData extends DataClass
       username: data.username.present ? data.username.value : this.username,
       password: data.password.present ? data.password.value : this.password,
       port: data.port.present ? data.port.value : this.port,
+      socksPort: data.socksPort.present ? data.socksPort.value : this.socksPort,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastUpdated:
           data.lastUpdated.present ? data.lastUpdated.value : this.lastUpdated,
@@ -760,6 +788,7 @@ class ProxySlotsTableData extends DataClass
           ..write('username: $username, ')
           ..write('password: $password, ')
           ..write('port: $port, ')
+          ..write('socksPort: $socksPort, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('totalIpChanges: $totalIpChanges, ')
@@ -780,6 +809,7 @@ class ProxySlotsTableData extends DataClass
       username,
       password,
       port,
+      socksPort,
       createdAt,
       lastUpdated,
       totalIpChanges,
@@ -798,6 +828,7 @@ class ProxySlotsTableData extends DataClass
           other.username == this.username &&
           other.password == this.password &&
           other.port == this.port &&
+          other.socksPort == this.socksPort &&
           other.createdAt == this.createdAt &&
           other.lastUpdated == this.lastUpdated &&
           other.totalIpChanges == this.totalIpChanges &&
@@ -815,6 +846,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
   final Value<String> username;
   final Value<String> password;
   final Value<int> port;
+  final Value<int?> socksPort;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastUpdated;
   final Value<int> totalIpChanges;
@@ -830,6 +862,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     this.username = const Value.absent(),
     this.password = const Value.absent(),
     this.port = const Value.absent(),
+    this.socksPort = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
     this.totalIpChanges = const Value.absent(),
@@ -846,6 +879,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     required String username,
     required String password,
     this.port = const Value.absent(),
+    this.socksPort = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
     this.totalIpChanges = const Value.absent(),
@@ -865,6 +899,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     Expression<String>? username,
     Expression<String>? password,
     Expression<int>? port,
+    Expression<int>? socksPort,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastUpdated,
     Expression<int>? totalIpChanges,
@@ -882,6 +917,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
       if (username != null) 'username': username,
       if (password != null) 'password': password,
       if (port != null) 'port': port,
+      if (socksPort != null) 'socks_port': socksPort,
       if (createdAt != null) 'created_at': createdAt,
       if (lastUpdated != null) 'last_updated': lastUpdated,
       if (totalIpChanges != null) 'total_ip_changes': totalIpChanges,
@@ -900,6 +936,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
       Value<String>? username,
       Value<String>? password,
       Value<int>? port,
+      Value<int?>? socksPort,
       Value<DateTime>? createdAt,
       Value<DateTime>? lastUpdated,
       Value<int>? totalIpChanges,
@@ -915,6 +952,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
       username: username ?? this.username,
       password: password ?? this.password,
       port: port ?? this.port,
+      socksPort: socksPort ?? this.socksPort,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,
@@ -951,6 +989,9 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
     if (port.present) {
       map['port'] = Variable<int>(port.value);
     }
+    if (socksPort.present) {
+      map['socks_port'] = Variable<int>(socksPort.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -983,6 +1024,7 @@ class ProxySlotsTableCompanion extends UpdateCompanion<ProxySlotsTableData> {
           ..write('username: $username, ')
           ..write('password: $password, ')
           ..write('port: $port, ')
+          ..write('socksPort: $socksPort, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('totalIpChanges: $totalIpChanges, ')
@@ -3992,6 +4034,7 @@ typedef $$ProxySlotsTableTableCreateCompanionBuilder = ProxySlotsTableCompanion
   required String username,
   required String password,
   Value<int> port,
+  Value<int?> socksPort,
   Value<DateTime> createdAt,
   Value<DateTime> lastUpdated,
   Value<int> totalIpChanges,
@@ -4009,6 +4052,7 @@ typedef $$ProxySlotsTableTableUpdateCompanionBuilder = ProxySlotsTableCompanion
   Value<String> username,
   Value<String> password,
   Value<int> port,
+  Value<int?> socksPort,
   Value<DateTime> createdAt,
   Value<DateTime> lastUpdated,
   Value<int> totalIpChanges,
@@ -4090,6 +4134,9 @@ class $$ProxySlotsTableTableFilterComposer
 
   ColumnFilters<int> get port => $composableBuilder(
       column: $table.port, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get socksPort => $composableBuilder(
+      column: $table.socksPort, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4189,6 +4236,9 @@ class $$ProxySlotsTableTableOrderingComposer
   ColumnOrderings<int> get port => $composableBuilder(
       column: $table.port, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get socksPort => $composableBuilder(
+      column: $table.socksPort, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -4241,6 +4291,9 @@ class $$ProxySlotsTableTableAnnotationComposer
 
   GeneratedColumn<int> get port =>
       $composableBuilder(column: $table.port, builder: (column) => column);
+
+  GeneratedColumn<int> get socksPort =>
+      $composableBuilder(column: $table.socksPort, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4338,6 +4391,7 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             Value<String> username = const Value.absent(),
             Value<String> password = const Value.absent(),
             Value<int> port = const Value.absent(),
+            Value<int?> socksPort = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> lastUpdated = const Value.absent(),
             Value<int> totalIpChanges = const Value.absent(),
@@ -4354,6 +4408,7 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             username: username,
             password: password,
             port: port,
+            socksPort: socksPort,
             createdAt: createdAt,
             lastUpdated: lastUpdated,
             totalIpChanges: totalIpChanges,
@@ -4370,6 +4425,7 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             required String username,
             required String password,
             Value<int> port = const Value.absent(),
+            Value<int?> socksPort = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> lastUpdated = const Value.absent(),
             Value<int> totalIpChanges = const Value.absent(),
@@ -4386,6 +4442,7 @@ class $$ProxySlotsTableTableTableManager extends RootTableManager<
             username: username,
             password: password,
             port: port,
+            socksPort: socksPort,
             createdAt: createdAt,
             lastUpdated: lastUpdated,
             totalIpChanges: totalIpChanges,

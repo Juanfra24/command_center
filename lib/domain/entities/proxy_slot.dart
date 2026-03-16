@@ -11,6 +11,7 @@ class ProxySlotEntity extends Equatable {
   final String username;
   final String password;
   final int port;
+  final int? socksPort;
   final DateTime createdAt;
   final DateTime lastUpdated;
   final int totalIpChanges;
@@ -27,6 +28,7 @@ class ProxySlotEntity extends Equatable {
     required this.username,
     required this.password,
     required this.port,
+    this.socksPort,
     required this.createdAt,
     required this.lastUpdated,
     required this.totalIpChanges,
@@ -45,6 +47,7 @@ class ProxySlotEntity extends Equatable {
       username: '',
       password: '',
       port: 0,
+      socksPort: null,
       createdAt: DateTime.now(),
       lastUpdated: DateTime.now(),
       totalIpChanges: 0,
@@ -63,6 +66,7 @@ class ProxySlotEntity extends Equatable {
     String? username,
     String? password,
     int? port,
+    int? socksPort,
     DateTime? createdAt,
     DateTime? lastUpdated,
     int? totalIpChanges,
@@ -79,6 +83,7 @@ class ProxySlotEntity extends Equatable {
       username: username ?? this.username,
       password: password ?? this.password,
       port: port ?? this.port,
+      socksPort: socksPort ?? this.socksPort,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,
@@ -102,6 +107,7 @@ class ProxySlotEntity extends Equatable {
         username,
         password,
         port,
+        socksPort,
         createdAt,
         lastUpdated,
         totalIpChanges,
