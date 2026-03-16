@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
+import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
@@ -126,14 +127,16 @@ class AppBindings extends Bindings {
     await notificationService.init();
     Get.put<NotificationService>(notificationService, permanent: true);
 
-    // 9. WatchdogService (depends on NotificationService, DatabaseService)
+    // 9. WatchdogService (depends on NotificationService, DatabaseService, BotEngine)
     // Eager init triggers startup recapture scan via onInit().
     // Get.find<ProxyAutoRotationService> triggers its lazyPut factory, which
     // chains through ProxyReplacementService → ProxySyncService → WebshareService
     // + DatabaseService — all already registered in dependencies().
+    // NOTE: BotEngine must be registered before this point (see Task 13).
     Get.put<WatchdogService>(
       WatchdogService(
         nativeCommandsService: Get.find<NativeCommandsService>(),
+        botEngine: Get.find<BotEngine>(),
         notificationService: notificationService,
         autoRotationService: Get.find<ProxyAutoRotationService>(),
         accountRepository: databaseService.accountRepository,
