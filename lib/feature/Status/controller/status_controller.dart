@@ -125,13 +125,12 @@ class StatusController extends GetxController {
     try {
       final pid = await _nativeService!.runGameClient(
         characterName: character.name,
-        proxyAddress: proxyAddress,
+        proxyUrl: proxyAddress,
         scriptName: config.scriptName,
         world: config.world,
-        covert: config.covert,
-        render: config.render,
         scriptParams: config.scriptParams,
         advancedFlags: config.advancedFlags,
+        jvmArgs: config.jvmArgs,
       );
 
       final tracked = TrackedClient(
@@ -139,7 +138,9 @@ class StatusController extends GetxController {
         characterId: character.id!,
         accountId: account.id!,
         proxySlotId: account.proxySlotId,
-        proxyAddress: proxyAddress,
+        email: account.email,
+        password: account.password,
+        proxyUrl: proxyAddress,
         launchConfig: config,
         pid: pid,
         status: ClientStatus.running,

@@ -27,28 +27,26 @@ class NativeCommandsService {
     }
   }
 
-  /// Launch a DreamBot game client via CreateProcess.
+  /// Launch a game client via CreateProcess.
   /// Returns the child process PID.
   Future<int> runGameClient({
     required String characterName,
-    required String? proxyAddress,
+    required String? proxyUrl,
     required String scriptName,
     String world = 'auto',
-    bool covert = true,
-    String render = 'NONE',
     String scriptParams = '',
     String advancedFlags = '',
+    String? jvmArgs,
   }) async {
     try {
       final int pid = await _platform.invokeMethod('runGameClient', {
         'characterName': characterName,
-        'proxyAddress': proxyAddress ?? 'none',
+        'proxyUrl': proxyUrl ?? 'none',
         'scriptName': scriptName,
         'world': world,
-        'covert': covert,
-        'render': render,
         'scriptParams': scriptParams,
         'advancedFlags': advancedFlags,
+        if (jvmArgs != null) 'jvmArgs': jvmArgs,
         'destroyOnBan': true,
         'destroy': true,
         'minimized': true,

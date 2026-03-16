@@ -9,7 +9,9 @@ class TrackedClient {
   final int characterId;
   final int accountId;
   final int? proxySlotId;
-  String? proxyAddress;
+  final String email;
+  final String password;
+  String? proxyUrl;                      // Mutable: full socks5:// URL, updated on proxy rotation
   final LaunchConfig launchConfig;
   int? pid;
   ClientStatus status;
@@ -24,7 +26,9 @@ class TrackedClient {
     required this.characterId,
     required this.accountId,
     this.proxySlotId,
-    this.proxyAddress,
+    required this.email,
+    required this.password,
+    this.proxyUrl,
     required this.launchConfig,
     this.pid,
     this.status = ClientStatus.running,

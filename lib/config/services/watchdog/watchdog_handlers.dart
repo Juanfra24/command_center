@@ -95,13 +95,12 @@ class WatchdogHandlers {
     try {
       final pid = await _nativeCommandsService.runGameClient(
         characterName: client.characterName,
-        proxyAddress: client.proxyAddress,
+        proxyUrl: client.proxyUrl,
         scriptName: client.launchConfig.scriptName,
         world: client.launchConfig.world,
-        covert: client.launchConfig.covert,
-        render: client.launchConfig.render,
         scriptParams: client.launchConfig.scriptParams,
         advancedFlags: client.launchConfig.advancedFlags,
+        jvmArgs: client.launchConfig.jvmArgs,
       );
       client.retryCount++;
       client.pid = pid;
@@ -178,6 +177,8 @@ class WatchdogHandlers {
           characterId: info.characterId,
           accountId: info.accountId,
           proxySlotId: info.proxySlotId,
+          email: 'placeholder@test.com',
+          password: 'placeholder',
           launchConfig: LaunchConfig(scriptName: scriptName),
           pid: process.processId,
           status: ClientStatus.running,
@@ -217,7 +218,7 @@ class WatchdogHandlers {
         final newIp =
             await _proxyRepository.getActiveIpForSlot(client.proxySlotId!);
         if (newIp != null) {
-          client.proxyAddress = newIp.ipAddress;
+          client.proxyUrl = newIp.ipAddress;
         }
       }
     }
