@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/feature/app/views/splash_screen.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
@@ -75,20 +76,30 @@ class _AppState extends State<App> with WindowListener {
     // Resolve controllers once after services are ready
     try {
       _musicController = Get.find<MusicController>();
-    } catch (_) {}
+    } catch (e) {
+      logger.e('Failed to resolve MusicController: $e');
+    }
     try {
       _notificationService = Get.find<NotificationService>();
       _notificationController = Get.find<NotificationController>();
-    } catch (_) {}
+    } catch (e) {
+      logger.e('Failed to resolve NotificationService/Controller: $e');
+    }
     try {
       _webshareService = Get.find<WebshareService>();
-    } catch (_) {}
+    } catch (e) {
+      logger.e('Failed to resolve WebshareService: $e');
+    }
     try {
       _ipqsService = Get.find<IpqsService>();
-    } catch (_) {}
+    } catch (e) {
+      logger.e('Failed to resolve IpqsService: $e');
+    }
     try {
       _appConfigService = Get.find<AppConfigService>();
-    } catch (_) {}
+    } catch (e) {
+      logger.e('Failed to resolve AppConfigService: $e');
+    }
 
     // Optional: instant transition when onboarding completes without waiting
     // for a user-driven setState (e.g. navigation).
@@ -196,7 +207,7 @@ class _AppState extends State<App> with WindowListener {
             Expanded(
               child: _initialized
                   ? ToastOverlay(child: _buildMainContent(isDark))
-                  : _buildLoadingScreen(),
+                  : _buildSplashScreen(),
             ),
           ],
         ),
@@ -204,8 +215,11 @@ class _AppState extends State<App> with WindowListener {
     });
   }
 
-  Widget _buildLoadingScreen() {
-    return const SplashScreen();
+  Widget _buildSplashScreen() {
+    final setupService = Get.isRegistered<MicrobotSetupService>()
+        ? Get.find<MicrobotSetupService>()
+        : null;
+    return SplashScreen(setupService: setupService);
   }
 
   Widget _buildMainContent(bool isDark) {
