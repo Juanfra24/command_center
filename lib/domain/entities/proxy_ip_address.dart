@@ -36,6 +36,12 @@ class ProxyIpAddressEntity extends Equatable {
   final bool isProxy;
   final bool isDatacenter;
   final bool isTor;
+  final bool? isCrawler;
+  final String? connectionType;
+  final String? isp;
+  final String? organization;
+  final String? region;
+  final bool? recentAbuse;
   final double fraudScore;
   final int abuseConfidence;
 
@@ -70,6 +76,12 @@ class ProxyIpAddressEntity extends Equatable {
     required this.isProxy,
     required this.isDatacenter,
     required this.isTor,
+    this.isCrawler,
+    this.connectionType,
+    this.isp,
+    this.organization,
+    this.region,
+    this.recentAbuse,
     required this.fraudScore,
     required this.abuseConfidence,
     required this.assignedAt,
@@ -99,6 +111,12 @@ class ProxyIpAddressEntity extends Equatable {
       isProxy: true,
       isDatacenter: false,
       isTor: false,
+      isCrawler: null,
+      connectionType: null,
+      isp: null,
+      organization: null,
+      region: null,
+      recentAbuse: null,
       fraudScore: 0,
       abuseConfidence: 0,
       assignedAt: DateTime.now(),
@@ -119,6 +137,13 @@ class ProxyIpAddressEntity extends Equatable {
     return IpScoreLevel.unknown;
   }
 
+  static String getFraudScoreLabel(double fraudScore) {
+    if (fraudScore <= 30) return 'Excellent';
+    if (fraudScore <= 60) return 'Fair';
+    if (fraudScore <= 80) return 'Poor';
+    return 'Bad';
+  }
+
   ProxyIpAddressEntity copyWith({
     int? id,
     String? ipAddress,
@@ -137,6 +162,12 @@ class ProxyIpAddressEntity extends Equatable {
     bool? isProxy,
     bool? isDatacenter,
     bool? isTor,
+    bool? isCrawler,
+    String? connectionType,
+    String? isp,
+    String? organization,
+    String? region,
+    bool? recentAbuse,
     double? fraudScore,
     int? abuseConfidence,
     DateTime? assignedAt,
@@ -165,6 +196,12 @@ class ProxyIpAddressEntity extends Equatable {
       isProxy: isProxy ?? this.isProxy,
       isDatacenter: isDatacenter ?? this.isDatacenter,
       isTor: isTor ?? this.isTor,
+      isCrawler: isCrawler ?? this.isCrawler,
+      connectionType: connectionType ?? this.connectionType,
+      isp: isp ?? this.isp,
+      organization: organization ?? this.organization,
+      region: region ?? this.region,
+      recentAbuse: recentAbuse ?? this.recentAbuse,
       fraudScore: fraudScore ?? this.fraudScore,
       abuseConfidence: abuseConfidence ?? this.abuseConfidence,
       assignedAt: assignedAt ?? this.assignedAt,
@@ -195,6 +232,12 @@ class ProxyIpAddressEntity extends Equatable {
         isProxy,
         isDatacenter,
         isTor,
+        isCrawler,
+        connectionType,
+        isp,
+        organization,
+        region,
+        recentAbuse,
         fraudScore,
         abuseConfidence,
         assignedAt,
