@@ -1,13 +1,15 @@
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_profile_writer.dart';
+import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
+import 'package:command_center/core/helper/logger.dart';
 
 class MicrobotEngine implements BotEngine {
   final String javaPath;
   final String jarPath;
   final MicrobotProfileWriter _profileWriter;
+  final NativeCommandsService _nativeCommands;
   final void Function(String message) onLog;
 
   final Set<int> _activePids = {};
@@ -17,8 +19,10 @@ class MicrobotEngine implements BotEngine {
     required this.javaPath,
     required this.jarPath,
     required String profilesBasePath,
+    required NativeCommandsService nativeCommands,
     required this.onLog,
-  }) : _profileWriter = MicrobotProfileWriter(profilesBasePath: profilesBasePath);
+  })  : _profileWriter = MicrobotProfileWriter(profilesBasePath: profilesBasePath),
+        _nativeCommands = nativeCommands;
 
   @override
   String get engineName => 'Microbot';
@@ -42,7 +46,7 @@ class MicrobotEngine implements BotEngine {
 
     final args = buildLaunchArgs(characterId: characterId, proxyUrl: proxyUrl, config: config);
 
-    developer.log('Launching Microbot for $characterName (id=$characterId)', name: 'MicrobotEngine');
+    logger.i('Launching Microbot for $characterName (id=$characterId)');
 
     final process = await Process.start(javaPath, args);
     final pid = process.pid;
@@ -67,7 +71,7 @@ class MicrobotEngine implements BotEngine {
   @override
   Future<void> stop(int pid) async {
     final characterId = _pidToCharacterId[pid];
-    Process.killPid(pid);
+    await _nativeCommands.killProcess(pid);
     _activePids.remove(pid);
     _pidToCharacterId.remove(pid);
     if (characterId != null) {

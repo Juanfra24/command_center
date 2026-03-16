@@ -1,16 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
+import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
+
+MicrobotEngine _makeEngine({String jarPath = '/app/microbot-shaded.jar'}) {
+  return MicrobotEngine(
+    javaPath: '/java/bin/java.exe',
+    jarPath: jarPath,
+    profilesBasePath: '/profiles',
+    nativeCommands: NativeCommandsService(),
+    onLog: (_) {},
+  );
+}
 
 void main() {
   group('MicrobotEngine', () {
     test('engineName returns Microbot', () {
-      final engine = MicrobotEngine(javaPath: '/fake/java', jarPath: '/fake/microbot.jar', profilesBasePath: '/fake/profiles', onLog: (_) {});
+      final engine = _makeEngine();
       expect(engine.engineName, 'Microbot');
     });
 
     test('buildLaunchArgs constructs correct argument list with proxy', () {
-      final engine = MicrobotEngine(javaPath: '/java/bin/java.exe', jarPath: '/app/microbot-shaded.jar', profilesBasePath: '/profiles', onLog: (_) {});
+      final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 42,
         proxyUrl: 'socks5://user:pass@1.2.3.4:1080',
@@ -25,19 +36,19 @@ void main() {
     });
 
     test('buildLaunchArgs omits --proxy when proxyUrl is null', () {
-      final engine = MicrobotEngine(javaPath: '/java/bin/java.exe', jarPath: '/app/microbot-shaded.jar', profilesBasePath: '/profiles', onLog: (_) {});
+      final engine = _makeEngine();
       final args = engine.buildLaunchArgs(characterId: 7, proxyUrl: null, config: const LaunchConfig(scriptName: 'Test'));
       expect(args.any((a) => a.startsWith('--proxy')), isFalse);
     });
 
     test('buildLaunchArgs uses default -Xmx512m when jvmArgs is null', () {
-      final engine = MicrobotEngine(javaPath: '/java/bin/java.exe', jarPath: '/app/microbot-shaded.jar', profilesBasePath: '/profiles', onLog: (_) {});
+      final engine = _makeEngine();
       final args = engine.buildLaunchArgs(characterId: 1, proxyUrl: null, config: const LaunchConfig(scriptName: 'Test'));
       expect(args[0], '-Xmx512m');
     });
 
     test('buildLaunchArgs includes advancedFlags', () {
-      final engine = MicrobotEngine(javaPath: '/java/bin/java.exe', jarPath: '/app/microbot-shaded.jar', profilesBasePath: '/profiles', onLog: (_) {});
+      final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 1, proxyUrl: null,
         config: const LaunchConfig(scriptName: 'Test', advancedFlags: '-fps 15 --low-detail'),

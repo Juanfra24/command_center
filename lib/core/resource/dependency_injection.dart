@@ -163,6 +163,7 @@ class AppBindings extends Bindings {
       javaPath: javaPath,
       jarPath: jarPath,
       profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
+      nativeCommands: Get.find<NativeCommandsService>(),
       onLog: (msg) => logger.i(msg),
     );
     Get.put<BotEngine>(microbotEngine, permanent: true);

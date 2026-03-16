@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_profile_writer.dart';
+import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/core/helper/proxy_url_builder.dart';
@@ -78,6 +79,7 @@ void main() {
         javaPath: '/java/bin/java.exe',
         jarPath: '/app/microbot-shaded.jar',
         profilesBasePath: tempDir.path,
+        nativeCommands: NativeCommandsService(),
         onLog: (_) {},
       );
 
