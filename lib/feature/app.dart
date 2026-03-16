@@ -290,9 +290,6 @@ class _AppState extends State<App> with WindowListener {
     }
     return MainMenuScreen(
       onNavigateToIndex: _navigateToIndex,
-      statusController: _statusController,
-      proxyController: _proxyController,
-      proxyScoringController: _proxyScoringController,
     );
   }
 

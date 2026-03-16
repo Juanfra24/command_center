@@ -151,4 +151,12 @@ class MainMenuController extends GetxController {
       isSyncing.value = false;
     }
   }
+
+  Future<void> startAll() async {
+    await _statusController?.launchWithDefaultScripts();
+  }
+
+  Future<void> stopAll() async {
+    await _statusController?.stopAll();
+  }
 }
