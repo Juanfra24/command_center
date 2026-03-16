@@ -12,6 +12,7 @@ import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
+import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
 import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -37,6 +38,7 @@ class AppBindings extends Bindings {
     // Feature controllers (lazy - created when needed)
     Get.lazyPut<MainMenuController>(() => MainMenuController(), fenix: true);
     Get.lazyPut<StatusController>(() => StatusController(), fenix: true);
+    Get.lazyPut<StatusSelectionController>(() => StatusSelectionController(), fenix: true);
     Get.lazyPut<ProxyController>(() => ProxyController(), fenix: true);
     Get.lazyPut<ProxyScoringController>(
       () => ProxyScoringController(

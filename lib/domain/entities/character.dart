@@ -9,6 +9,7 @@ class CharacterEntity extends Equatable {
   final int accountId;
   final String name;
   final bool banned;
+  final String? defaultScriptName;
   final SkillsEntity actualSkills;
   final SkillsEntity targetSkills;
 
@@ -17,6 +18,7 @@ class CharacterEntity extends Equatable {
     required this.accountId,
     required this.name,
     required this.banned,
+    this.defaultScriptName,
     required this.actualSkills,
     required this.targetSkills,
   });
@@ -27,6 +29,7 @@ class CharacterEntity extends Equatable {
       accountId: 0,
       name: 'Default Character',
       banned: false,
+      defaultScriptName: null,
       actualSkills: SkillsEntity.empty(),
       targetSkills: SkillsEntity.empty(),
     );
@@ -37,6 +40,7 @@ class CharacterEntity extends Equatable {
     int? accountId,
     String? name,
     bool? banned,
+    String? defaultScriptName,
     SkillsEntity? actualSkills,
     SkillsEntity? targetSkills,
   }) {
@@ -45,6 +49,7 @@ class CharacterEntity extends Equatable {
       accountId: accountId ?? this.accountId,
       name: name ?? this.name,
       banned: banned ?? this.banned,
+      defaultScriptName: defaultScriptName ?? this.defaultScriptName,
       actualSkills: actualSkills ?? this.actualSkills,
       targetSkills: targetSkills ?? this.targetSkills,
     );
@@ -56,6 +61,7 @@ class CharacterEntity extends Equatable {
         accountId,
         name,
         banned,
+        defaultScriptName,
         actualSkills,
         targetSkills,
       ];

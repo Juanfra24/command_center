@@ -77,7 +77,7 @@ class ProxyScoringController extends GetxController {
 
   // --- Cached score statistics ---
   final hasScoredIps = false.obs;
-  final averageIpScore = 0.0.obs;
+  final averageFraudScore = 0.0.obs;
   final lowScoreCount = 0.obs;
 
   /// Exposed for testing only — call to force recalculation of cached stats.
@@ -94,24 +94,24 @@ class ProxyScoringController extends GetxController {
       final ip = _proxyController.getCurrentIpForSlot(slot);
       if (ip != null && ip.hasBeenScored) {
         scored++;
-        totalScore += ip.ipScore;
-        if (ip.ipScore < 50) lowCount++;
+        totalScore += ip.fraudScore;
+        if (ip.fraudScore > 60) lowCount++;
       }
     }
 
     hasScoredIps.value = scored > 0;
-    averageIpScore.value = scored > 0 ? totalScore / scored : 0;
+    averageFraudScore.value = scored > 0 ? totalScore / scored : 0;
     lowScoreCount.value = lowCount;
   }
 
-  /// Get details of low-score proxies for tooltip display
+  /// Get details of high-fraud-score proxies for tooltip display
   List<String> getLowScoreSlotDetails() {
     final details = <String>[];
     for (final slot in _proxyController.proxySlots) {
       final ip = _proxyController.getCurrentIpForSlot(slot);
-      if (ip != null && ip.hasBeenScored && ip.ipScore < 50) {
+      if (ip != null && ip.hasBeenScored && ip.fraudScore > 60) {
         details.add(
-            '${slot.slotName}: ${ip.ipAddress} (score: ${ip.ipScore.toStringAsFixed(0)})');
+            '${slot.slotName}: ${ip.ipAddress} (fraud: ${ip.fraudScore.toStringAsFixed(0)})');
       }
     }
     return details;
@@ -134,19 +134,24 @@ class ProxyScoringController extends GetxController {
       final result = await _ipqsService.scoreIp(ip.ipAddress);
 
       if (result.success) {
-        // Use the normalized score (100 = safest, 0 = riskiest)
-        final newScore = result.normalizedScore;
+        // Raw IPQS fraud score (0-100, lower is better)
+        final newScore = result.fraudScore;
 
         await _proxyRepository.updateIpAddress(
           ip.copyWith(
             ipScore: newScore,
             scoreLevel: ProxyIpAddressEntity.getScoreLevel(newScore),
-            fraudScore: result.fraudScore,
+            fraudScore: newScore,
             isVpn: result.isVpn,
             isProxy: result.isProxy,
             isDatacenter: result.isDatacenter,
             isTor: result.isTor,
-            abuseConfidence: result.recentAbuse ? 100 : 0,
+            recentAbuse: result.recentAbuse,
+            isCrawler: result.isCrawler,
+            connectionType: result.connectionType,
+            isp: result.isp,
+            organization: result.organization,
+            region: result.region,
             lastScoreCheck: DateTime.now(),
           ),
         );
@@ -237,7 +242,7 @@ class ProxyScoringController extends GetxController {
             results.add(ScoredIpResult(
               ip: currentIp,
               slot: slot,
-              score: currentIp.ipScore,
+              score: currentIp.fraudScore,
             ));
           }
         }

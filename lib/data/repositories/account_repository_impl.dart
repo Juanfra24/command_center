@@ -173,6 +173,7 @@ class AccountRepositoryImpl implements AccountRepository {
             accountId: character.accountId,
             name: character.name,
             banned: Value(character.banned),
+            defaultScriptName: Value(character.defaultScriptName),
             actualSkillsJson:
                 Value(jsonEncode(character.actualSkills.toJson())),
             targetSkillsJson:
@@ -181,6 +182,19 @@ class AccountRepositoryImpl implements AccountRepository {
             lastUpdated: Value(DateTime.now()),
           ),
         );
+  }
+
+  @override
+  Future<void> updateCharacterDefaultScript(
+    int characterId,
+    String? scriptName,
+  ) async {
+    await (_db.update(_db.charactersTable)
+          ..where((t) => t.id.equals(characterId)))
+        .write(CharactersTableCompanion(
+      defaultScriptName: Value(scriptName),
+      lastUpdated: Value(DateTime.now()),
+    ));
   }
 
   // ============ Mapping Helpers ============
@@ -229,6 +243,7 @@ class AccountRepositoryImpl implements AccountRepository {
       accountId: row.accountId,
       name: row.name,
       banned: row.banned,
+      defaultScriptName: row.defaultScriptName,
       actualSkills: actualSkills,
       targetSkills: targetSkills,
     );

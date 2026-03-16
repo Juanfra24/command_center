@@ -1,8 +1,9 @@
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
+import 'package:command_center/core/widgets/loading_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
-class BotFarmSummaryBar extends StatefulWidget {
+class BotFarmSummaryBar extends StatelessWidget {
   final Future<void> Function() onStartAll;
   final Future<void> Function() onStopAll;
 
@@ -11,13 +12,6 @@ class BotFarmSummaryBar extends StatefulWidget {
     required this.onStartAll,
     required this.onStopAll,
   });
-
-  @override
-  State<BotFarmSummaryBar> createState() => _BotFarmSummaryBarState();
-}
-
-class _BotFarmSummaryBarState extends State<BotFarmSummaryBar> {
-  bool _busy = false;
 
   @override
   Widget build(BuildContext context) {
@@ -39,42 +33,24 @@ class _BotFarmSummaryBarState extends State<BotFarmSummaryBar> {
             const SizedBox(width: 8),
             _statChip('Banned', watchdog.bannedCount, Colors.red),
             const Spacer(),
-            FilledButton(
-              onPressed: _busy ? null : () => _run(widget.onStartAll),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(FluentIcons.play, size: 12),
-                  SizedBox(width: 4),
-                  Text('Start All'),
-                ],
-              ),
+            LoadingButton(
+              label: 'Start All',
+              loadingLabel: 'Starting...',
+              icon: FluentIcons.play,
+              onPressed: onStartAll,
             ),
             const SizedBox(width: 8),
-            Button(
-              onPressed: _busy ? null : () => _run(widget.onStopAll),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(FluentIcons.stop, size: 12),
-                  SizedBox(width: 4),
-                  Text('Stop All'),
-                ],
-              ),
+            LoadingButton(
+              label: 'Stop All',
+              loadingLabel: 'Stopping...',
+              icon: FluentIcons.stop,
+              style: LoadingButtonStyle.outline,
+              onPressed: onStopAll,
             ),
           ],
         ),
       );
     });
-  }
-
-  Future<void> _run(Future<void> Function() action) async {
-    setState(() => _busy = true);
-    try {
-      await action();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   Widget _statChip(String label, int count, Color color) {

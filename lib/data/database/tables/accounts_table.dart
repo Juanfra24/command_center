@@ -59,4 +59,7 @@ class CharactersTable extends Table {
   /// When this character was last updated
   DateTimeColumn get lastUpdated =>
       dateTime().withDefault(currentDateAndTime)();
+
+  TextColumn get defaultScriptName =>
+      text().nullable().named('default_script_name')();
 }

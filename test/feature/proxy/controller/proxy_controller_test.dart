@@ -40,7 +40,7 @@ void main() {
     String ipAddress = '1.2.3.4',
     int slotId = 1,
     bool isActive = true,
-    double ipScore = 0,
+    double fraudScore = 0,
     String countryCode = 'US',
     String cityName = 'TestCity',
   }) {
@@ -56,14 +56,13 @@ void main() {
       highCountryConfidence: true,
       asnName: 'TestASN',
       asnNumber: 12345,
-      ipScore: ipScore,
+      ipScore: 0,
       scoreLevel: IpScoreLevel.unknown,
       isVpn: false,
       isProxy: true,
       isDatacenter: false,
       isTor: false,
-      fraudScore: 0,
-      abuseConfidence: 0,
+      fraudScore: fraudScore,
       assignedAt: now,
       lastVerification: now,
       totalDaysUsed: 0,
@@ -220,11 +219,11 @@ void main() {
       expect(filtered.length, equals(1));
     });
 
-    test('sorts by IP score when requested', () {
+    test('sorts by fraud score ascending when requested', () {
       final slot1 = makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10);
       final slot2 = makeSlot(id: 2, slotNumber: 2, currentIpAddressId: 20);
-      final ip1 = makeIp(id: 10, slotId: 1, ipScore: 30);
-      final ip2 = makeIp(id: 20, slotId: 2, ipScore: 90);
+      final ip1 = makeIp(id: 10, slotId: 1, fraudScore: 80); // worse
+      final ip2 = makeIp(id: 20, slotId: 2, fraudScore: 10); // better
 
       controller.proxySlots.addAll([slot1, slot2]);
       controller.ipAddresses.addAll([ip1, ip2]);
@@ -232,7 +231,7 @@ void main() {
       controller.showOnlyActive.value = false;
 
       final sorted = controller.getFilteredSlots(sortByScore: true);
-      expect(sorted.first.slotNumber, equals(2)); // Higher score first
+      expect(sorted.first.slotNumber, equals(2)); // Lower fraud score first
     });
   });
 

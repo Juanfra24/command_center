@@ -151,7 +151,7 @@ class ProxySlotCardHeader extends StatelessWidget {
   }
 
   Widget _buildScoreBadge(ProxyIpAddressEntity ip) {
-    final color = getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
+    final color = getScoreColor(ip.fraudScore, hasBeenScored: ip.hasBeenScored);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -160,7 +160,7 @@ class ProxySlotCardHeader extends StatelessWidget {
         border: Border.all(color: color),
       ),
       child: Text(
-        ip.hasBeenScored ? ip.ipScore.toStringAsFixed(0) : '?',
+        ip.hasBeenScored ? ip.fraudScore.toStringAsFixed(0) : '?',
         style: TextStyle(fontWeight: FontWeight.bold, color: color),
       ),
     );

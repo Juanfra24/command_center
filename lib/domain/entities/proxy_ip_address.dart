@@ -1,13 +1,13 @@
 import 'package:equatable/equatable.dart';
 
-/// IP Quality Score levels for quick reference
+/// IP Quality Score levels for quick reference (based on fraudScore: lower = better)
 enum IpScoreLevel {
-  excellent, // 90-100
-  good, // 70-89
-  fair, // 50-69
-  poor, // 30-49
-  bad, // 0-29
-  unknown,
+  excellent, // fraudScore 1-30 (low risk)
+  good, // fraudScore 31-60
+  fair, // (kept for compatibility)
+  poor, // fraudScore 61-80
+  bad, // fraudScore 81-100
+  unknown, // not scored (fraudScore <= 0)
 }
 
 /// Domain entity for a proxy IP address
@@ -36,8 +36,13 @@ class ProxyIpAddressEntity extends Equatable {
   final bool isProxy;
   final bool isDatacenter;
   final bool isTor;
+  final bool? isCrawler;
+  final String? connectionType;
+  final String? isp;
+  final String? organization;
+  final String? region;
+  final bool? recentAbuse;
   final double fraudScore;
-  final int abuseConfidence;
 
   // Timestamps
   final DateTime assignedAt;
@@ -70,8 +75,13 @@ class ProxyIpAddressEntity extends Equatable {
     required this.isProxy,
     required this.isDatacenter,
     required this.isTor,
+    this.isCrawler,
+    this.connectionType,
+    this.isp,
+    this.organization,
+    this.region,
+    this.recentAbuse,
     required this.fraudScore,
-    required this.abuseConfidence,
     required this.assignedAt,
     this.removedAt,
     required this.lastVerification,
@@ -99,8 +109,13 @@ class ProxyIpAddressEntity extends Equatable {
       isProxy: true,
       isDatacenter: false,
       isTor: false,
+      isCrawler: null,
+      connectionType: null,
+      isp: null,
+      organization: null,
+      region: null,
+      recentAbuse: null,
       fraudScore: 0,
-      abuseConfidence: 0,
       assignedAt: DateTime.now(),
       removedAt: null,
       lastVerification: DateTime.now(),
@@ -111,12 +126,18 @@ class ProxyIpAddressEntity extends Equatable {
   }
 
   static IpScoreLevel getScoreLevel(double score) {
-    if (score >= 90) return IpScoreLevel.excellent;
-    if (score >= 70) return IpScoreLevel.good;
-    if (score >= 50) return IpScoreLevel.fair;
-    if (score >= 30) return IpScoreLevel.poor;
-    if (score > 0) return IpScoreLevel.bad;
-    return IpScoreLevel.unknown;
+    if (score <= 0) return IpScoreLevel.unknown;
+    if (score <= 30) return IpScoreLevel.excellent;
+    if (score <= 60) return IpScoreLevel.good;
+    if (score <= 80) return IpScoreLevel.poor;
+    return IpScoreLevel.bad;
+  }
+
+  static String getFraudScoreLabel(double fraudScore) {
+    if (fraudScore <= 30) return 'Excellent';
+    if (fraudScore <= 60) return 'Fair';
+    if (fraudScore <= 80) return 'Poor';
+    return 'Bad';
   }
 
   ProxyIpAddressEntity copyWith({
@@ -137,8 +158,13 @@ class ProxyIpAddressEntity extends Equatable {
     bool? isProxy,
     bool? isDatacenter,
     bool? isTor,
+    bool? isCrawler,
+    String? connectionType,
+    String? isp,
+    String? organization,
+    String? region,
+    bool? recentAbuse,
     double? fraudScore,
-    int? abuseConfidence,
     DateTime? assignedAt,
     DateTime? removedAt,
     DateTime? lastVerification,
@@ -165,8 +191,13 @@ class ProxyIpAddressEntity extends Equatable {
       isProxy: isProxy ?? this.isProxy,
       isDatacenter: isDatacenter ?? this.isDatacenter,
       isTor: isTor ?? this.isTor,
+      isCrawler: isCrawler ?? this.isCrawler,
+      connectionType: connectionType ?? this.connectionType,
+      isp: isp ?? this.isp,
+      organization: organization ?? this.organization,
+      region: region ?? this.region,
+      recentAbuse: recentAbuse ?? this.recentAbuse,
       fraudScore: fraudScore ?? this.fraudScore,
-      abuseConfidence: abuseConfidence ?? this.abuseConfidence,
       assignedAt: assignedAt ?? this.assignedAt,
       removedAt: removedAt ?? this.removedAt,
       lastVerification: lastVerification ?? this.lastVerification,
@@ -195,8 +226,13 @@ class ProxyIpAddressEntity extends Equatable {
         isProxy,
         isDatacenter,
         isTor,
+        isCrawler,
+        connectionType,
+        isp,
+        organization,
+        region,
+        recentAbuse,
         fraudScore,
-        abuseConfidence,
         assignedAt,
         removedAt,
         lastVerification,
