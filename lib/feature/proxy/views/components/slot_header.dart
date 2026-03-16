@@ -1,7 +1,6 @@
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:command_center/feature/proxy/views/components/ip_score_indicator.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
@@ -104,7 +103,7 @@ class SlotHeader extends StatelessWidget {
               const SizedBox(height: 10),
               InfoBar(
                 title: Text(
-                  'High fraud risk: ${ip!.fraudScore.round()} — consider replacing this IP',
+                  'High fraud risk: ${ip.fraudScore.round()} — consider replacing this IP',
                 ),
                 severity: InfoBarSeverity.warning,
                 isLong: false,

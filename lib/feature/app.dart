@@ -17,7 +17,6 @@ import 'package:command_center/feature/notification/controller/notification_cont
 import 'package:command_center/feature/notification/views/components/notification_bell.dart';
 import 'package:command_center/feature/dev_tools/views/dev_tools_screen.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
-import 'package:command_center/feature/proxy/controller/proxy_scoring_controller.dart';
 import 'package:command_center/feature/proxy/views/proxy_screen.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -42,9 +41,6 @@ class _AppState extends State<App> with WindowListener {
   MusicController? _musicController;
   NotificationService? _notificationService;
   NotificationController? _notificationController;
-  StatusController? _statusController;
-  ProxyController? _proxyController;
-  ProxyScoringController? _proxyScoringController;
   WebshareService? _webshareService;
   IpqsService? _ipqsService;
   AppConfigService? _appConfigService;
@@ -73,15 +69,6 @@ class _AppState extends State<App> with WindowListener {
     try {
       _notificationService = Get.find<NotificationService>();
       _notificationController = Get.find<NotificationController>();
-    } catch (_) {}
-    try {
-      _statusController = Get.find<StatusController>();
-    } catch (_) {}
-    try {
-      _proxyController = Get.find<ProxyController>();
-    } catch (_) {}
-    try {
-      _proxyScoringController = Get.find<ProxyScoringController>();
     } catch (_) {}
     try {
       _webshareService = Get.find<WebshareService>();

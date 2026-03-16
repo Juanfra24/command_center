@@ -105,7 +105,6 @@ class FraudAnalysis extends StatelessWidget {
 
   Widget _buildFraudCircle(FluentThemeData theme) {
     final color = _fraudScoreColor(ip.fraudScore);
-    final label = ProxyIpAddressEntity.getFraudScoreLabel(ip.fraudScore);
 
     return Column(
       children: [
