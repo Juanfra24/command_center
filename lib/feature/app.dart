@@ -1,4 +1,6 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/feature/app/views/splash_screen.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
@@ -61,6 +63,14 @@ class _AppState extends State<App> with WindowListener {
 
     // Initialize async services in proper order
     await AppBindings.initializeAsyncServices();
+
+    // Setup dependencies (Java + Microbot JAR) — splash screen shows progress
+    if (Get.isRegistered<MicrobotSetupService>()) {
+      await Get.find<MicrobotSetupService>().ensureDependencies();
+    }
+
+    // Phase 2b: BotEngine + WatchdogService (depends on setup completing first)
+    await AppBindings.initializePostSetup();
 
     // Resolve controllers once after services are ready
     try {
@@ -195,16 +205,7 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildLoadingScreen() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ProgressRing(),
-          SizedBox(height: 16),
-          Text('Loading...'),
-        ],
-      ),
-    );
+    return const SplashScreen();
   }
 
   Widget _buildMainContent(bool isDark) {

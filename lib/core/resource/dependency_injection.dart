@@ -1,6 +1,8 @@
-import 'dart:developer' as developer;
-
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/bot_engine/java_installer.dart';
+import 'package:command_center/config/services/bot_engine/microbot_jar_downloader.dart';
+import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
@@ -117,8 +119,6 @@ class AppBindings extends Bindings {
     // 5. PythonSetupService (check and install Python dependencies)
     final pythonSetupService = PythonSetupService();
     Get.put<PythonSetupService>(pythonSetupService, permanent: true);
-    // Run setup in background (non-blocking)
-    pythonSetupService.initializeSetup();
 
     // 6. AutomationService (depends on Python setup)
     Get.put<AutomationService>(AutomationService(), permanent: true);
@@ -131,6 +131,20 @@ class AppBindings extends Bindings {
         NotificationService(databaseService.notificationRepository);
     await notificationService.init();
     Get.put<NotificationService>(notificationService, permanent: true);
+
+    // 9. MicrobotSetupService (orchestrates dependency downloads)
+    final appDataPath = Get.find<AppDataPath>();
+    final basePath = await appDataPath.basePath;
+    final javaInstaller = JavaInstaller(appConfig: appConfigService, basePath: basePath);
+    final jarDownloader = MicrobotJarDownloader(appConfig: appConfigService, basePath: basePath);
+    Get.put<MicrobotSetupService>(
+      MicrobotSetupService(
+        pythonSetup: pythonSetupService,
+        javaInstaller: javaInstaller,
+        jarDownloader: jarDownloader,
+      ),
+      permanent: true,
+    );
 
     // NOTE: WatchdogService moved to initializePostSetup() — it depends on
     // BotEngine which requires MicrobotSetupService to download dependencies first.
@@ -149,7 +163,7 @@ class AppBindings extends Bindings {
       javaPath: javaPath,
       jarPath: jarPath,
       profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
-      onLog: (msg) => developer.log(msg, name: 'MicrobotEngine'),
+      onLog: (msg) => logger.i(msg),
     );
     Get.put<BotEngine>(microbotEngine, permanent: true);
 
