@@ -85,7 +85,6 @@ class MicrobotJarDownloader {
       // Clean up partial download on failure
       final partial = File(jarPath);
       if (partial.existsSync()) await partial.delete();
-      client.close();
       return existingPath;
     } finally {
       client.close();
