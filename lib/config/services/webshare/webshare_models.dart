@@ -125,6 +125,5 @@ class WebshareApiException implements Exception {
   WebshareApiException(this.message, this.statusCode, this.responseBody);
 
   @override
-  String toString() => 'WebshareApiException: $message '
-      '(HTTP $statusCode): $responseBody';
+  String toString() => 'WebshareApiException: $message (HTTP $statusCode)';
 }
