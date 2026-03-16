@@ -13,8 +13,8 @@ class ScoreDetailTable extends StatelessWidget {
         _buildScoreRow('Fraud Score', ip.fraudScore, Colors.red),
         const SizedBox(height: 8),
         _buildScoreRow(
-          'Abuse Confidence',
-          ip.abuseConfidence.toDouble(),
+          'Recent Abuse',
+          ip.recentAbuse == true ? 100 : 0,
           Colors.orange,
         ),
       ],

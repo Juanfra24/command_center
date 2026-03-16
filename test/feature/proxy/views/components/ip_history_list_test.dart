@@ -41,7 +41,6 @@ ProxyIpAddressEntity makeIp({
     isDatacenter: false,
     isTor: false,
     fraudScore: 0,
-    abuseConfidence: 0,
     assignedAt: assignedAt ?? now,
     lastVerification: now,
     lastScoreCheck: lastScoreCheck,

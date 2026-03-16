@@ -63,7 +63,6 @@ void main() {
       isDatacenter: false,
       isTor: false,
       fraudScore: 0,
-      abuseConfidence: 0,
       assignedAt: now,
       lastVerification: now,
       totalDaysUsed: 0,

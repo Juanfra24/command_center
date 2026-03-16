@@ -43,7 +43,6 @@ class ProxyIpAddressEntity extends Equatable {
   final String? region;
   final bool? recentAbuse;
   final double fraudScore;
-  final int abuseConfidence;
 
   // Timestamps
   final DateTime assignedAt;
@@ -83,7 +82,6 @@ class ProxyIpAddressEntity extends Equatable {
     this.region,
     this.recentAbuse,
     required this.fraudScore,
-    required this.abuseConfidence,
     required this.assignedAt,
     this.removedAt,
     required this.lastVerification,
@@ -118,7 +116,6 @@ class ProxyIpAddressEntity extends Equatable {
       region: null,
       recentAbuse: null,
       fraudScore: 0,
-      abuseConfidence: 0,
       assignedAt: DateTime.now(),
       removedAt: null,
       lastVerification: DateTime.now(),
@@ -169,7 +166,6 @@ class ProxyIpAddressEntity extends Equatable {
     String? region,
     bool? recentAbuse,
     double? fraudScore,
-    int? abuseConfidence,
     DateTime? assignedAt,
     DateTime? removedAt,
     DateTime? lastVerification,
@@ -203,7 +199,6 @@ class ProxyIpAddressEntity extends Equatable {
       region: region ?? this.region,
       recentAbuse: recentAbuse ?? this.recentAbuse,
       fraudScore: fraudScore ?? this.fraudScore,
-      abuseConfidence: abuseConfidence ?? this.abuseConfidence,
       assignedAt: assignedAt ?? this.assignedAt,
       removedAt: removedAt ?? this.removedAt,
       lastVerification: lastVerification ?? this.lastVerification,
@@ -239,7 +234,6 @@ class ProxyIpAddressEntity extends Equatable {
         region,
         recentAbuse,
         fraudScore,
-        abuseConfidence,
         assignedAt,
         removedAt,
         lastVerification,

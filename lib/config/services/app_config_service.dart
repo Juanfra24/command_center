@@ -29,7 +29,7 @@ class AppConfigService extends GetxService {
   final themeMode = 'system'.obs; // 'light', 'dark', 'system'
   bool isLoading = true;
   final autoRotationEnabled = true.obs;
-  final autoRotationThreshold = 40.obs;
+  final autoRotationThreshold = 60.obs;
   final scriptRegistry = <String>['Tutorial Journey'].obs;
 
   Future<AppConfigService> init() async {
@@ -73,7 +73,7 @@ class AppConfigService extends GetxService {
 
       final threshold =
           await _configRepository!.getValue(_keyAutoRotationThreshold);
-      autoRotationThreshold.value = int.tryParse(threshold ?? '') ?? 40;
+      autoRotationThreshold.value = int.tryParse(threshold ?? '') ?? 60;
 
       final registryJson =
           await _configRepository!.getValue(_keyScriptRegistry);
