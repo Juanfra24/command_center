@@ -45,7 +45,7 @@ BoolColumn get recentAbuse =>
 
 - [ ] **Step 2: Add defaultScriptName to CharactersTable**
 
-In `lib/data/database/tables/accounts_table.dart`, add after `lastUpdated` column (line 60):
+In `lib/data/database/tables/accounts_table.dart`, in the **`CharactersTable`** class (lines 34-62, NOT `AccountsTable`), add after `lastUpdated` column (line 61):
 
 ```dart
 TextColumn get defaultScriptName =>
@@ -87,8 +87,9 @@ if (from < 5) {
   );
   // Populate recentAbuse from abuseConfidence
   // (codebase only ever stores 0 or 100, but use > 0 defensively)
+  // NOTE: Drift table name is `proxy_ip_addresses_table` (snake_case of class name)
   await customStatement(
-    'UPDATE proxy_ip_addresses SET recent_abuse = CASE '
+    'UPDATE proxy_ip_addresses_table SET recent_abuse = CASE '
     'WHEN abuse_confidence > 0 THEN 1 '
     'WHEN abuse_confidence = 0 THEN 0 '
     'ELSE NULL END',
@@ -199,7 +200,7 @@ final String? region;
 final bool? recentAbuse;
 ```
 
-Remove the old `abuseConfidence` field (line 40). Keep `ipScore`, `scoreLevel`, and `IpScoreLevel` enum for backward compat but mark with `@Deprecated`.
+**Do NOT remove `abuseConfidence` yet** — the repository layer (Task 4) still references it. It will be removed in Task 4 alongside the repository update to avoid broken intermediate commits. Similarly, **do NOT** add `@Deprecated` to `ipScore`/`IpScoreLevel`/`getScoreLevel()` — they are still actively used in the DB layer and UI. Just add the new fields alongside existing ones.
 
 Add static method:
 
@@ -212,7 +213,7 @@ static String getFraudScoreLabel(double fraudScore) {
 }
 ```
 
-Update the constructor to include new fields (nullable, not required). Update `empty()` factory to initialize them as `null`. Update `copyWith()` to handle new fields. Update `props` list to include new fields, remove `abuseConfidence`.
+Update the constructor to include new fields (nullable, not required). Update `empty()` factory to initialize them as `null`. Update `copyWith()` to handle new fields. Update `props` list to include new fields. Keep `abuseConfidence` in `props` for now (removed in Task 4).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -223,7 +224,7 @@ Expected: PASS
 
 ```bash
 git add lib/domain/entities/proxy_ip_address.dart test/domain/entities/
-git commit -m "feat(entity): add IPQS fields to ProxyIpAddressEntity, deprecate ipScore"
+git commit -m "feat(entity): add IPQS fields to ProxyIpAddressEntity"
 ```
 
 ---
@@ -246,7 +247,7 @@ Update constructor to include `this.defaultScriptName`. Update `empty()` to retu
 - [ ] **Step 2: Verify existing tests still pass**
 
 Run: `flutter test test/`
-Expected: Compilation errors in files referencing `abuseConfidence` — expected, we'll fix in next tasks.
+Expected: PASS (entity still has `abuseConfidence` — it will be removed in Task 4).
 
 - [ ] **Step 3: Commit**
 
@@ -262,6 +263,10 @@ git commit -m "feat(entity): add defaultScriptName to CharacterEntity"
 **Files:**
 - Modify: `lib/data/repositories/proxy_repository_impl.dart`
 - Test: `test/data/repositories/proxy_repository_impl_test.dart` (update)
+
+- [ ] **Step 0: Remove `abuseConfidence` from ProxyIpAddressEntity**
+
+Now that the repository is being updated in the same commit, remove `abuseConfidence` from `lib/domain/entities/proxy_ip_address.dart`: delete the field, remove it from the constructor, `empty()`, `copyWith()`, and `props`. This keeps the codebase compilable at every commit boundary.
 
 - [ ] **Step 1: Update _mapIpAddressRow (lines 316-347)**
 
@@ -346,14 +351,14 @@ Update `_insertCharacter()` (around line 170) to include:
 defaultScriptName: Value(character.defaultScriptName),
 ```
 
-Add new method:
+Add new method (note: `AccountRepositoryImpl` is not a `DatabaseAccessor` — access DB via `_db`):
 ```dart
 @override
 Future<void> updateCharacterDefaultScript(
   int characterId,
   String? scriptName,
 ) async {
-  await (update(charactersTable)
+  await (_db.update(_db.charactersTable)
         ..where((t) => t.id.equals(characterId)))
       .write(CharactersTableCompanion(
     defaultScriptName: Value(scriptName),
@@ -448,6 +453,8 @@ Update format string to show fraud score.
 
 Also update `scoreAllCurrentIps()` (around lines 233-243): the `ScoredIpResult` constructed there uses `score: currentIp.ipScore`. Change to `score: currentIp.fraudScore`. The auto-rotation threshold comparison in `_processResults()` already uses `score < threshold`, so update it to `score > threshold` (since higher fraud score = worse). The `autoRotationThreshold` config value semantics flip: it now represents the fraud score above which rotation triggers (e.g., 60 instead of 50).
 
+**Important:** Also update the default value for `autoRotationThreshold` in `AppConfigService`. The old default was 50 (normalized score below which rotation triggers). The new default should be 60 (fraud score above which rotation triggers). Check `app_config_service.dart` for the default constant and update it. Users who already have a stored threshold of 50 will get equivalent behavior since the comparison operator also flips.
+
 - [ ] **Step 4: Update ProxyAutoRotationService**
 
 In `lib/config/services/proxy/proxy_auto_rotation_service.dart`:
@@ -478,7 +485,7 @@ Line 122 — remove `ProxyIpAddressEntity.getScoreLevel(newScore)` usage, use `g
 
 In `lib/config/services/proxy/proxy_sync_service.dart`:
 - Line 130: Replace `abuseConfidence: 0` with `recentAbuse: false`
-- Line 210: Same replacement
+- Line 211: Same replacement
 
 - [ ] **Step 6: Update all test files**
 
@@ -577,19 +584,18 @@ git commit -m "refactor: delete legacy proxy model, migrate all ipScore→fraudS
 ### Task 7: Toast Notification System
 
 **Files:**
+- Create: `lib/core/widgets/toast_data.dart` (shared model — decouples widgets from service)
 - Modify: `lib/config/services/notification_service.dart`
 - Create: `lib/core/widgets/toast_overlay.dart`
 - Create: `lib/core/widgets/toast_card.dart`
 - Modify: `lib/feature/app.dart`
 - Test: `test/config/services/notification_service_test.dart` (update)
 
-- [ ] **Step 1: Add toast stream to NotificationService**
+- [ ] **Step 1a: Create shared toast data model**
 
-In `lib/config/services/notification_service.dart`, add a toast model and stream:
+Create `lib/core/widgets/toast_data.dart` (this avoids coupling the widget layer to the service layer):
 
 ```dart
-import 'dart:async';
-
 enum ToastSeverity { success, info, warning, error }
 
 class ToastData {
@@ -604,6 +610,15 @@ class ToastData {
     required this.severity,
   }) : timestamp = DateTime.now();
 }
+```
+
+- [ ] **Step 1b: Add toast stream to NotificationService**
+
+In `lib/config/services/notification_service.dart`, import the shared model and add stream:
+
+```dart
+import 'dart:async';
+import 'package:command_center/core/widgets/toast_data.dart';
 ```
 
 Add to the service class:
@@ -636,13 +651,9 @@ Future<void> showToast({
     );
   }
 }
-
-@override
-void onClose() {
-  _toastController.close();
-  super.onClose();
-}
 ```
+
+**Note on StreamController lifecycle:** `NotificationService` is a permanent `GetxService` (registered with `permanent: true`). Its `onClose()` is never called by GetX. The broadcast StreamController will be reclaimed by the OS on app exit. Do NOT add an `onClose()` override — it would be dead code. If explicit cleanup is ever needed, call `dispose()` from `App.onWindowClose()` instead.
 
 - [ ] **Step 2: Create ToastCard widget**
 
@@ -650,7 +661,7 @@ Create `lib/core/widgets/toast_card.dart`:
 
 ```dart
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:command_center/config/services/notification_service.dart';
+import 'package:command_center/core/widgets/toast_data.dart';
 
 class ToastCard extends StatelessWidget {
   final ToastData toast;
@@ -717,29 +728,30 @@ class ToastCard extends StatelessWidget {
   }
 
   _SeverityColors _severityColors(FluentThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return switch (toast.severity) {
       ToastSeverity.success => _SeverityColors(
-          background: const Color(0xFF1e3a1e),
-          border: const Color(0xFF2d5a2d),
-          foreground: const Color(0xFF4ade80),
+          background: isDark ? const Color(0xFF1e3a1e) : const Color(0xFFe8f5e9),
+          border: isDark ? const Color(0xFF2d5a2d) : const Color(0xFF81c784),
+          foreground: isDark ? const Color(0xFF4ade80) : const Color(0xFF2e7d32),
           icon: FluentIcons.completed,
         ),
       ToastSeverity.error => _SeverityColors(
-          background: const Color(0xFF3a1e1e),
-          border: const Color(0xFF5a2d2d),
-          foreground: const Color(0xFFf87171),
+          background: isDark ? const Color(0xFF3a1e1e) : const Color(0xFFffebee),
+          border: isDark ? const Color(0xFF5a2d2d) : const Color(0xFFe57373),
+          foreground: isDark ? const Color(0xFFf87171) : const Color(0xFFc62828),
           icon: FluentIcons.error_badge,
         ),
       ToastSeverity.warning => _SeverityColors(
-          background: const Color(0xFF3a2d1e),
-          border: const Color(0xFF5a4a2d),
-          foreground: const Color(0xFFfbbf24),
+          background: isDark ? const Color(0xFF3a2d1e) : const Color(0xFFFFF8E1),
+          border: isDark ? const Color(0xFF5a4a2d) : const Color(0xFFFFD54F),
+          foreground: isDark ? const Color(0xFFfbbf24) : const Color(0xFFf57f17),
           icon: FluentIcons.warning,
         ),
       ToastSeverity.info => _SeverityColors(
-          background: const Color(0xFF1e2d3a),
-          border: const Color(0xFF2d4a5a),
-          foreground: const Color(0xFF60a5fa),
+          background: isDark ? const Color(0xFF1e2d3a) : const Color(0xFFE3F2FD),
+          border: isDark ? const Color(0xFF2d4a5a) : const Color(0xFF64B5F6),
+          foreground: isDark ? const Color(0xFF60a5fa) : const Color(0xFF1565C0),
           icon: FluentIcons.info,
         ),
     };
@@ -771,6 +783,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/core/widgets/toast_card.dart';
+import 'package:command_center/core/widgets/toast_data.dart';
 
 class ToastOverlay extends StatefulWidget {
   final Widget child;
@@ -882,7 +895,7 @@ Expected: App compiles and launches. No visual changes yet (no toasts being trig
 - [ ] **Step 6: Commit**
 
 ```bash
-git add lib/config/services/notification_service.dart lib/core/widgets/ lib/feature/app.dart
+git add lib/core/widgets/toast_data.dart lib/config/services/notification_service.dart lib/core/widgets/toast_overlay.dart lib/core/widgets/toast_card.dart lib/feature/app.dart
 git commit -m "feat: add toast notification system (ToastOverlay + ToastCard)"
 ```
 
@@ -1288,6 +1301,8 @@ git commit -m "feat: add CollapsibleSection widget with animated expand/collapse
 
 ## Chunk 3: Proxy Detail Pane Redesign
 
+> **Prerequisite:** Chunk 1 (Tasks 1-6) must be fully complete and Drift code generation re-run before starting this chunk. Tasks 11-12 reference entity fields (`isCrawler`, `recentAbuse`, `region`, `connectionType`, `isp`, `organization`, `getFraudScoreLabel()`) that are added in Chunk 1.
+
 ### Task 11: Create FraudAnalysis Widget (replaces 4 old components)
 
 **Files:**
@@ -1578,6 +1593,8 @@ Delete these 4 files:
 - `lib/feature/proxy/views/components/score_flags.dart`
 
 Update imports in `proxy_detail_section.dart` to use `FraudAnalysis` instead.
+
+**Note:** The existing `IpScoreAnalysis` takes `VoidCallback onRefreshScore` (sync). The new `FraudAnalysis` takes `Future<void> Function()` callbacks (async, needed for `LoadingButton`). When updating `proxy_detail_section.dart`, also change the callback type from `void Function(ProxyIpAddressEntity)` to `Future<void> Function(ProxyIpAddressEntity)`, and propagate the change to the call site in `proxy_screen.dart`.
 
 - [ ] **Step 3: Commit**
 
@@ -1884,21 +1901,24 @@ Add a return type for bulk launch readiness check:
 /// Returns the number successfully started.
 Future<int> launchWithDefaultScripts([Set<int>? characterIds]) async {
   // get characters with defaultScriptName != null
-  // for each, call launchCharacter with scriptName override
+  // for each, build a LaunchConfig from character.defaultScriptName
+  // pass it to the existing launchCharacter(account, character, config)
   // show toast per character
   // return count
 }
 ```
 
-Update `launchCharacter()` to accept optional `String? scriptNameOverride` parameter. When provided, use it instead of opening the Launch Dialog.
+**Do NOT modify `launchCharacter()`'s existing signature.** Instead, `launchWithDefaultScripts()` should construct a `LaunchConfig` from the character's `defaultScriptName` and call the existing `launchCharacter(account, character, config)`. This avoids breaking existing callers.
 
 - [ ] **Step 2: Rewrite account_list_section.dart table columns**
 
-In `lib/feature/Status/views/sections/account_list_section.dart`:
+In `lib/feature/Status/views/sections/account_list_section.dart` (currently at 300 lines — the ceiling):
 
-Replace the 7-column layout with 8 columns (checkbox + Account + Credentials + Character + Script + Proxy + Status + Actions).
+**First, extract existing cell builders** into `lib/feature/Status/views/components/account_table_cells.dart` before adding new features. This reduces the section file enough to add the new columns.
 
-**To stay under the 300-line ceiling**, extract cell builders into a new helper file `lib/feature/Status/views/components/account_table_cells.dart`:
+Then replace the 7-column layout with 8 columns (checkbox + Account + Credentials + Character + Script + Proxy + Status + Actions).
+
+The extracted `account_table_cells.dart` should contain:
 - `CredentialsCell` — email + password stacked with copy icons
 - `ProxyCell` — slot name + country code display
 - `ActionsCell` — contextual action buttons (start/stop/delete)
@@ -1977,10 +1997,11 @@ Rewrite `lib/feature/main_menu/controller/main_menu_controller.dart` to expose:
 
 ```dart
 class MainMenuController extends GetxController {
-  late final StatusController _statusController;
-  late final ProxyController _proxyController;
-  late final ProxyScoringController _scoringController;
-  late final WatchdogService _watchdogService;
+  // Follow codebase defensive pattern: nullable + try-catch (matches status_controller.dart)
+  StatusController? _statusController;
+  ProxyController? _proxyController;
+  ProxyScoringController? _scoringController;
+  WatchdogService? _watchdogService;
 
   // Bot status data
   RxList<BotTileData> get botTiles => _botTiles;
@@ -1997,13 +2018,19 @@ class MainMenuController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _statusController = Get.find();
-    _proxyController = Get.find();
-    _scoringController = Get.find();
-    _watchdogService = Get.find();
+    try {
+      _statusController = Get.find<StatusController>();
+      _proxyController = Get.find<ProxyController>();
+      _scoringController = Get.find<ProxyScoringController>();
+      _watchdogService = Get.find<WatchdogService>();
+    } catch (e) {
+      // Dependencies may not be registered yet during startup
+    }
     _refreshData();
     // Re-compute when tracked clients change
-    ever(_watchdogService.trackedClients, (_) => _refreshBotTiles());
+    if (_watchdogService != null) {
+      ever(_watchdogService!.trackedClients, (_) => _refreshBotTiles());
+    }
   }
 
   void _refreshData() {
@@ -2011,7 +2038,7 @@ class MainMenuController extends GetxController {
     _refreshProxyHealth();
   }
 
-  // ... tile/health computation methods
+  // ... tile/health computation methods — use null-aware access on controllers
 }
 ```
 
@@ -2136,29 +2163,30 @@ Create `lib/feature/main_menu/views/sections/quick_actions_section.dart`:
 - Each card shows icon + title + description
 - Score/Sync cards use loading state from MainMenuController
 
-- [ ] **Step 5: Delete old sections**
+- [ ] **Step 5: Do NOT delete old sections yet**
 
-Delete:
-- `lib/feature/main_menu/views/sections/system_overview_section.dart`
-- `lib/feature/main_menu/views/sections/characters_status_section.dart`
-- `lib/feature/main_menu/views/sections/recent_activity_section.dart`
+The old sections (`system_overview_section.dart`, `characters_status_section.dart`, `recent_activity_section.dart`) are still imported by `main_menu_screen.dart`. Deleting them here would break compilation before Task 19 rewrites the screen. The deletions are deferred to Task 19 where they happen atomically with the screen rewrite.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add lib/feature/main_menu/views/components/bot_status_tile.dart lib/feature/main_menu/views/sections/bot_status_grid_section.dart lib/feature/main_menu/views/sections/proxy_health_overview_section.dart lib/feature/main_menu/views/sections/quick_actions_section.dart
-git rm lib/feature/main_menu/views/sections/system_overview_section.dart lib/feature/main_menu/views/sections/characters_status_section.dart lib/feature/main_menu/views/sections/recent_activity_section.dart
 git commit -m "feat: create dashboard components — BotStatusGrid, ProxyHealth, QuickActions"
 ```
 
 ---
 
-### Task 19: Rewrite MainMenuScreen
+### Task 19: Rewrite MainMenuScreen + Delete Old Sections
 
 **Files:**
 - Modify: `lib/feature/main_menu/views/main_menu_screen.dart`
+- Delete: `lib/feature/main_menu/views/sections/system_overview_section.dart`
+- Delete: `lib/feature/main_menu/views/sections/characters_status_section.dart`
+- Delete: `lib/feature/main_menu/views/sections/recent_activity_section.dart`
 
-- [ ] **Step 1: Replace screen content**
+- [ ] **Step 1: Replace screen content and delete old sections atomically**
+
+Delete the old section files first, then rewrite the screen in the same commit:
 
 Rewrite `lib/feature/main_menu/views/main_menu_screen.dart` to compose the new sections:
 
@@ -2192,11 +2220,11 @@ class MainMenuScreen extends GetView<MainMenuController> {
 }
 ```
 
-- [ ] **Step 2: Update MainMenuScreen call site in app.dart**
+- [ ] **Step 2: Update MainMenuScreen call sites**
 
 In `lib/feature/app.dart` (around lines 290-295), update the `MainMenuScreen()` instantiation to remove the old controller params (`statusController`, `proxyController`, `proxyScoringController`) since the new screen reads them via `Get.find()` internally. Keep only `onNavigateToIndex`.
 
-Also check `lib/config/routes/app_routes.dart` for any `MainMenuScreen` usage and update.
+Also update `lib/config/routes/app_routes.dart` (line 18): `MainMenuScreen()` is called with no args there. Since `onNavigateToIndex` is optional, it will still compile. However, quick action clicks would not navigate. Either pass a valid callback or remove `MainMenuScreen` from `app_routes.dart` if navigation is fully handled by `app.dart`'s `NavigationPane` (which it is).
 
 - [ ] **Step 3: Run app to verify dashboard**
 
@@ -2210,8 +2238,9 @@ Navigate to Home tab. Verify:
 - [ ] **Step 4: Commit**
 
 ```bash
+git rm lib/feature/main_menu/views/sections/system_overview_section.dart lib/feature/main_menu/views/sections/characters_status_section.dart lib/feature/main_menu/views/sections/recent_activity_section.dart
 git add lib/feature/main_menu/ lib/feature/app.dart
-git commit -m "feat: redesign dashboard — bot grid, proxy health, quick actions"
+git commit -m "feat: redesign dashboard — bot grid, proxy health, quick actions, delete old sections"
 ```
 
 ---
