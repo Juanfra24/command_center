@@ -2,8 +2,10 @@ import 'package:command_center/config/services/proxy/proxy_sync_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database_service.dart';
+import 'package:command_center/domain/entities/character.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
+import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -15,6 +17,7 @@ import 'package:get/get.dart';
 /// Replacement UI state lives in [ProxyReplacementController].
 class ProxyController extends GetxController {
   ProxyRepository? _proxyRepository;
+  AccountRepository? _accountRepository;
   WebshareService? _webshareService;
   ProxySyncService? _syncService;
 
@@ -25,6 +28,7 @@ class ProxyController extends GetxController {
   var ipAddresses = <ProxyIpAddressEntity>[].obs;
   var selectedSlot = Rxn<ProxySlotEntity>();
   var selectedSlotIpHistory = <ProxyIpAddressEntity>[].obs;
+  var linkedCharacters = <CharacterEntity>[].obs;
 
   // Integration states
   var isWebshareConfigured = false.obs;
@@ -49,7 +53,9 @@ class ProxyController extends GetxController {
 
   void _initRepository() {
     try {
-      _proxyRepository = Get.find<DatabaseService>().proxyRepository;
+      final db = Get.find<DatabaseService>();
+      _proxyRepository = db.proxyRepository;
+      _accountRepository = db.accountRepository;
     } catch (e) {
       logger.e('DatabaseService not initialized yet: $e');
     }
@@ -204,12 +210,27 @@ class ProxyController extends GetxController {
     selectedSlot.value = slot;
     if (slot.id != null) {
       selectedSlotIpHistory.value = getIpHistoryForSlot(slot.id!);
+      _loadLinkedCharacters(slot.id!);
     }
   }
 
   void clearSelection() {
     selectedSlot.value = null;
     selectedSlotIpHistory.clear();
+    linkedCharacters.clear();
+  }
+
+  Future<void> _loadLinkedCharacters(int slotId) async {
+    if (_accountRepository == null) return;
+    try {
+      final accounts =
+          await _accountRepository!.getAccountsByProxySlot(slotId);
+      linkedCharacters.value =
+          accounts.expand((a) => a.characters).toList();
+    } catch (e) {
+      logger.e('Error loading linked characters for slot $slotId: $e');
+      linkedCharacters.clear();
+    }
   }
 
   // --- IP lookups ---
