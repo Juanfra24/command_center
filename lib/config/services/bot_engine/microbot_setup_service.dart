@@ -5,7 +5,7 @@ import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:get/get.dart';
 
-enum SetupStep { idle, python, java, microbot, complete, failed }
+enum MicrobotSetupStep { idle, python, java, microbot, complete, failed }
 
 /// Orchestrates all dependency installation for the app.
 /// Coordinates Python, Java 17, and Microbot JAR setup with progress reporting.
@@ -14,10 +14,12 @@ class MicrobotSetupService extends GetxService {
   final JavaInstaller _javaInstaller;
   final MicrobotJarDownloader _jarDownloader;
 
-  final currentStep = SetupStep.idle.obs;
+  final currentStep = MicrobotSetupStep.idle.obs;
   final progress = ''.obs;
   final progressPercent = 0.0.obs;
   final isComplete = false.obs;
+
+  bool _isRunning = false;
 
   MicrobotSetupService({
     required PythonSetupService pythonSetup,
@@ -30,16 +32,19 @@ class MicrobotSetupService extends GetxService {
   /// Run all dependency checks and installations.
   /// Called during splash screen before app loads.
   Future<void> ensureDependencies() async {
+    if (_isRunning || isComplete.value) return;
+    _isRunning = true;
+
     try {
       // Step 1: Python + Patchright
-      currentStep.value = SetupStep.python;
+      currentStep.value = MicrobotSetupStep.python;
       progress.value = 'Checking Python...';
       progressPercent.value = 0.0;
       await _pythonSetup.initializeSetup();
       progressPercent.value = 0.33;
 
       // Step 2: Java 17
-      currentStep.value = SetupStep.java;
+      currentStep.value = MicrobotSetupStep.java;
       progress.value = 'Checking Java 17...';
       final javaPath = await _javaInstaller.findJavaPath();
       if (javaPath == null) {
@@ -57,7 +62,7 @@ class MicrobotSetupService extends GetxService {
       progressPercent.value = 0.66;
 
       // Step 3: Microbot JAR
-      currentStep.value = SetupStep.microbot;
+      currentStep.value = MicrobotSetupStep.microbot;
       progress.value = 'Checking Microbot...';
       final jarPath = await _jarDownloader.ensureJar(onProgress: (downloaded, total) {
         if (total > 0) {
@@ -74,13 +79,15 @@ class MicrobotSetupService extends GetxService {
       }
 
       progressPercent.value = 1.0;
-      currentStep.value = SetupStep.complete;
+      currentStep.value = MicrobotSetupStep.complete;
       progress.value = 'Ready';
       isComplete.value = true;
     } catch (e) {
       logger.e('Setup failed: $e');
-      currentStep.value = SetupStep.failed;
-      progress.value = 'Setup failed: $e';
+      currentStep.value = MicrobotSetupStep.failed;
+      progress.value = 'Setup failed. Check logs for details.';
+    } finally {
+      _isRunning = false;
     }
   }
 }

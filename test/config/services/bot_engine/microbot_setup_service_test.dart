@@ -4,23 +4,22 @@ import 'package:command_center/config/services/bot_engine/microbot_setup_service
 
 void main() {
   group('MicrobotSetupService', () {
-    test('initial state is idle', () {
-      // Cannot fully construct without mocks, but verify enum values exist
-      expect(SetupStep.idle, isNotNull);
-      expect(SetupStep.python, isNotNull);
-      expect(SetupStep.java, isNotNull);
-      expect(SetupStep.microbot, isNotNull);
-      expect(SetupStep.complete, isNotNull);
-      expect(SetupStep.failed, isNotNull);
+    test('MicrobotSetupStep enum values exist', () {
+      expect(MicrobotSetupStep.idle, isNotNull);
+      expect(MicrobotSetupStep.python, isNotNull);
+      expect(MicrobotSetupStep.java, isNotNull);
+      expect(MicrobotSetupStep.microbot, isNotNull);
+      expect(MicrobotSetupStep.complete, isNotNull);
+      expect(MicrobotSetupStep.failed, isNotNull);
     });
 
-    test('SetupStep enum has correct ordering', () {
-      expect(SetupStep.values.indexOf(SetupStep.python),
-          lessThan(SetupStep.values.indexOf(SetupStep.java)));
-      expect(SetupStep.values.indexOf(SetupStep.java),
-          lessThan(SetupStep.values.indexOf(SetupStep.microbot)));
-      expect(SetupStep.values.indexOf(SetupStep.microbot),
-          lessThan(SetupStep.values.indexOf(SetupStep.complete)));
+    test('MicrobotSetupStep enum has correct ordering', () {
+      expect(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.python),
+          lessThan(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.java)));
+      expect(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.java),
+          lessThan(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.microbot)));
+      expect(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.microbot),
+          lessThan(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.complete)));
     });
   });
 }
