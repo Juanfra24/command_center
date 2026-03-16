@@ -80,8 +80,8 @@ class WebshareService extends GetxService {
       }
     } catch (e) {
       logger.e('Error saving Webshare API key: $e');
-      lastError.value = 'Failed to save API key: $e';
-      return Result.failure('Failed to save API key: $e', e);
+      lastError.value = 'Failed to save API key. Check logs for details.';
+      return Result.failure('Failed to save API key. Check logs for details.');
     }
   }
 
@@ -101,8 +101,8 @@ class WebshareService extends GetxService {
       }
     } catch (e) {
       logger.e('Error clearing Webshare API key: $e');
-      lastError.value = 'Failed to unlink: $e';
-      return Result.failure('Failed to unlink: $e', e);
+      lastError.value = 'Failed to unlink. Check logs for details.';
+      return Result.failure('Failed to unlink. Check logs for details.');
     }
   }
 
@@ -132,10 +132,11 @@ class WebshareService extends GetxService {
         return Result.failure('Connection failed (HTTP $statusCode)');
       }
     } catch (e) {
+      logger.e('Error testing Webshare connection: $e');
       final errorMsg = e.toString().contains('ClientException')
-          ? 'Network error: $e'
-          : 'Connection error: $e';
-      return Result.failure(errorMsg, e);
+          ? 'Network error. Check your internet connection.'
+          : 'Connection error. Check logs for details.';
+      return Result.failure(errorMsg);
     }
   }
 

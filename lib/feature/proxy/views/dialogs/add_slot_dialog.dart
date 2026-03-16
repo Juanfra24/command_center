@@ -62,6 +62,7 @@ class _AddSlotDialogState extends State<AddSlotDialog> {
             child: TextBox(
               controller: _passwordController,
               placeholder: 'Webshare password',
+              obscureText: true,
             ),
           ),
           const SizedBox(height: 16),

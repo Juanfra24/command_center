@@ -80,11 +80,8 @@ class ProxySyncService {
   Future<void> _createNewSlot(WebshareProxySlot webProxy) async {
     final now = DateTime.now();
 
-    // Log the webProxy data for debugging
     logger.i('Creating new slot #${webProxy.slotNumber}');
     logger.i('  Webshare ID: ${webProxy.id}');
-    logger.i('  Username from Webshare: ${webProxy.username}');
-    logger.i('  Password length: ${webProxy.password.length}');
     logger.i('  Proxy Address: ${webProxy.proxyAddress}');
     logger.i('  Port: ${webProxy.port}');
 
@@ -158,9 +155,7 @@ class ProxySyncService {
     final ipChanged = currentIp?.ipAddress != webProxy.proxyAddress;
 
     if (usernameChanged) {
-      logger.i('Username changed for slot #${webProxy.slotNumber}:');
-      logger.i('  Old: ${existingSlot.username}');
-      logger.i('  New: ${webProxy.username}');
+      logger.i('Credentials updated for slot #${webProxy.slotNumber}');
     }
 
     // Always update slot with latest data from Webshare

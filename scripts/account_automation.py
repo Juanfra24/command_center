@@ -39,27 +39,44 @@ except ImportError as e:
     sys.exit(1)
 
 
+def _get_proxy_url(args) -> str:
+    """Resolve proxy URL from env var (preferred) or CLI arg (fallback)."""
+    import os
+    env_proxy = os.environ.get("CC_PROXY_URL")
+    if env_proxy:
+        return env_proxy
+    return getattr(args, "proxy_url", "")
+
+
+def _get_imap_creds(args) -> tuple:
+    """Resolve IMAP user/pass from env vars (preferred) or CLI args (fallback)."""
+    import os
+    user = os.environ.get("CC_IMAP_USER") or getattr(args, "imap_user", None)
+    passwd = os.environ.get("CC_IMAP_PASS") or getattr(args, "imap_pass", None)
+    return user, passwd
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Account automation with proxy validation")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_p = subparsers.add_parser("validate", help="Validate proxy IP address")
-    validate_p.add_argument("proxy_url", help="Proxy URL (user:pass@host:port)")
+    validate_p.add_argument("proxy_url", nargs="?", default="", help="Proxy URL (prefer CC_PROXY_URL env var)")
     validate_p.add_argument("expected_ip", help="Expected IP address")
     validate_p.add_argument("--headless", action="store_true")
     validate_p.add_argument("--debug", action="store_true")
 
     create_p = subparsers.add_parser("create-account", help="Create a new Jagex account")
-    create_p.add_argument("proxy_url", help="Proxy URL (user:pass@host:port)")
+    create_p.add_argument("proxy_url", nargs="?", default="", help="Proxy URL (prefer CC_PROXY_URL env var)")
     create_p.add_argument("expected_ip", help="Expected IP address")
     create_p.add_argument("--headless", action="store_true")
     create_p.add_argument("--debug", action="store_true")
     create_p.add_argument("--imap-host", help="IMAP server hostname")
-    create_p.add_argument("--imap-user", help="IMAP username/email")
-    create_p.add_argument("--imap-pass", help="IMAP password")
+    create_p.add_argument("--imap-user", help="IMAP username/email (prefer CC_IMAP_USER env var)")
+    create_p.add_argument("--imap-pass", help="IMAP password (prefer CC_IMAP_PASS env var)")
 
     session_p = subparsers.add_parser("session", help="Open browser session with proxy")
-    session_p.add_argument("proxy_url", help="Proxy URL (user:pass@host:port)")
+    session_p.add_argument("proxy_url", nargs="?", default="", help="Proxy URL (prefer CC_PROXY_URL env var)")
     session_p.add_argument("expected_ip", help="Expected IP address")
     session_p.add_argument("--keep-open", action="store_true")
     session_p.add_argument("--debug", action="store_true")
@@ -73,31 +90,34 @@ def _log(msg: str):
 
 
 async def run(args) -> AutomationResult:
+    proxy_url = _get_proxy_url(args)
+
     if args.command == "validate":
         from automation.commands.validate import validate_proxy_ip
         return await validate_proxy_ip(
-            proxy_url=args.proxy_url,
+            proxy_url=proxy_url,
             expected_ip=args.expected_ip,
             headless=getattr(args, "headless", False),
             debug=getattr(args, "debug", False),
             log_fn=_log,
         )
     elif args.command == "create-account":
+        imap_user, imap_pass = _get_imap_creds(args)
         from automation.commands.create_account import create_account
         return await create_account(
-            proxy_url=args.proxy_url,
+            proxy_url=proxy_url,
             expected_ip=args.expected_ip,
             headless=getattr(args, "headless", False),
             debug=getattr(args, "debug", False),
             imap_host=getattr(args, "imap_host", None),
-            imap_user=getattr(args, "imap_user", None),
-            imap_pass=getattr(args, "imap_pass", None),
+            imap_user=imap_user,
+            imap_pass=imap_pass,
             log_fn=_log,
         )
     elif args.command == "session":
         from automation.commands.session import launch_session
         return await launch_session(
-            proxy_url=args.proxy_url,
+            proxy_url=proxy_url,
             expected_ip=args.expected_ip,
             keep_open=getattr(args, "keep_open", False),
             debug=getattr(args, "debug", False),
