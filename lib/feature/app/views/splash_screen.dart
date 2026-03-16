@@ -19,7 +19,7 @@ class SplashScreen extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             theme.scaffoldBackgroundColor,
-            theme.scaffoldBackgroundColor.withOpacity(0.95),
+            theme.scaffoldBackgroundColor.withValues(alpha: 0.95),
           ],
         ),
       ),

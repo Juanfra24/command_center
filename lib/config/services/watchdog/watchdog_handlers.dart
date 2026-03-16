@@ -207,9 +207,9 @@ class WatchdogHandlers {
       }
 
       // Clean stale profiles for characters that are no longer running
-      if (_botEngine is MicrobotEngine) {
-        await (_botEngine as MicrobotEngine)
-            .cleanStaleProfiles(recapturedCharacterIds);
+      final engine = _botEngine;
+      if (engine is MicrobotEngine) {
+        await engine.cleanStaleProfiles(recapturedCharacterIds);
       }
     } catch (e) {
       logger.e('Failed to recapture running clients: $e');
