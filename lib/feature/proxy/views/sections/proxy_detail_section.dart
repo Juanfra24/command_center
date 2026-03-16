@@ -3,7 +3,7 @@ import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/components/ip_history_list.dart';
-import 'package:command_center/feature/proxy/views/components/ip_score_analysis.dart';
+import 'package:command_center/feature/proxy/views/components/fraud_analysis.dart';
 import 'package:command_center/feature/proxy/views/components/current_ip_card.dart';
 import 'package:command_center/feature/proxy/views/components/slot_header.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -20,7 +20,7 @@ class ProxyDetailSection extends StatelessWidget {
       onLaunchBrowser;
   final void Function(BuildContext context, ProxySlotEntity slot)
       onShowChangeIpDialog;
-  final void Function(ProxyIpAddressEntity ip) onRefreshIpScore;
+  final Future<void> Function(ProxyIpAddressEntity ip) onRefreshIpScore;
 
   const ProxyDetailSection({
     super.key,
@@ -70,15 +70,12 @@ class ProxyDetailSection extends StatelessWidget {
               const SizedBox(height: 24),
             ],
             if (currentIp != null) ...[
-              Text('IP Score Analysis', style: theme.typography.subtitle),
+              Text('Fraud Analysis', style: theme.typography.subtitle),
               const SizedBox(height: 12),
-              IpScoreAnalysis(
+              FraudAnalysis(
                 ip: currentIp,
-                isReplacing: isReplacing,
                 onRefreshScore: () => onRefreshIpScore(currentIp),
-                onReplaceProxy: () {
-                  onShowReplaceDialog(context, selectedSlot, currentIp);
-                },
+                onScoreIp: () => onRefreshIpScore(currentIp),
               ),
               const SizedBox(height: 24),
             ],
