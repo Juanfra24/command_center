@@ -63,6 +63,7 @@ class MicrobotEngine implements BotEngine {
 
     process.exitCode.then((_) {
       _activePids.remove(pid);
+      _pidToCharacterId.remove(pid);
     });
 
     return pid;
