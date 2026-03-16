@@ -5,6 +5,7 @@ class WebshareProxySlot {
   final String password;
   final String proxyAddress;
   final int port;
+  final int? socksPort;
   final bool valid;
   final String countryCode;
   final String cityName;
@@ -20,6 +21,7 @@ class WebshareProxySlot {
     required this.password,
     required this.proxyAddress,
     required this.port,
+    this.socksPort,
     required this.valid,
     required this.countryCode,
     required this.cityName,
@@ -38,6 +40,7 @@ class WebshareProxySlot {
       password: json['password'] ?? '',
       proxyAddress: json['proxy_address'] ?? '',
       port: json['port'] ?? 0,
+      socksPort: json['ports']?['socks5'] as int?,
       valid: json['valid'] ?? false,
       countryCode: json['country_code'] ?? 'XX',
       cityName: json['city_name'] ?? '',

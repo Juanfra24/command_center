@@ -26,6 +26,9 @@ class ProxySlotsTable extends Table {
   /// Proxy port
   IntColumn get port => integer().withDefault(const Constant(0))();
 
+  /// SOCKS5 proxy port (nullable — only present for SOCKS5-capable proxies)
+  IntColumn get socksPort => integer().nullable()();
+
   /// When this slot was first created
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
