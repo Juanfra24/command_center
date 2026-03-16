@@ -1161,6 +1161,46 @@ class $ProxyIpAddressesTableTable extends ProxyIpAddressesTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _isCrawlerMeta =
+      const VerificationMeta('isCrawler');
+  @override
+  late final GeneratedColumn<bool> isCrawler = GeneratedColumn<bool>(
+      'is_crawler', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_crawler" IN (0, 1))'));
+  static const VerificationMeta _connectionTypeMeta =
+      const VerificationMeta('connectionType');
+  @override
+  late final GeneratedColumn<String> connectionType = GeneratedColumn<String>(
+      'connection_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ispMeta = const VerificationMeta('isp');
+  @override
+  late final GeneratedColumn<String> isp = GeneratedColumn<String>(
+      'isp', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _organizationMeta =
+      const VerificationMeta('organization');
+  @override
+  late final GeneratedColumn<String> organization = GeneratedColumn<String>(
+      'organization', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _regionMeta = const VerificationMeta('region');
+  @override
+  late final GeneratedColumn<String> region = GeneratedColumn<String>(
+      'region', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _recentAbuseMeta =
+      const VerificationMeta('recentAbuse');
+  @override
+  late final GeneratedColumn<bool> recentAbuse = GeneratedColumn<bool>(
+      'recent_abuse', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("recent_abuse" IN (0, 1))'));
   static const VerificationMeta _assignedAtMeta =
       const VerificationMeta('assignedAt');
   @override
@@ -1226,6 +1266,12 @@ class $ProxyIpAddressesTableTable extends ProxyIpAddressesTable
         isTor,
         fraudScore,
         abuseConfidence,
+        isCrawler,
+        connectionType,
+        isp,
+        organization,
+        region,
+        recentAbuse,
         assignedAt,
         removedAt,
         lastVerification,
@@ -1337,6 +1383,36 @@ class $ProxyIpAddressesTableTable extends ProxyIpAddressesTable
           abuseConfidence.isAcceptableOrUnknown(
               data['abuse_confidence']!, _abuseConfidenceMeta));
     }
+    if (data.containsKey('is_crawler')) {
+      context.handle(_isCrawlerMeta,
+          isCrawler.isAcceptableOrUnknown(data['is_crawler']!, _isCrawlerMeta));
+    }
+    if (data.containsKey('connection_type')) {
+      context.handle(
+          _connectionTypeMeta,
+          connectionType.isAcceptableOrUnknown(
+              data['connection_type']!, _connectionTypeMeta));
+    }
+    if (data.containsKey('isp')) {
+      context.handle(
+          _ispMeta, isp.isAcceptableOrUnknown(data['isp']!, _ispMeta));
+    }
+    if (data.containsKey('organization')) {
+      context.handle(
+          _organizationMeta,
+          organization.isAcceptableOrUnknown(
+              data['organization']!, _organizationMeta));
+    }
+    if (data.containsKey('region')) {
+      context.handle(_regionMeta,
+          region.isAcceptableOrUnknown(data['region']!, _regionMeta));
+    }
+    if (data.containsKey('recent_abuse')) {
+      context.handle(
+          _recentAbuseMeta,
+          recentAbuse.isAcceptableOrUnknown(
+              data['recent_abuse']!, _recentAbuseMeta));
+    }
     if (data.containsKey('assigned_at')) {
       context.handle(
           _assignedAtMeta,
@@ -1420,6 +1496,18 @@ class $ProxyIpAddressesTableTable extends ProxyIpAddressesTable
           .read(DriftSqlType.double, data['${effectivePrefix}fraud_score'])!,
       abuseConfidence: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}abuse_confidence'])!,
+      isCrawler: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_crawler']),
+      connectionType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}connection_type']),
+      isp: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}isp']),
+      organization: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}organization']),
+      region: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}region']),
+      recentAbuse: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}recent_abuse']),
       assignedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}assigned_at'])!,
       removedAt: attachedDatabase.typeMapping
@@ -1499,6 +1587,12 @@ class ProxyIpAddressesTableData extends DataClass
 
   /// Abuse confidence percentage (0-100)
   final int abuseConfidence;
+  final bool? isCrawler;
+  final String? connectionType;
+  final String? isp;
+  final String? organization;
+  final String? region;
+  final bool? recentAbuse;
 
   /// When this IP was assigned to the slot
   final DateTime assignedAt;
@@ -1537,6 +1631,12 @@ class ProxyIpAddressesTableData extends DataClass
       required this.isTor,
       required this.fraudScore,
       required this.abuseConfidence,
+      this.isCrawler,
+      this.connectionType,
+      this.isp,
+      this.organization,
+      this.region,
+      this.recentAbuse,
       required this.assignedAt,
       this.removedAt,
       required this.lastVerification,
@@ -1565,6 +1665,24 @@ class ProxyIpAddressesTableData extends DataClass
     map['is_tor'] = Variable<bool>(isTor);
     map['fraud_score'] = Variable<double>(fraudScore);
     map['abuse_confidence'] = Variable<int>(abuseConfidence);
+    if (!nullToAbsent || isCrawler != null) {
+      map['is_crawler'] = Variable<bool>(isCrawler);
+    }
+    if (!nullToAbsent || connectionType != null) {
+      map['connection_type'] = Variable<String>(connectionType);
+    }
+    if (!nullToAbsent || isp != null) {
+      map['isp'] = Variable<String>(isp);
+    }
+    if (!nullToAbsent || organization != null) {
+      map['organization'] = Variable<String>(organization);
+    }
+    if (!nullToAbsent || region != null) {
+      map['region'] = Variable<String>(region);
+    }
+    if (!nullToAbsent || recentAbuse != null) {
+      map['recent_abuse'] = Variable<bool>(recentAbuse);
+    }
     map['assigned_at'] = Variable<DateTime>(assignedAt);
     if (!nullToAbsent || removedAt != null) {
       map['removed_at'] = Variable<DateTime>(removedAt);
@@ -1599,6 +1717,21 @@ class ProxyIpAddressesTableData extends DataClass
       isTor: Value(isTor),
       fraudScore: Value(fraudScore),
       abuseConfidence: Value(abuseConfidence),
+      isCrawler: isCrawler == null && nullToAbsent
+          ? const Value.absent()
+          : Value(isCrawler),
+      connectionType: connectionType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(connectionType),
+      isp: isp == null && nullToAbsent ? const Value.absent() : Value(isp),
+      organization: organization == null && nullToAbsent
+          ? const Value.absent()
+          : Value(organization),
+      region:
+          region == null && nullToAbsent ? const Value.absent() : Value(region),
+      recentAbuse: recentAbuse == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recentAbuse),
       assignedAt: Value(assignedAt),
       removedAt: removedAt == null && nullToAbsent
           ? const Value.absent()
@@ -1636,6 +1769,12 @@ class ProxyIpAddressesTableData extends DataClass
       isTor: serializer.fromJson<bool>(json['isTor']),
       fraudScore: serializer.fromJson<double>(json['fraudScore']),
       abuseConfidence: serializer.fromJson<int>(json['abuseConfidence']),
+      isCrawler: serializer.fromJson<bool?>(json['isCrawler']),
+      connectionType: serializer.fromJson<String?>(json['connectionType']),
+      isp: serializer.fromJson<String?>(json['isp']),
+      organization: serializer.fromJson<String?>(json['organization']),
+      region: serializer.fromJson<String?>(json['region']),
+      recentAbuse: serializer.fromJson<bool?>(json['recentAbuse']),
       assignedAt: serializer.fromJson<DateTime>(json['assignedAt']),
       removedAt: serializer.fromJson<DateTime?>(json['removedAt']),
       lastVerification: serializer.fromJson<DateTime>(json['lastVerification']),
@@ -1667,6 +1806,12 @@ class ProxyIpAddressesTableData extends DataClass
       'isTor': serializer.toJson<bool>(isTor),
       'fraudScore': serializer.toJson<double>(fraudScore),
       'abuseConfidence': serializer.toJson<int>(abuseConfidence),
+      'isCrawler': serializer.toJson<bool?>(isCrawler),
+      'connectionType': serializer.toJson<String?>(connectionType),
+      'isp': serializer.toJson<String?>(isp),
+      'organization': serializer.toJson<String?>(organization),
+      'region': serializer.toJson<String?>(region),
+      'recentAbuse': serializer.toJson<bool?>(recentAbuse),
       'assignedAt': serializer.toJson<DateTime>(assignedAt),
       'removedAt': serializer.toJson<DateTime?>(removedAt),
       'lastVerification': serializer.toJson<DateTime>(lastVerification),
@@ -1696,6 +1841,12 @@ class ProxyIpAddressesTableData extends DataClass
           bool? isTor,
           double? fraudScore,
           int? abuseConfidence,
+          Value<bool?> isCrawler = const Value.absent(),
+          Value<String?> connectionType = const Value.absent(),
+          Value<String?> isp = const Value.absent(),
+          Value<String?> organization = const Value.absent(),
+          Value<String?> region = const Value.absent(),
+          Value<bool?> recentAbuse = const Value.absent(),
           DateTime? assignedAt,
           Value<DateTime?> removedAt = const Value.absent(),
           DateTime? lastVerification,
@@ -1723,6 +1874,14 @@ class ProxyIpAddressesTableData extends DataClass
         isTor: isTor ?? this.isTor,
         fraudScore: fraudScore ?? this.fraudScore,
         abuseConfidence: abuseConfidence ?? this.abuseConfidence,
+        isCrawler: isCrawler.present ? isCrawler.value : this.isCrawler,
+        connectionType:
+            connectionType.present ? connectionType.value : this.connectionType,
+        isp: isp.present ? isp.value : this.isp,
+        organization:
+            organization.present ? organization.value : this.organization,
+        region: region.present ? region.value : this.region,
+        recentAbuse: recentAbuse.present ? recentAbuse.value : this.recentAbuse,
         assignedAt: assignedAt ?? this.assignedAt,
         removedAt: removedAt.present ? removedAt.value : this.removedAt,
         lastVerification: lastVerification ?? this.lastVerification,
@@ -1763,6 +1922,17 @@ class ProxyIpAddressesTableData extends DataClass
       abuseConfidence: data.abuseConfidence.present
           ? data.abuseConfidence.value
           : this.abuseConfidence,
+      isCrawler: data.isCrawler.present ? data.isCrawler.value : this.isCrawler,
+      connectionType: data.connectionType.present
+          ? data.connectionType.value
+          : this.connectionType,
+      isp: data.isp.present ? data.isp.value : this.isp,
+      organization: data.organization.present
+          ? data.organization.value
+          : this.organization,
+      region: data.region.present ? data.region.value : this.region,
+      recentAbuse:
+          data.recentAbuse.present ? data.recentAbuse.value : this.recentAbuse,
       assignedAt:
           data.assignedAt.present ? data.assignedAt.value : this.assignedAt,
       removedAt: data.removedAt.present ? data.removedAt.value : this.removedAt,
@@ -1803,6 +1973,12 @@ class ProxyIpAddressesTableData extends DataClass
           ..write('isTor: $isTor, ')
           ..write('fraudScore: $fraudScore, ')
           ..write('abuseConfidence: $abuseConfidence, ')
+          ..write('isCrawler: $isCrawler, ')
+          ..write('connectionType: $connectionType, ')
+          ..write('isp: $isp, ')
+          ..write('organization: $organization, ')
+          ..write('region: $region, ')
+          ..write('recentAbuse: $recentAbuse, ')
           ..write('assignedAt: $assignedAt, ')
           ..write('removedAt: $removedAt, ')
           ..write('lastVerification: $lastVerification, ')
@@ -1834,6 +2010,12 @@ class ProxyIpAddressesTableData extends DataClass
         isTor,
         fraudScore,
         abuseConfidence,
+        isCrawler,
+        connectionType,
+        isp,
+        organization,
+        region,
+        recentAbuse,
         assignedAt,
         removedAt,
         lastVerification,
@@ -1864,6 +2046,12 @@ class ProxyIpAddressesTableData extends DataClass
           other.isTor == this.isTor &&
           other.fraudScore == this.fraudScore &&
           other.abuseConfidence == this.abuseConfidence &&
+          other.isCrawler == this.isCrawler &&
+          other.connectionType == this.connectionType &&
+          other.isp == this.isp &&
+          other.organization == this.organization &&
+          other.region == this.region &&
+          other.recentAbuse == this.recentAbuse &&
           other.assignedAt == this.assignedAt &&
           other.removedAt == this.removedAt &&
           other.lastVerification == this.lastVerification &&
@@ -1893,6 +2081,12 @@ class ProxyIpAddressesTableCompanion
   final Value<bool> isTor;
   final Value<double> fraudScore;
   final Value<int> abuseConfidence;
+  final Value<bool?> isCrawler;
+  final Value<String?> connectionType;
+  final Value<String?> isp;
+  final Value<String?> organization;
+  final Value<String?> region;
+  final Value<bool?> recentAbuse;
   final Value<DateTime> assignedAt;
   final Value<DateTime?> removedAt;
   final Value<DateTime> lastVerification;
@@ -1919,6 +2113,12 @@ class ProxyIpAddressesTableCompanion
     this.isTor = const Value.absent(),
     this.fraudScore = const Value.absent(),
     this.abuseConfidence = const Value.absent(),
+    this.isCrawler = const Value.absent(),
+    this.connectionType = const Value.absent(),
+    this.isp = const Value.absent(),
+    this.organization = const Value.absent(),
+    this.region = const Value.absent(),
+    this.recentAbuse = const Value.absent(),
     this.assignedAt = const Value.absent(),
     this.removedAt = const Value.absent(),
     this.lastVerification = const Value.absent(),
@@ -1946,6 +2146,12 @@ class ProxyIpAddressesTableCompanion
     this.isTor = const Value.absent(),
     this.fraudScore = const Value.absent(),
     this.abuseConfidence = const Value.absent(),
+    this.isCrawler = const Value.absent(),
+    this.connectionType = const Value.absent(),
+    this.isp = const Value.absent(),
+    this.organization = const Value.absent(),
+    this.region = const Value.absent(),
+    this.recentAbuse = const Value.absent(),
     this.assignedAt = const Value.absent(),
     this.removedAt = const Value.absent(),
     this.lastVerification = const Value.absent(),
@@ -1974,6 +2180,12 @@ class ProxyIpAddressesTableCompanion
     Expression<bool>? isTor,
     Expression<double>? fraudScore,
     Expression<int>? abuseConfidence,
+    Expression<bool>? isCrawler,
+    Expression<String>? connectionType,
+    Expression<String>? isp,
+    Expression<String>? organization,
+    Expression<String>? region,
+    Expression<bool>? recentAbuse,
     Expression<DateTime>? assignedAt,
     Expression<DateTime>? removedAt,
     Expression<DateTime>? lastVerification,
@@ -2002,6 +2214,12 @@ class ProxyIpAddressesTableCompanion
       if (isTor != null) 'is_tor': isTor,
       if (fraudScore != null) 'fraud_score': fraudScore,
       if (abuseConfidence != null) 'abuse_confidence': abuseConfidence,
+      if (isCrawler != null) 'is_crawler': isCrawler,
+      if (connectionType != null) 'connection_type': connectionType,
+      if (isp != null) 'isp': isp,
+      if (organization != null) 'organization': organization,
+      if (region != null) 'region': region,
+      if (recentAbuse != null) 'recent_abuse': recentAbuse,
       if (assignedAt != null) 'assigned_at': assignedAt,
       if (removedAt != null) 'removed_at': removedAt,
       if (lastVerification != null) 'last_verification': lastVerification,
@@ -2031,6 +2249,12 @@ class ProxyIpAddressesTableCompanion
       Value<bool>? isTor,
       Value<double>? fraudScore,
       Value<int>? abuseConfidence,
+      Value<bool?>? isCrawler,
+      Value<String?>? connectionType,
+      Value<String?>? isp,
+      Value<String?>? organization,
+      Value<String?>? region,
+      Value<bool?>? recentAbuse,
       Value<DateTime>? assignedAt,
       Value<DateTime?>? removedAt,
       Value<DateTime>? lastVerification,
@@ -2058,6 +2282,12 @@ class ProxyIpAddressesTableCompanion
       isTor: isTor ?? this.isTor,
       fraudScore: fraudScore ?? this.fraudScore,
       abuseConfidence: abuseConfidence ?? this.abuseConfidence,
+      isCrawler: isCrawler ?? this.isCrawler,
+      connectionType: connectionType ?? this.connectionType,
+      isp: isp ?? this.isp,
+      organization: organization ?? this.organization,
+      region: region ?? this.region,
+      recentAbuse: recentAbuse ?? this.recentAbuse,
       assignedAt: assignedAt ?? this.assignedAt,
       removedAt: removedAt ?? this.removedAt,
       lastVerification: lastVerification ?? this.lastVerification,
@@ -2128,6 +2358,24 @@ class ProxyIpAddressesTableCompanion
     if (abuseConfidence.present) {
       map['abuse_confidence'] = Variable<int>(abuseConfidence.value);
     }
+    if (isCrawler.present) {
+      map['is_crawler'] = Variable<bool>(isCrawler.value);
+    }
+    if (connectionType.present) {
+      map['connection_type'] = Variable<String>(connectionType.value);
+    }
+    if (isp.present) {
+      map['isp'] = Variable<String>(isp.value);
+    }
+    if (organization.present) {
+      map['organization'] = Variable<String>(organization.value);
+    }
+    if (region.present) {
+      map['region'] = Variable<String>(region.value);
+    }
+    if (recentAbuse.present) {
+      map['recent_abuse'] = Variable<bool>(recentAbuse.value);
+    }
     if (assignedAt.present) {
       map['assigned_at'] = Variable<DateTime>(assignedAt.value);
     }
@@ -2171,6 +2419,12 @@ class ProxyIpAddressesTableCompanion
           ..write('isTor: $isTor, ')
           ..write('fraudScore: $fraudScore, ')
           ..write('abuseConfidence: $abuseConfidence, ')
+          ..write('isCrawler: $isCrawler, ')
+          ..write('connectionType: $connectionType, ')
+          ..write('isp: $isp, ')
+          ..write('organization: $organization, ')
+          ..write('region: $region, ')
+          ..write('recentAbuse: $recentAbuse, ')
           ..write('assignedAt: $assignedAt, ')
           ..write('removedAt: $removedAt, ')
           ..write('lastVerification: $lastVerification, ')
@@ -2698,6 +2952,12 @@ class $CharactersTableTable extends CharactersTable
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _defaultScriptNameMeta =
+      const VerificationMeta('defaultScriptName');
+  @override
+  late final GeneratedColumn<String> defaultScriptName =
+      GeneratedColumn<String>('default_script_name', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2707,7 +2967,8 @@ class $CharactersTableTable extends CharactersTable
         actualSkillsJson,
         targetSkillsJson,
         createdAt,
-        lastUpdated
+        lastUpdated,
+        defaultScriptName
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2761,6 +3022,12 @@ class $CharactersTableTable extends CharactersTable
           lastUpdated.isAcceptableOrUnknown(
               data['last_updated']!, _lastUpdatedMeta));
     }
+    if (data.containsKey('default_script_name')) {
+      context.handle(
+          _defaultScriptNameMeta,
+          defaultScriptName.isAcceptableOrUnknown(
+              data['default_script_name']!, _defaultScriptNameMeta));
+    }
     return context;
   }
 
@@ -2786,6 +3053,8 @@ class $CharactersTableTable extends CharactersTable
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       lastUpdated: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_updated'])!,
+      defaultScriptName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}default_script_name']),
     );
   }
 
@@ -2821,6 +3090,7 @@ class CharactersTableData extends DataClass
 
   /// When this character was last updated
   final DateTime lastUpdated;
+  final String? defaultScriptName;
   const CharactersTableData(
       {required this.id,
       required this.accountId,
@@ -2829,7 +3099,8 @@ class CharactersTableData extends DataClass
       required this.actualSkillsJson,
       required this.targetSkillsJson,
       required this.createdAt,
-      required this.lastUpdated});
+      required this.lastUpdated,
+      this.defaultScriptName});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2841,6 +3112,9 @@ class CharactersTableData extends DataClass
     map['target_skills_json'] = Variable<String>(targetSkillsJson);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_updated'] = Variable<DateTime>(lastUpdated);
+    if (!nullToAbsent || defaultScriptName != null) {
+      map['default_script_name'] = Variable<String>(defaultScriptName);
+    }
     return map;
   }
 
@@ -2854,6 +3128,9 @@ class CharactersTableData extends DataClass
       targetSkillsJson: Value(targetSkillsJson),
       createdAt: Value(createdAt),
       lastUpdated: Value(lastUpdated),
+      defaultScriptName: defaultScriptName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultScriptName),
     );
   }
 
@@ -2869,6 +3146,8 @@ class CharactersTableData extends DataClass
       targetSkillsJson: serializer.fromJson<String>(json['targetSkillsJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      defaultScriptName:
+          serializer.fromJson<String?>(json['defaultScriptName']),
     );
   }
   @override
@@ -2883,6 +3162,7 @@ class CharactersTableData extends DataClass
       'targetSkillsJson': serializer.toJson<String>(targetSkillsJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'defaultScriptName': serializer.toJson<String?>(defaultScriptName),
     };
   }
 
@@ -2894,7 +3174,8 @@ class CharactersTableData extends DataClass
           String? actualSkillsJson,
           String? targetSkillsJson,
           DateTime? createdAt,
-          DateTime? lastUpdated}) =>
+          DateTime? lastUpdated,
+          Value<String?> defaultScriptName = const Value.absent()}) =>
       CharactersTableData(
         id: id ?? this.id,
         accountId: accountId ?? this.accountId,
@@ -2904,6 +3185,9 @@ class CharactersTableData extends DataClass
         targetSkillsJson: targetSkillsJson ?? this.targetSkillsJson,
         createdAt: createdAt ?? this.createdAt,
         lastUpdated: lastUpdated ?? this.lastUpdated,
+        defaultScriptName: defaultScriptName.present
+            ? defaultScriptName.value
+            : this.defaultScriptName,
       );
   CharactersTableData copyWithCompanion(CharactersTableCompanion data) {
     return CharactersTableData(
@@ -2920,6 +3204,9 @@ class CharactersTableData extends DataClass
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastUpdated:
           data.lastUpdated.present ? data.lastUpdated.value : this.lastUpdated,
+      defaultScriptName: data.defaultScriptName.present
+          ? data.defaultScriptName.value
+          : this.defaultScriptName,
     );
   }
 
@@ -2933,14 +3220,15 @@ class CharactersTableData extends DataClass
           ..write('actualSkillsJson: $actualSkillsJson, ')
           ..write('targetSkillsJson: $targetSkillsJson, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('defaultScriptName: $defaultScriptName')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, accountId, name, banned, actualSkillsJson,
-      targetSkillsJson, createdAt, lastUpdated);
+      targetSkillsJson, createdAt, lastUpdated, defaultScriptName);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2952,7 +3240,8 @@ class CharactersTableData extends DataClass
           other.actualSkillsJson == this.actualSkillsJson &&
           other.targetSkillsJson == this.targetSkillsJson &&
           other.createdAt == this.createdAt &&
-          other.lastUpdated == this.lastUpdated);
+          other.lastUpdated == this.lastUpdated &&
+          other.defaultScriptName == this.defaultScriptName);
 }
 
 class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
@@ -2964,6 +3253,7 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
   final Value<String> targetSkillsJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastUpdated;
+  final Value<String?> defaultScriptName;
   const CharactersTableCompanion({
     this.id = const Value.absent(),
     this.accountId = const Value.absent(),
@@ -2973,6 +3263,7 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
     this.targetSkillsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
+    this.defaultScriptName = const Value.absent(),
   });
   CharactersTableCompanion.insert({
     this.id = const Value.absent(),
@@ -2983,6 +3274,7 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
     this.targetSkillsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
+    this.defaultScriptName = const Value.absent(),
   })  : accountId = Value(accountId),
         name = Value(name);
   static Insertable<CharactersTableData> custom({
@@ -2994,6 +3286,7 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
     Expression<String>? targetSkillsJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastUpdated,
+    Expression<String>? defaultScriptName,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3004,6 +3297,7 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
       if (targetSkillsJson != null) 'target_skills_json': targetSkillsJson,
       if (createdAt != null) 'created_at': createdAt,
       if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (defaultScriptName != null) 'default_script_name': defaultScriptName,
     });
   }
 
@@ -3015,7 +3309,8 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
       Value<String>? actualSkillsJson,
       Value<String>? targetSkillsJson,
       Value<DateTime>? createdAt,
-      Value<DateTime>? lastUpdated}) {
+      Value<DateTime>? lastUpdated,
+      Value<String?>? defaultScriptName}) {
     return CharactersTableCompanion(
       id: id ?? this.id,
       accountId: accountId ?? this.accountId,
@@ -3025,6 +3320,7 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
       targetSkillsJson: targetSkillsJson ?? this.targetSkillsJson,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      defaultScriptName: defaultScriptName ?? this.defaultScriptName,
     );
   }
 
@@ -3055,6 +3351,9 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
     if (lastUpdated.present) {
       map['last_updated'] = Variable<DateTime>(lastUpdated.value);
     }
+    if (defaultScriptName.present) {
+      map['default_script_name'] = Variable<String>(defaultScriptName.value);
+    }
     return map;
   }
 
@@ -3068,7 +3367,8 @@ class CharactersTableCompanion extends UpdateCompanion<CharactersTableData> {
           ..write('actualSkillsJson: $actualSkillsJson, ')
           ..write('targetSkillsJson: $targetSkillsJson, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('defaultScriptName: $defaultScriptName')
           ..write(')'))
         .toString();
   }
@@ -4177,6 +4477,12 @@ typedef $$ProxyIpAddressesTableTableCreateCompanionBuilder
   Value<bool> isTor,
   Value<double> fraudScore,
   Value<int> abuseConfidence,
+  Value<bool?> isCrawler,
+  Value<String?> connectionType,
+  Value<String?> isp,
+  Value<String?> organization,
+  Value<String?> region,
+  Value<bool?> recentAbuse,
   Value<DateTime> assignedAt,
   Value<DateTime?> removedAt,
   Value<DateTime> lastVerification,
@@ -4205,6 +4511,12 @@ typedef $$ProxyIpAddressesTableTableUpdateCompanionBuilder
   Value<bool> isTor,
   Value<double> fraudScore,
   Value<int> abuseConfidence,
+  Value<bool?> isCrawler,
+  Value<String?> connectionType,
+  Value<String?> isp,
+  Value<String?> organization,
+  Value<String?> region,
+  Value<bool?> recentAbuse,
   Value<DateTime> assignedAt,
   Value<DateTime?> removedAt,
   Value<DateTime> lastVerification,
@@ -4299,6 +4611,25 @@ class $$ProxyIpAddressesTableTableFilterComposer
   ColumnFilters<int> get abuseConfidence => $composableBuilder(
       column: $table.abuseConfidence,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isCrawler => $composableBuilder(
+      column: $table.isCrawler, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get connectionType => $composableBuilder(
+      column: $table.connectionType,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get isp => $composableBuilder(
+      column: $table.isp, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get organization => $composableBuilder(
+      column: $table.organization, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get region => $composableBuilder(
+      column: $table.region, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get recentAbuse => $composableBuilder(
+      column: $table.recentAbuse, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get assignedAt => $composableBuilder(
       column: $table.assignedAt, builder: (column) => ColumnFilters(column));
@@ -4407,6 +4738,26 @@ class $$ProxyIpAddressesTableTableOrderingComposer
       column: $table.abuseConfidence,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isCrawler => $composableBuilder(
+      column: $table.isCrawler, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get connectionType => $composableBuilder(
+      column: $table.connectionType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get isp => $composableBuilder(
+      column: $table.isp, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get organization => $composableBuilder(
+      column: $table.organization,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get region => $composableBuilder(
+      column: $table.region, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get recentAbuse => $composableBuilder(
+      column: $table.recentAbuse, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get assignedAt => $composableBuilder(
       column: $table.assignedAt, builder: (column) => ColumnOrderings(column));
 
@@ -4513,6 +4864,24 @@ class $$ProxyIpAddressesTableTableAnnotationComposer
   GeneratedColumn<int> get abuseConfidence => $composableBuilder(
       column: $table.abuseConfidence, builder: (column) => column);
 
+  GeneratedColumn<bool> get isCrawler =>
+      $composableBuilder(column: $table.isCrawler, builder: (column) => column);
+
+  GeneratedColumn<String> get connectionType => $composableBuilder(
+      column: $table.connectionType, builder: (column) => column);
+
+  GeneratedColumn<String> get isp =>
+      $composableBuilder(column: $table.isp, builder: (column) => column);
+
+  GeneratedColumn<String> get organization => $composableBuilder(
+      column: $table.organization, builder: (column) => column);
+
+  GeneratedColumn<String> get region =>
+      $composableBuilder(column: $table.region, builder: (column) => column);
+
+  GeneratedColumn<bool> get recentAbuse => $composableBuilder(
+      column: $table.recentAbuse, builder: (column) => column);
+
   GeneratedColumn<DateTime> get assignedAt => $composableBuilder(
       column: $table.assignedAt, builder: (column) => column);
 
@@ -4598,6 +4967,12 @@ class $$ProxyIpAddressesTableTableTableManager extends RootTableManager<
             Value<bool> isTor = const Value.absent(),
             Value<double> fraudScore = const Value.absent(),
             Value<int> abuseConfidence = const Value.absent(),
+            Value<bool?> isCrawler = const Value.absent(),
+            Value<String?> connectionType = const Value.absent(),
+            Value<String?> isp = const Value.absent(),
+            Value<String?> organization = const Value.absent(),
+            Value<String?> region = const Value.absent(),
+            Value<bool?> recentAbuse = const Value.absent(),
             Value<DateTime> assignedAt = const Value.absent(),
             Value<DateTime?> removedAt = const Value.absent(),
             Value<DateTime> lastVerification = const Value.absent(),
@@ -4625,6 +5000,12 @@ class $$ProxyIpAddressesTableTableTableManager extends RootTableManager<
             isTor: isTor,
             fraudScore: fraudScore,
             abuseConfidence: abuseConfidence,
+            isCrawler: isCrawler,
+            connectionType: connectionType,
+            isp: isp,
+            organization: organization,
+            region: region,
+            recentAbuse: recentAbuse,
             assignedAt: assignedAt,
             removedAt: removedAt,
             lastVerification: lastVerification,
@@ -4652,6 +5033,12 @@ class $$ProxyIpAddressesTableTableTableManager extends RootTableManager<
             Value<bool> isTor = const Value.absent(),
             Value<double> fraudScore = const Value.absent(),
             Value<int> abuseConfidence = const Value.absent(),
+            Value<bool?> isCrawler = const Value.absent(),
+            Value<String?> connectionType = const Value.absent(),
+            Value<String?> isp = const Value.absent(),
+            Value<String?> organization = const Value.absent(),
+            Value<String?> region = const Value.absent(),
+            Value<bool?> recentAbuse = const Value.absent(),
             Value<DateTime> assignedAt = const Value.absent(),
             Value<DateTime?> removedAt = const Value.absent(),
             Value<DateTime> lastVerification = const Value.absent(),
@@ -4679,6 +5066,12 @@ class $$ProxyIpAddressesTableTableTableManager extends RootTableManager<
             isTor: isTor,
             fraudScore: fraudScore,
             abuseConfidence: abuseConfidence,
+            isCrawler: isCrawler,
+            connectionType: connectionType,
+            isp: isp,
+            organization: organization,
+            region: region,
+            recentAbuse: recentAbuse,
             assignedAt: assignedAt,
             removedAt: removedAt,
             lastVerification: lastVerification,
@@ -5146,6 +5539,7 @@ typedef $$CharactersTableTableCreateCompanionBuilder = CharactersTableCompanion
   Value<String> targetSkillsJson,
   Value<DateTime> createdAt,
   Value<DateTime> lastUpdated,
+  Value<String?> defaultScriptName,
 });
 typedef $$CharactersTableTableUpdateCompanionBuilder = CharactersTableCompanion
     Function({
@@ -5157,6 +5551,7 @@ typedef $$CharactersTableTableUpdateCompanionBuilder = CharactersTableCompanion
   Value<String> targetSkillsJson,
   Value<DateTime> createdAt,
   Value<DateTime> lastUpdated,
+  Value<String?> defaultScriptName,
 });
 
 final class $$CharactersTableTableReferences extends BaseReferences<
@@ -5212,6 +5607,10 @@ class $$CharactersTableTableFilterComposer
   ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
       column: $table.lastUpdated, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get defaultScriptName => $composableBuilder(
+      column: $table.defaultScriptName,
+      builder: (column) => ColumnFilters(column));
+
   $$AccountsTableTableFilterComposer get accountId {
     final $$AccountsTableTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -5265,6 +5664,10 @@ class $$CharactersTableTableOrderingComposer
   ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
       column: $table.lastUpdated, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get defaultScriptName => $composableBuilder(
+      column: $table.defaultScriptName,
+      builder: (column) => ColumnOrderings(column));
+
   $$AccountsTableTableOrderingComposer get accountId {
     final $$AccountsTableTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5315,6 +5718,9 @@ class $$CharactersTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
       column: $table.lastUpdated, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultScriptName => $composableBuilder(
+      column: $table.defaultScriptName, builder: (column) => column);
 
   $$AccountsTableTableAnnotationComposer get accountId {
     final $$AccountsTableTableAnnotationComposer composer = $composerBuilder(
@@ -5369,6 +5775,7 @@ class $$CharactersTableTableTableManager extends RootTableManager<
             Value<String> targetSkillsJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> lastUpdated = const Value.absent(),
+            Value<String?> defaultScriptName = const Value.absent(),
           }) =>
               CharactersTableCompanion(
             id: id,
@@ -5379,6 +5786,7 @@ class $$CharactersTableTableTableManager extends RootTableManager<
             targetSkillsJson: targetSkillsJson,
             createdAt: createdAt,
             lastUpdated: lastUpdated,
+            defaultScriptName: defaultScriptName,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5389,6 +5797,7 @@ class $$CharactersTableTableTableManager extends RootTableManager<
             Value<String> targetSkillsJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> lastUpdated = const Value.absent(),
+            Value<String?> defaultScriptName = const Value.absent(),
           }) =>
               CharactersTableCompanion.insert(
             id: id,
@@ -5399,6 +5808,7 @@ class $$CharactersTableTableTableManager extends RootTableManager<
             targetSkillsJson: targetSkillsJson,
             createdAt: createdAt,
             lastUpdated: lastUpdated,
+            defaultScriptName: defaultScriptName,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
