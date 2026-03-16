@@ -10,7 +10,7 @@ Widget wrapInFluentApp(Widget child) {
 }
 
 ProxyIpAddressEntity makeIp({
-  double ipScore = 0,
+  double fraudScore = 0,
   DateTime? lastScoreCheck,
 }) {
   final now = DateTime.now();
@@ -26,13 +26,13 @@ ProxyIpAddressEntity makeIp({
     highCountryConfidence: true,
     asnName: 'TestASN',
     asnNumber: 12345,
-    ipScore: ipScore,
-    scoreLevel: ProxyIpAddressEntity.getScoreLevel(ipScore),
+    ipScore: 0,
+    scoreLevel: IpScoreLevel.unknown,
     isVpn: false,
     isProxy: true,
     isDatacenter: false,
     isTor: false,
-    fraudScore: 0,
+    fraudScore: fraudScore,
     assignedAt: now,
     lastVerification: now,
     lastScoreCheck: lastScoreCheck,
@@ -44,7 +44,7 @@ ProxyIpAddressEntity makeIp({
 void main() {
   group('IpScoreIndicator', () {
     testWidgets('shows "?" for unscored IP', (tester) async {
-      final ip = makeIp(ipScore: 0, lastScoreCheck: null);
+      final ip = makeIp(fraudScore: 0, lastScoreCheck: null);
 
       await tester.pumpWidget(
         wrapInFluentApp(IpScoreIndicator(ip: ip)),
@@ -54,19 +54,19 @@ void main() {
       expect(find.text('?'), findsOneWidget);
     });
 
-    testWidgets('shows numeric score for scored IP', (tester) async {
-      final ip = makeIp(ipScore: 92, lastScoreCheck: DateTime.now());
+    testWidgets('shows numeric fraud score for scored IP', (tester) async {
+      final ip = makeIp(fraudScore: 15, lastScoreCheck: DateTime.now());
 
       await tester.pumpWidget(
         wrapInFluentApp(IpScoreIndicator(ip: ip)),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('92'), findsOneWidget);
+      expect(find.text('15'), findsOneWidget);
     });
 
     testWidgets('shows score rounded to integer', (tester) async {
-      final ip = makeIp(ipScore: 75.7, lastScoreCheck: DateTime.now());
+      final ip = makeIp(fraudScore: 75.7, lastScoreCheck: DateTime.now());
 
       await tester.pumpWidget(
         wrapInFluentApp(IpScoreIndicator(ip: ip)),
@@ -78,23 +78,23 @@ void main() {
   });
 
   group('getScoreColor', () {
-    test('returns green for score >= 90', () {
-      final color = getScoreColor(95);
+    test('returns green for fraud score <= 30', () {
+      final color = getScoreColor(20);
       expect(color, equals(Colors.green));
     });
 
-    test('returns teal for score >= 70', () {
-      final color = getScoreColor(75);
-      expect(color, equals(Colors.teal));
+    test('returns yellow for fraud score <= 60', () {
+      final color = getScoreColor(50);
+      expect(color, equals(Colors.yellow));
     });
 
-    test('returns orange for score >= 50', () {
-      final color = getScoreColor(55);
+    test('returns orange for fraud score <= 80', () {
+      final color = getScoreColor(70);
       expect(color, equals(Colors.orange));
     });
 
-    test('returns red for score < 50', () {
-      final color = getScoreColor(30);
+    test('returns red for fraud score > 80', () {
+      final color = getScoreColor(90);
       expect(color, equals(Colors.red));
     });
 

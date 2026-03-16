@@ -131,7 +131,7 @@ class SlotHeader extends StatelessWidget {
       return Builder(
         builder: (context) {
           final ip = getCurrentIpForSlot(slot);
-          if (ip != null && ip.hasBeenScored && ip.ipScore < 50) {
+          if (ip != null && ip.hasBeenScored && ip.fraudScore > 60) {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilledButton(

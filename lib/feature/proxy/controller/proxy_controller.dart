@@ -260,7 +260,9 @@ class ProxyController extends GetxController {
       list.sort((a, b) {
         final ipA = getCurrentIpForSlot(a);
         final ipB = getCurrentIpForSlot(b);
-        return (ipB?.ipScore ?? 0).compareTo(ipA?.ipScore ?? 0);
+        final scoreA = ipA?.fraudScore ?? 100;
+        final scoreB = ipB?.fraudScore ?? 100;
+        return scoreA.compareTo(scoreB);
       });
     }
 

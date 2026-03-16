@@ -21,7 +21,7 @@ class ReplaceProxyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ip.ipScore <= 0 || ip.ipScore >= 50) {
+    if (!ip.hasBeenScored || ip.fraudScore <= 60) {
       return const SizedBox.shrink();
     }
 

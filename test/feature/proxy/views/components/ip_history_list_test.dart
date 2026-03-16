@@ -15,7 +15,7 @@ ProxyIpAddressEntity makeIp({
   String ipAddress = '1.2.3.4',
   int slotId = 1,
   bool isActive = true,
-  double ipScore = 0,
+  double fraudScore = 0,
   String countryCode = 'US',
   String cityName = 'TestCity',
   DateTime? assignedAt,
@@ -34,13 +34,13 @@ ProxyIpAddressEntity makeIp({
     highCountryConfidence: true,
     asnName: 'TestASN',
     asnNumber: 12345,
-    ipScore: ipScore,
-    scoreLevel: ProxyIpAddressEntity.getScoreLevel(ipScore),
+    ipScore: 0,
+    scoreLevel: IpScoreLevel.unknown,
     isVpn: false,
     isProxy: true,
     isDatacenter: false,
     isTor: false,
-    fraudScore: 0,
+    fraudScore: fraudScore,
     assignedAt: assignedAt ?? now,
     lastVerification: now,
     lastScoreCheck: lastScoreCheck,
@@ -83,7 +83,7 @@ void main() {
     });
 
     testWidgets('shows "?" for unscored IPs', (tester) async {
-      final history = [makeIp(ipScore: 0, lastScoreCheck: null)];
+      final history = [makeIp(fraudScore: 0, lastScoreCheck: null)];
 
       await tester.pumpWidget(
         wrapInFluentApp(IpHistoryList(history: history)),
@@ -95,7 +95,7 @@ void main() {
 
     testWidgets('shows numeric score for scored IPs', (tester) async {
       final history = [
-        makeIp(ipScore: 85, lastScoreCheck: DateTime.now()),
+        makeIp(fraudScore: 85, lastScoreCheck: DateTime.now()),
       ];
 
       await tester.pumpWidget(
