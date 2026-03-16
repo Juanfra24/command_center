@@ -34,6 +34,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
 
   @override
   void dispose() {
+    _debouncer.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -66,11 +67,9 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           configService: _configService,
         ),
         const Spacer(),
-        Obx(
-          () => Text(
-            'Showing ${widget.showingCount} of ${widget.totalCount}',
-            style: FluentTheme.of(context).typography.caption,
-          ),
+        Text(
+          'Showing ${widget.showingCount} of ${widget.totalCount}',
+          style: FluentTheme.of(context).typography.caption,
         ),
       ],
     );

@@ -75,7 +75,7 @@ void main() {
         isProxy: true,
         isDatacenter: false,
         isTor: false,
-        fraudScore: 100 - ipScore,
+        fraudScore: ipScore,
         assignedAt: now,
         lastVerification: now,
         lastScoreCheck: now,

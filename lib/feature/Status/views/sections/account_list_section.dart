@@ -144,7 +144,7 @@ class AccountListSection extends StatelessWidget {
                       // Checkbox
                       Expanded(
                         flex: flexes[0],
-                        child: row.character != null
+                        child: row.character != null && row.character!.id != null
                             ? Obx(() => Checkbox(
                                   checked: selectionCtrl
                                       .isSelected(row.character!.id!),

@@ -5,21 +5,19 @@ import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/character.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
+import 'package:command_center/feature/proxy/data/linked_characters_loader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 /// Presentation controller for proxy slot management.
-/// Handles selection, filtering, search, sync, and CRUD.
-///
 /// Scoring UI state lives in [ProxyScoringController].
 /// Replacement UI state lives in [ProxyReplacementController].
 class ProxyController extends GetxController {
   ProxyRepository? _proxyRepository;
-  AccountRepository? _accountRepository;
   WebshareService? _webshareService;
   ProxySyncService? _syncService;
+  LinkedCharactersLoader _linkedCharactersLoader = LinkedCharactersLoader(null);
 
   // Observable states
   var isLoading = true.obs;
@@ -28,7 +26,10 @@ class ProxyController extends GetxController {
   var ipAddresses = <ProxyIpAddressEntity>[].obs;
   var selectedSlot = Rxn<ProxySlotEntity>();
   var selectedSlotIpHistory = <ProxyIpAddressEntity>[].obs;
-  var linkedCharacters = <CharacterEntity>[].obs;
+
+  /// Characters linked to the currently selected slot.
+  RxList<CharacterEntity> get linkedCharacters =>
+      _linkedCharactersLoader.linkedCharacters;
 
   // Integration states
   var isWebshareConfigured = false.obs;
@@ -55,9 +56,10 @@ class ProxyController extends GetxController {
     try {
       final db = Get.find<DatabaseService>();
       _proxyRepository = db.proxyRepository;
-      _accountRepository = db.accountRepository;
+      _linkedCharactersLoader = LinkedCharactersLoader(db.accountRepository);
     } catch (e) {
       logger.e('DatabaseService not initialized yet: $e');
+      _linkedCharactersLoader = LinkedCharactersLoader(null);
     }
   }
 
@@ -86,8 +88,6 @@ class ProxyController extends GetxController {
     }
   }
 
-  // --- Data loading ---
-
   Future<void> loadData() async {
     isLoading.value = true;
     lastSyncError.value = null;
@@ -106,7 +106,6 @@ class ProxyController extends GetxController {
 
   Future<void> loadProxySlots() async {
     if (_proxyRepository == null) return;
-
     try {
       final slots = await _proxyRepository!.getAllSlots();
       proxySlots.value = slots;
@@ -118,7 +117,6 @@ class ProxyController extends GetxController {
 
   Future<void> loadIpAddresses() async {
     if (_proxyRepository == null) return;
-
     try {
       final ips = await _proxyRepository!.getAllIpAddresses();
       ipAddresses.value = ips;
@@ -133,36 +131,27 @@ class ProxyController extends GetxController {
     _activeIpBySlotId.clear();
     for (final ip in ipAddresses) {
       if (ip.id != null) _ipById[ip.id!] = ip;
-      if (ip.isActive) {
-        // First active IP per slot wins (matches firstWhereOrNull behavior)
-        _activeIpBySlotId.putIfAbsent(ip.slotId, () => ip);
-      }
+      if (ip.isActive) _activeIpBySlotId.putIfAbsent(ip.slotId, () => ip);
     }
   }
 
-  /// Rebuilds IP lookup caches from current [ipAddresses].
-  /// Exposed for tests that populate [ipAddresses] directly.
   @visibleForTesting
   void rebuildIpLookup() => _rebuildIpLookup();
 
   // --- Sync ---
 
-  /// Sync proxy slots from Webshare API
   Future<void> syncWithWebshare() async {
     if (_syncService == null || !isWebshareConfigured.value) {
       lastSyncError.value =
           'Webshare not configured. Please add your API key in Settings.';
       return;
     }
-
     if (_proxyRepository == null) {
       lastSyncError.value = 'Database not initialized';
       return;
     }
-
     isSyncing.value = true;
     lastSyncError.value = null;
-
     try {
       final previousSelectedId = selectedSlot.value?.id;
       await _syncService!.syncWithWebshare();
@@ -184,69 +173,42 @@ class ProxyController extends GetxController {
   }
 
   /// Clear all proxy data from database (soft-delete).
-  /// Typically called when unlinking Webshare.
   Future<void> clearAllProxyData() async {
     if (_proxyRepository == null) return;
-
     try {
-      logger.i('Soft-deleting all proxy data from database...');
       await _proxyRepository!.softDeleteAllSlots();
-
       proxySlots.clear();
       ipAddresses.clear();
       selectedSlot.value = null;
       selectedSlotIpHistory.clear();
-
-      logger.i('Successfully soft-deleted all proxy slots');
     } catch (e) {
       logger.e('Error clearing proxy data: $e');
       rethrow;
     }
   }
 
-  // --- Selection ---
-
   void selectSlot(ProxySlotEntity slot) {
     selectedSlot.value = slot;
     if (slot.id != null) {
       selectedSlotIpHistory.value = getIpHistoryForSlot(slot.id!);
-      _loadLinkedCharacters(slot.id!);
+      _linkedCharactersLoader.loadForSlot(slot.id!);
     }
   }
 
   void clearSelection() {
     selectedSlot.value = null;
     selectedSlotIpHistory.clear();
-    linkedCharacters.clear();
+    _linkedCharactersLoader.clear();
   }
 
-  Future<void> _loadLinkedCharacters(int slotId) async {
-    if (_accountRepository == null) return;
-    try {
-      final accounts =
-          await _accountRepository!.getAccountsByProxySlot(slotId);
-      linkedCharacters.value =
-          accounts.expand((a) => a.characters).toList();
-    } catch (e) {
-      logger.e('Error loading linked characters for slot $slotId: $e');
-      linkedCharacters.clear();
-    }
-  }
-
-  // --- IP lookups ---
-
-  /// Get the current (active) IP address for a slot
   ProxyIpAddressEntity? getCurrentIpForSlot(ProxySlotEntity slot) {
-    // Fast path: look up by currentIpAddressId
     if (slot.currentIpAddressId != null) {
       final ip = _ipById[slot.currentIpAddressId!];
       if (ip != null && ip.isActive) return ip;
     }
-    // Fallback: first active IP for this slot
     return _activeIpBySlotId[slot.id];
   }
 
-  /// Get IP history for a slot (all IPs including inactive, sorted by date)
   List<ProxyIpAddressEntity> getIpHistoryForSlot(int slotId) {
     return ipAddresses.where((ip) => ip.slotId == slotId).toList()
       ..sort((a, b) => b.assignedAt.compareTo(a.assignedAt));
@@ -255,10 +217,8 @@ class ProxyController extends GetxController {
   // --- Filtering ---
 
   /// Filtered slots based on search and active filter.
-  /// Score-based sorting is driven by [ProxyScoringController.sortByScore].
   List<ProxySlotEntity> getFilteredSlots({bool sortByScore = false}) {
     Iterable<ProxySlotEntity> result = proxySlots;
-
     if (showOnlyActive.value) {
       result = result.where((slot) => slot.isActive);
     }
@@ -275,8 +235,7 @@ class ProxyController extends GetxController {
       });
     }
 
-    final list = result.toList(); // Single materialization
-
+    final list = result.toList();
     if (sortByScore) {
       list.sort((a, b) {
         final ipA = getCurrentIpForSlot(a);
@@ -290,18 +249,13 @@ class ProxyController extends GetxController {
     return list;
   }
 
-  // --- Statistics ---
-
   int get totalSlots => proxySlots.length;
   int get activeSlots => proxySlots.where((s) => s.isActive).length;
   int get totalIpChanges =>
       proxySlots.fold(0, (sum, s) => sum + s.totalIpChanges);
 
-  // --- CRUD ---
-
   Future<void> addProxySlot(ProxySlotEntity slot) async {
     if (_proxyRepository == null) return;
-
     try {
       await _proxyRepository!.insertSlot(slot);
       await loadProxySlots();
@@ -313,7 +267,6 @@ class ProxyController extends GetxController {
 
   Future<void> updateProxySlot(ProxySlotEntity slot) async {
     if (_proxyRepository == null) return;
-
     try {
       await _proxyRepository!.updateSlot(slot);
       await loadProxySlots();
@@ -323,18 +276,14 @@ class ProxyController extends GetxController {
     }
   }
 
-  /// Update just the slot name
   Future<bool> updateSlotName(ProxySlotEntity slot, String newName) async {
     if (_proxyRepository == null) return false;
-
     try {
       await _proxyRepository!.updateSlot(slot.copyWith(slotName: newName));
       await loadProxySlots();
-
       if (selectedSlot.value?.id == slot.id) {
         selectedSlot.value = slot.copyWith(slotName: newName);
       }
-
       return true;
     } catch (e) {
       logger.e('Error updating slot name: $e');

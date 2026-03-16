@@ -46,6 +46,12 @@ class MainMenuController extends GetxController {
     if (_watchdogService != null) {
       ever(_watchdogService!.trackedClients, (_) => _refreshBotTiles());
     }
+    if (_statusController != null) {
+      ever(_statusController!.accountList, (_) => _refreshBotTiles());
+    }
+    if (_proxyController != null) {
+      ever(_proxyController!.proxySlots, (_) => _refreshProxyHealth());
+    }
   }
 
   void _refreshData() {

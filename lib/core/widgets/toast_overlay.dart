@@ -47,6 +47,9 @@ class _ToastOverlayState extends State<ToastOverlay> {
   @override
   void dispose() {
     _subscription?.cancel();
+    for (final t in _toasts) {
+      t.autoRemoveTimer?.cancel();
+    }
     super.dispose();
   }
 

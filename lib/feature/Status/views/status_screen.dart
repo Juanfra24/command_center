@@ -104,8 +104,8 @@ class StatusScreen extends GetView<StatusController> {
           }),
           const SizedBox(height: 16),
           Obx(() {
-            final chars = controller.accountList.fold<int>(0, (s, a) => s + a.characters.length);
-            return SearchFilterBar(showingCount: chars, totalCount: chars);
+            final total = controller.accountList.fold<int>(0, (s, a) => s + a.characters.length);
+            return SearchFilterBar(showingCount: total, totalCount: total);
           }),
           const SizedBox(height: 8),
           Obx(() => sel.hasSelection
