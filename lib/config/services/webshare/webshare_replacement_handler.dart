@@ -85,8 +85,10 @@ class WebshareReplacementHandler {
     try {
       final decoded = jsonDecode(responseBody);
       if (decoded is Map) {
-        return (decoded['detail'] ?? decoded['error'] ?? decoded.toString())
-            .toString();
+        final detail = decoded['detail'];
+        final error = decoded['error'];
+        if (detail != null) return detail.toString();
+        if (error != null) return error.toString();
       }
     } catch (_) {}
     return null;

@@ -3,8 +3,8 @@ import 'package:equatable/equatable.dart';
 /// IP Quality Score levels for quick reference (based on fraudScore: lower = better)
 enum IpScoreLevel {
   excellent, // fraudScore 1-30 (low risk)
-  good, // fraudScore 31-60
-  fair, // (kept for compatibility)
+  good, // (kept for compatibility)
+  fair, // fraudScore 31-60
   poor, // fraudScore 61-80
   bad, // fraudScore 81-100
   unknown, // not scored (fraudScore <= 0)
@@ -128,7 +128,7 @@ class ProxyIpAddressEntity extends Equatable {
   static IpScoreLevel getScoreLevel(double score) {
     if (score <= 0) return IpScoreLevel.unknown;
     if (score <= 30) return IpScoreLevel.excellent;
-    if (score <= 60) return IpScoreLevel.good;
+    if (score <= 60) return IpScoreLevel.fair;
     if (score <= 80) return IpScoreLevel.poor;
     return IpScoreLevel.bad;
   }

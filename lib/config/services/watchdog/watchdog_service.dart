@@ -86,9 +86,9 @@ class WatchdogService extends GetxService {
     final wasEmpty = trackedClients.isEmpty;
     trackedClients[client.characterName] = client;
     trackedClients.refresh();
-    logger.i('Tracking ${client.characterName} (PID: ${client.pid})');
     // Switch to faster polling when first client is added
     if (wasEmpty) _startPolling();
+    logger.i('Tracking ${client.characterName} (PID: ${client.pid})');
   }
 
   /// Stop a client: kill process (with profile cleanup), remove from tracking.
@@ -123,8 +123,6 @@ class WatchdogService extends GetxService {
   Future<void> _tick() async {
     if (trackedClients.isEmpty || _tickInProgress) return;
     _tickInProgress = true;
-
-    final wasEmpty = trackedClients.isEmpty;
 
     try {
       final liveProcesses = await _nativeCommandsService.listJavaProcesses();
@@ -163,13 +161,14 @@ class WatchdogService extends GetxService {
 
         // Check if process is still alive
         if (livePids.contains(client.pid)) {
-          // Stability reset: alive > 5 min → reset retry counters
+          // Stability reset: alive > 5 min → reset retry counter only.
+          // consecutiveQuickDeaths is only reset on a normal death (in classifyDeath)
+          // to preserve ban escalation across restart cycles.
           if (client.launchedAt != null &&
               DateTime.now().difference(client.launchedAt!) >
                   _stabilityThreshold) {
-            if (client.retryCount > 0 || client.consecutiveQuickDeaths > 0) {
+            if (client.retryCount > 0) {
               client.retryCount = 0;
-              client.consecutiveQuickDeaths = 0;
               changed = true;
             }
           }
@@ -194,10 +193,6 @@ class WatchdogService extends GetxService {
 
       if (changed) {
         trackedClients.refresh();
-        // Only restart timer if empty/non-empty state changed
-        if (wasEmpty != trackedClients.isEmpty) {
-          _startPolling();
-        }
       }
     } catch (e) {
       logger.e('Watchdog tick error: $e');

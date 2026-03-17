@@ -30,7 +30,7 @@ class _LoadingButtonState extends State<LoadingButton> {
   _ButtonState _state = _ButtonState.idle;
 
   Future<void> _handlePress() async {
-    if (_state == _ButtonState.loading || widget.onPressed == null) return;
+    if (_state != _ButtonState.idle || widget.onPressed == null) return;
 
     setState(() => _state = _ButtonState.loading);
     try {
@@ -76,7 +76,7 @@ class _LoadingButtonState extends State<LoadingButton> {
     );
 
     final onPressed =
-        _state == _ButtonState.loading ? null : _handlePress;
+        _state == _ButtonState.idle ? _handlePress : null;
 
     return widget.style == LoadingButtonStyle.filled
         ? FilledButton(onPressed: onPressed, child: child)

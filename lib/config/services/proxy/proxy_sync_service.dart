@@ -159,22 +159,8 @@ class ProxySyncService {
       logger.i('Credentials updated for slot #${webProxy.slotNumber}');
     }
 
-    // Always update slot with latest data from Webshare
-    await _proxyRepository.updateSlot(
-      existingSlot.copyWith(
-        webshareId: webProxy.id,
-        username: webProxy.username,
-        password: webProxy.password,
-        port: webProxy.port,
-        socksPort: webProxy.socksPort,
-        isActive: webProxy.valid,
-        isDeleted: false,
-        deletedAt: null,
-        lastUpdated: now,
-      ),
-    );
-
     // Handle IP change if needed
+    int? newIpId;
     if (ipChanged) {
       logger.i('IP changed for slot #${webProxy.slotNumber}');
       logger.i('  Old: ${currentIp?.ipAddress}');
@@ -186,7 +172,7 @@ class ProxySyncService {
       }
 
       // Create new IP record
-      final newIpId = await _proxyRepository.insertIpAddress(
+      newIpId = await _proxyRepository.insertIpAddress(
         ProxyIpAddressEntity(
           ipAddress: webProxy.proxyAddress,
           hostname: webProxy.proxyAddress,
@@ -214,15 +200,26 @@ class ProxySyncService {
           timesAssigned: 1,
         ),
       );
-
-      // Update slot with new IP reference and increment change count
-      await _proxyRepository.updateSlot(
-        existingSlot.copyWith(
-          currentIpAddressId: newIpId,
-          totalIpChanges: existingSlot.totalIpChanges + 1,
-        ),
-      );
     }
+
+    // Single consolidated slot update with all changes
+    await _proxyRepository.updateSlot(
+      existingSlot.copyWith(
+        webshareId: webProxy.id,
+        username: webProxy.username,
+        password: webProxy.password,
+        port: webProxy.port,
+        socksPort: webProxy.socksPort,
+        isActive: webProxy.valid,
+        isDeleted: false,
+        deletedAt: null,
+        lastUpdated: now,
+        currentIpAddressId: newIpId ?? existingSlot.currentIpAddressId,
+        totalIpChanges: ipChanged
+            ? existingSlot.totalIpChanges + 1
+            : existingSlot.totalIpChanges,
+      ),
+    );
   }
 }
 

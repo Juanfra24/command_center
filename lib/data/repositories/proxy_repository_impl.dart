@@ -190,9 +190,10 @@ class ProxyRepositoryImpl implements ProxyRepository {
   @override
   Future<ProxyIpAddressEntity?> getActiveIpForSlot(int slotId) async {
     final query = _db.select(_db.proxyIpAddressesTable)
-      ..where((tbl) => tbl.slotId.equals(slotId) & tbl.isActive.equals(true));
-    final result = await query.getSingleOrNull();
-    return result != null ? _mapIpAddressRow(result) : null;
+      ..where((tbl) => tbl.slotId.equals(slotId) & tbl.isActive.equals(true))
+      ..limit(1);
+    final results = await query.get();
+    return results.isEmpty ? null : _mapIpAddressRow(results.first);
   }
 
   @override

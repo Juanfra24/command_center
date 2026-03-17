@@ -125,8 +125,9 @@ class WatchdogHandlers {
       );
       return true;
     } catch (e) {
+      client.lastDeathAt = DateTime.now();
       logger.e('Failed to relaunch ${client.characterName}: $e');
-      return false;
+      return true;
     }
   }
 

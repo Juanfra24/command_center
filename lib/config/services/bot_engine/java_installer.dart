@@ -94,9 +94,7 @@ class JavaInstaller {
     }
 
     final javaExePath = p.join(jreDirs.first.path, 'bin', 'java.exe');
-
-    // Verify java.exe actually exists
-    if (!File(javaExePath).existsSync()) {
+    if (!await File(javaExePath).exists()) {
       throw Exception('Java JRE extraction incomplete: java.exe not found at $javaExePath');
     }
 

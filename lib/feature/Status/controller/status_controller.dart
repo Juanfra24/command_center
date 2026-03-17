@@ -285,13 +285,13 @@ class StatusController extends GetxController {
         if (characterIds != null && !characterIds.contains(character.id)) {
           continue;
         }
-        if (character.defaultScriptName == null) continue;
-        if (character.banned) continue;
-        // Skip already-running characters
+        // Skip if already tracked (running, restarting, etc.)
         if (_watchdog?.trackedClients.containsKey(character.name) == true) {
           final existing = _watchdog!.trackedClients[character.name]!;
           if (existing.status != ClientStatus.stopped) continue;
         }
+        if (character.banned) continue;
+        if (character.defaultScriptName == null) continue;
         final config = LaunchConfig(scriptName: character.defaultScriptName!);
         await launchCharacter(account, character, config);
         count++;
