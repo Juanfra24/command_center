@@ -11,7 +11,7 @@ class MicrobotJarDownloader {
   final String _basePath;
 
   static const _releasesUrl =
-      'https://api.github.com/repos/chsami/Microbot/releases/latest';
+      'https://api.github.com/repos/Juanfra24/Microbot/releases/latest';
 
   MicrobotJarDownloader({
     required AppConfigService appConfig,
@@ -63,9 +63,15 @@ class MicrobotJarDownloader {
 
     // Download the JAR
     final jarPath = p.join(microbotDir, 'microbot-shaded.jar');
+    final token = await _appConfig.getGithubPat();
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(downloadUrl));
+      // Private repo assets require Bearer token + octet-stream accept
+      if (token != null && token.isNotEmpty) {
+        request.headers.set('Authorization', 'Bearer $token');
+        request.headers.set('Accept', 'application/octet-stream');
+      }
       final response = await request.close();
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -107,14 +113,26 @@ class MicrobotJarDownloader {
   }
 
   Future<Map<String, dynamic>> _fetchLatestRelease() async {
+    final token = await _appConfig.getGithubPat();
+    if (token == null || token.isEmpty) {
+      throw Exception('GitHub PAT not configured — cannot access private repo');
+    }
+
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(_releasesUrl));
       request.headers.set('Accept', 'application/vnd.github+json');
+      request.headers.set('Authorization', 'Bearer $token');
       final response = await request.close();
 
+      if (response.statusCode == 401) {
+        throw Exception('GitHub PAT invalid or expired');
+      }
       if (response.statusCode == 403 || response.statusCode == 429) {
         throw Exception('GitHub API rate limited');
+      }
+      if (response.statusCode == 404) {
+        throw Exception('Release not found — check repo URL and PAT permissions');
       }
 
       final body = await response.transform(utf8.decoder).join();
