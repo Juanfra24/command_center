@@ -57,39 +57,47 @@ class ProxySlotEntity extends Equatable {
     );
   }
 
+  static const _absent = Object();
+
   ProxySlotEntity copyWith({
     int? id,
     String? webshareId,
     String? slotName,
     int? slotNumber,
-    int? currentIpAddressId,
+    Object? currentIpAddressId = _absent,
     String? username,
     String? password,
     int? port,
-    int? socksPort,
+    Object? socksPort = _absent,
     DateTime? createdAt,
     DateTime? lastUpdated,
     int? totalIpChanges,
     bool? isActive,
     bool? isDeleted,
-    DateTime? deletedAt,
+    Object? deletedAt = _absent,
   }) {
     return ProxySlotEntity(
       id: id ?? this.id,
       webshareId: webshareId ?? this.webshareId,
       slotName: slotName ?? this.slotName,
       slotNumber: slotNumber ?? this.slotNumber,
-      currentIpAddressId: currentIpAddressId ?? this.currentIpAddressId,
+      currentIpAddressId: identical(currentIpAddressId, _absent)
+          ? this.currentIpAddressId
+          : currentIpAddressId as int?,
       username: username ?? this.username,
       password: password ?? this.password,
       port: port ?? this.port,
-      socksPort: socksPort ?? this.socksPort,
+      socksPort: identical(socksPort, _absent)
+          ? this.socksPort
+          : socksPort as int?,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,
       isActive: isActive ?? this.isActive,
       isDeleted: isDeleted ?? this.isDeleted,
-      deletedAt: deletedAt ?? this.deletedAt,
+      deletedAt: identical(deletedAt, _absent)
+          ? this.deletedAt
+          : deletedAt as DateTime?,
     );
   }
 

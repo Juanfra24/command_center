@@ -98,6 +98,8 @@ class WatchdogHandlers {
       return false; // Still cooling down
     }
 
+    client.retryCount++;
+
     try {
       final pid = await _botEngine.launch(
         characterId: client.characterId,
@@ -107,7 +109,6 @@ class WatchdogHandlers {
         proxyUrl: client.proxyUrl,
         config: client.launchConfig,
       );
-      client.retryCount++;
       client.pid = pid;
       client.status = ClientStatus.running;
       client.launchedAt = DateTime.now();
@@ -122,8 +123,9 @@ class WatchdogHandlers {
       );
       return true;
     } catch (e) {
+      client.lastDeathAt = DateTime.now();
       logger.e('Failed to relaunch ${client.characterName}: $e');
-      return false;
+      return true;
     }
   }
 

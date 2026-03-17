@@ -105,7 +105,9 @@ class IpqsApiClient {
         return IpqsResult.error('API request failed: ${response.statusCode}');
       }
     } catch (e) {
-      logger.e('IPQS API request failed: $e');
+      // Scrub API key from exception messages (URL may contain key= param)
+      final sanitized = e.toString().replaceAll(RegExp(r'key=[^&\s]+'), 'key=***');
+      logger.e('IPQS API request failed: $sanitized');
       return IpqsResult.error('IPQS request failed. Check logs for details.');
     }
   }

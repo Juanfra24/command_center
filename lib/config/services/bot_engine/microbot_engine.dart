@@ -55,10 +55,10 @@ class MicrobotEngine implements BotEngine {
     _pidToCharacterId[pid] = characterId;
 
     process.stdout.transform(const SystemEncoding().decoder).listen((data) {
-      onLog('[Microbot:$characterName] $data');
+      onLog('[Microbot:$characterName] ${_redactCredentials(data)}');
     });
     process.stderr.transform(const SystemEncoding().decoder).listen((data) {
-      onLog('[Microbot:$characterName:ERR] $data');
+      onLog('[Microbot:$characterName:ERR] ${_redactCredentials(data)}');
     });
 
     process.exitCode.then((_) {
@@ -105,4 +105,8 @@ class MicrobotEngine implements BotEngine {
   }
 
   Set<int> get activePids => Set.unmodifiable(_activePids);
+
+  static final _credentialPattern = RegExp(r'password=\S+');
+  static String _redactCredentials(String data) =>
+      data.replaceAll(_credentialPattern, 'password=***');
 }

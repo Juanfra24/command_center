@@ -177,11 +177,11 @@ class PythonRunner {
 
     _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
       outputBuffer.write(data);
-      onLog(data.trim());
+      onLog(redact(data.trim()));
     });
 
     _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
-      onLog('[stderr] ${data.trim()}');
+      onLog('[stderr] ${redact(data.trim())}');
     });
 
     // Wait for the browser to start and proxy to connect
