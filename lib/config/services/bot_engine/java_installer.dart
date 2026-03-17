@@ -79,12 +79,18 @@ class JavaInstaller {
     }
 
     // Find the extracted JRE directory (e.g., jdk-17.0.9+9-jre)
-    final jreDir = await Directory(javaDir)
+    final jreDirs = await Directory(javaDir)
         .list()
         .where((e) => e is Directory && p.basename(e.path).startsWith('jdk-'))
-        .first;
+        .toList();
+    if (jreDirs.isEmpty) {
+      throw Exception('JRE directory not found after extraction in $javaDir');
+    }
 
-    final javaExePath = p.join(jreDir.path, 'bin', 'java.exe');
+    final javaExePath = p.join(jreDirs.first.path, 'bin', 'java.exe');
+    if (!await File(javaExePath).exists()) {
+      throw Exception('java.exe not found at expected path: $javaExePath');
+    }
 
     // Store path in config
     await _appConfig.saveMicrobotJavaPath(javaExePath);
