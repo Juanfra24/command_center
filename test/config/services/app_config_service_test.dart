@@ -73,4 +73,17 @@ void main() {
       expect(result, isA<Failure<void>>());
     });
   });
+
+  group('AppConfigService - GitHub PAT', () {
+    test('getGithubPat returns null when repo not initialized', () async {
+      final result = await service.getGithubPat();
+      expect(result, isNull);
+    });
+
+    test('saveGithubPat is no-op when repo not initialized', () async {
+      await service.saveGithubPat('ghp_test123');
+      final result = await service.getGithubPat();
+      expect(result, isNull);
+    });
+  });
 }

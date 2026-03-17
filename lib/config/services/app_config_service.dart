@@ -23,6 +23,7 @@ class AppConfigService extends GetxService {
   static const String _keyMicrobotJarPath = 'microbot_jar_path';
   static const String _keyMicrobotJarVersion = 'microbot_jar_version';
   static const String _keyMicrobotJavaPath = 'microbot_java_path';
+  static const String _keyGithubPat = 'github_pat';
 
   ConfigRepository? _configRepository;
 
@@ -265,6 +266,16 @@ class AppConfigService extends GetxService {
   /// Save Microbot Java path
   Future<void> saveMicrobotJavaPath(String path) async {
     await _configRepository?.setValue(_keyMicrobotJavaPath, path);
+  }
+
+  /// Get GitHub Personal Access Token for private repo access
+  Future<String?> getGithubPat() async {
+    return _configRepository?.getValue(_keyGithubPat);
+  }
+
+  /// Save GitHub Personal Access Token
+  Future<void> saveGithubPat(String token) async {
+    await _configRepository?.setValue(_keyGithubPat, token);
   }
 
   /// Get ThemeMode from string
