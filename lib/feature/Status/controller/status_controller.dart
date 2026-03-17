@@ -163,7 +163,9 @@ class StatusController extends GetxController {
 
   /// Launch all launchable characters with the given config.
   Future<void> launchAll(LaunchConfig config) async {
-    for (final account in accountList) {
+    // Snapshot to avoid iterating a live RxList across awaits
+    final snapshot = List.of(accountList);
+    for (final account in snapshot) {
       for (final character in account.characters) {
         // Skip if already tracked (running, restarting, etc.)
         if (_watchdog?.trackedClients.containsKey(character.name) == true) {
@@ -273,14 +275,23 @@ class StatusController extends GetxController {
   }
 
   /// Launches characters that have default scripts assigned.
+  /// Skips characters that are already tracked (running/restarting).
   Future<int> launchWithDefaultScripts([Set<int>? characterIds]) async {
     int count = 0;
-    for (final account in accountList) {
+    // Snapshot to avoid iterating a live RxList across awaits
+    final snapshot = List.of(accountList);
+    for (final account in snapshot) {
       for (final character in account.characters) {
         if (characterIds != null && !characterIds.contains(character.id)) {
           continue;
         }
         if (character.defaultScriptName == null) continue;
+        if (character.banned) continue;
+        // Skip already-running characters
+        if (_watchdog?.trackedClients.containsKey(character.name) == true) {
+          final existing = _watchdog!.trackedClients[character.name]!;
+          if (existing.status != ClientStatus.stopped) continue;
+        }
         final config = LaunchConfig(scriptName: character.defaultScriptName!);
         await launchCharacter(account, character, config);
         count++;

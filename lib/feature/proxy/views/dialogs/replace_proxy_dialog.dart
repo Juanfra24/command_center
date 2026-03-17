@@ -119,43 +119,44 @@ class ReplaceProxyDialog extends StatelessWidget {
               onPressed: noReplacementsLeft
                   ? null
                   : () async {
-                      Navigator.pop(context);
-
                       final result = await controller.replaceProxyIp(
                         slot,
                         keepSameCountry: keepSameCountry,
                       );
 
-                      if (context.mounted) {
-                        final String title;
-                        final String content;
-                        final InfoBarSeverity severity;
-                        switch (result) {
-                          case Success():
-                            title = 'Success';
-                            content =
-                                'Proxy replaced successfully! The new IP has been synced.';
-                            severity = InfoBarSeverity.success;
-                          case Failure(:final message):
-                            title = 'Error';
-                            content = message;
-                            severity = InfoBarSeverity.error;
-                        }
-                        displayInfoBar(
-                          context,
-                          builder: (ctx, close) {
-                            return InfoBar(
-                              title: Text(title),
-                              content: Text(content),
-                              severity: severity,
-                              action: IconButton(
-                                icon: const Icon(FluentIcons.clear),
-                                onPressed: close,
-                              ),
-                            );
-                          },
-                        );
+                      if (!context.mounted) return;
+
+                      final String title;
+                      final String content;
+                      final InfoBarSeverity severity;
+                      switch (result) {
+                        case Success():
+                          title = 'Success';
+                          content =
+                              'Proxy replaced successfully! The new IP has been synced.';
+                          severity = InfoBarSeverity.success;
+                        case Failure(:final message):
+                          title = 'Error';
+                          content = message;
+                          severity = InfoBarSeverity.error;
                       }
+
+                      displayInfoBar(
+                        context,
+                        builder: (ctx, close) {
+                          return InfoBar(
+                            title: Text(title),
+                            content: Text(content),
+                            severity: severity,
+                            action: IconButton(
+                              icon: const Icon(FluentIcons.clear),
+                              onPressed: close,
+                            ),
+                          );
+                        },
+                      );
+
+                      if (context.mounted) Navigator.pop(context);
                     },
               child: Text(noReplacementsLeft
                   ? 'No Replacements Left'

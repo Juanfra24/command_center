@@ -44,6 +44,11 @@ class JavaInstaller {
       final request = await client.getUrl(Uri.parse(adoptiumDownloadUrl));
       final response = await request.close();
 
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'Java download failed with HTTP ${response.statusCode}');
+      }
+
       final totalBytes = response.contentLength;
       var downloadedBytes = 0;
 
@@ -79,12 +84,21 @@ class JavaInstaller {
     }
 
     // Find the extracted JRE directory (e.g., jdk-17.0.9+9-jre)
-    final jreDir = await Directory(javaDir)
+    final jreDirs = await Directory(javaDir)
         .list()
         .where((e) => e is Directory && p.basename(e.path).startsWith('jdk-'))
-        .first;
+        .toList();
 
-    final javaExePath = p.join(jreDir.path, 'bin', 'java.exe');
+    if (jreDirs.isEmpty) {
+      throw Exception('Java JRE extraction failed: no jdk-* directory found in $javaDir');
+    }
+
+    final javaExePath = p.join(jreDirs.first.path, 'bin', 'java.exe');
+
+    // Verify java.exe actually exists
+    if (!File(javaExePath).existsSync()) {
+      throw Exception('Java JRE extraction incomplete: java.exe not found at $javaExePath');
+    }
 
     // Store path in config
     await _appConfig.saveMicrobotJavaPath(javaExePath);

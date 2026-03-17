@@ -98,6 +98,10 @@ class WatchdogHandlers {
       return false; // Still cooling down
     }
 
+    // Increment retryCount before attempt — otherwise failures never count
+    // toward the retry limit, causing infinite retry loops.
+    client.retryCount++;
+
     try {
       final pid = await _botEngine.launch(
         characterId: client.characterId,
@@ -107,7 +111,6 @@ class WatchdogHandlers {
         proxyUrl: client.proxyUrl,
         config: client.launchConfig,
       );
-      client.retryCount++;
       client.pid = pid;
       client.status = ClientStatus.running;
       client.launchedAt = DateTime.now();

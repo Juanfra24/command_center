@@ -45,14 +45,42 @@ class SplashScreen extends StatelessWidget {
             const SizedBox(height: 12),
             // Status text
             if (setupService != null)
-              Obx(() => Text(
-                    setupService!.progress.value.isNotEmpty
-                        ? setupService!.progress.value
-                        : 'Initializing...',
-                    style: theme.typography.caption?.copyWith(
-                      color: theme.inactiveColor,
+              Obx(() {
+                final step = setupService!.currentStep.value;
+                final isFailed = step == MicrobotSetupStep.failed;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      setupService!.progress.value.isNotEmpty
+                          ? setupService!.progress.value
+                          : 'Initializing...',
+                      style: theme.typography.caption?.copyWith(
+                        color: isFailed ? Colors.red : theme.inactiveColor,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ))
+                    if (isFailed) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FilledButton(
+                            onPressed: () => setupService!.retry(),
+                            child: const Text('Retry'),
+                          ),
+                          const SizedBox(width: 8),
+                          Button(
+                            onPressed: () => setupService!.skip(),
+                            child: const Text('Skip'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                );
+              })
             else
               Text(
                 'Loading...',

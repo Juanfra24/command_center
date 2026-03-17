@@ -59,19 +59,32 @@ class MusicController extends GetxController {
     _saveVolumePreference();
   }
 
-  void playAudio() async {
-    const path = 'music/keygen.mp3';
-    await audioPlayer.play(AssetSource(path));
-    _savePlayPreference(true);
+  Future<void> playAudio() async {
+    try {
+      const path = 'music/keygen.mp3';
+      await audioPlayer.play(AssetSource(path));
+      _savePlayPreference(true);
+    } catch (e) {
+      // Swallow audio errors — non-critical feature
+    }
   }
 
-  void pauseAudio() async {
-    await audioPlayer.pause();
-    _savePlayPreference(false);
+  Future<void> pauseAudio() async {
+    try {
+      await audioPlayer.pause();
+      _savePlayPreference(false);
+    } catch (e) {
+      // Swallow audio errors — non-critical feature
+    }
   }
 
-  void stopAudio() async {
-    await audioPlayer.stop();
+  Future<void> stopAudio() async {
+    try {
+      await audioPlayer.stop();
+      _savePlayPreference(false);
+    } catch (e) {
+      // Swallow audio errors — non-critical feature
+    }
   }
 
   void seek(Duration position) {

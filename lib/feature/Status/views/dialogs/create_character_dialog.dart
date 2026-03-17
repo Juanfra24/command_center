@@ -29,15 +29,13 @@ class CreateCharacterDialog {
       final proxyController = Get.find<ProxyController>();
       final statusController = Get.find<StatusController>();
 
-      final assignedProxyIds =
-          statusController.accountList.map((a) => a.proxyAddress).toSet();
+      final assignedSlotIds = statusController.accountList
+          .map((a) => a.proxySlotId)
+          .whereType<int>()
+          .toSet();
 
       availableSlots = proxyController.proxySlots
-          .where((slot) {
-            final currentIp = proxyController.getCurrentIpForSlot(slot);
-            return currentIp == null ||
-                !assignedProxyIds.contains(currentIp.ipAddress);
-          })
+          .where((slot) => slot.id != null && !assignedSlotIds.contains(slot.id))
           .map((slot) => slot.id)
           .toList();
 

@@ -67,6 +67,12 @@ class MicrobotJarDownloader {
     try {
       final request = await client.getUrl(Uri.parse(downloadUrl));
       final response = await request.close();
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'JAR download failed with HTTP ${response.statusCode}');
+      }
+
       final totalBytes = response.contentLength;
       var downloadedBytes = 0;
 

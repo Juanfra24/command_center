@@ -83,9 +83,12 @@ class WatchdogService extends GetxService {
 
   /// Start tracking a client (called after launch dialog).
   void track(TrackedClient client) {
+    final wasEmpty = trackedClients.isEmpty;
     trackedClients[client.characterName] = client;
     trackedClients.refresh();
     logger.i('Tracking ${client.characterName} (PID: ${client.pid})');
+    // Switch to faster polling when first client is added
+    if (wasEmpty) _startPolling();
   }
 
   /// Stop a client: kill process (with profile cleanup), remove from tracking.

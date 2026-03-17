@@ -24,6 +24,9 @@ class MainMenuController extends GetxController {
   final isScoringAll = false.obs;
   final isSyncing = false.obs;
 
+  // Workers for disposal
+  final List<Worker> _workers = [];
+
   @override
   void onInit() {
     super.onInit();
@@ -44,14 +47,28 @@ class MainMenuController extends GetxController {
 
     // Re-compute when tracked clients change
     if (_watchdogService != null) {
-      ever(_watchdogService!.trackedClients, (_) => _refreshBotTiles());
+      _workers.add(
+        ever(_watchdogService!.trackedClients, (_) => _refreshBotTiles()),
+      );
     }
     if (_statusController != null) {
-      ever(_statusController!.accountList, (_) => _refreshBotTiles());
+      _workers.add(
+        ever(_statusController!.accountList, (_) => _refreshBotTiles()),
+      );
     }
     if (_proxyController != null) {
-      ever(_proxyController!.proxySlots, (_) => _refreshProxyHealth());
+      _workers.add(
+        ever(_proxyController!.proxySlots, (_) => _refreshProxyHealth()),
+      );
     }
+  }
+
+  @override
+  void onClose() {
+    for (final w in _workers) {
+      w.dispose();
+    }
+    super.onClose();
   }
 
   void _refreshData() {

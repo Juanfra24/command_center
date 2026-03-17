@@ -129,7 +129,9 @@ class ProxyScoringController extends GetxController {
       return false;
     }
 
-    isScoring.value = true;
+    // Only manage isScoring when called standalone (not from batch).
+    // During batch scoring, scoreAllCurrentIps owns the flag.
+    if (!skipReload) isScoring.value = true;
     try {
       final result = await _ipqsService.scoreIp(ip.ipAddress);
 
@@ -187,7 +189,7 @@ class ProxyScoringController extends GetxController {
       logger.e('Error scoring IP with IPQS: $e');
       return false;
     } finally {
-      isScoring.value = false;
+      if (!skipReload) isScoring.value = false;
     }
   }
 
