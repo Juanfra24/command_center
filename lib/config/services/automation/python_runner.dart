@@ -33,13 +33,16 @@ class PythonRunner {
 
     // Try relative to workspace (development only — USERPROFILE is user-controlled)
     if (kDebugMode) {
-      final workspacePath = path.join(
-        Platform.environment['USERPROFILE'] ?? '',
-        'projects',
-        'command_center',
-        'scripts',
-      );
-      if (Directory(workspacePath).existsSync()) return workspacePath;
+      final userProfile = Platform.environment['USERPROFILE'] ?? '';
+      if (userProfile.isNotEmpty) {
+        final workspacePath = path.join(
+          userProfile,
+          'projects',
+          'command_center',
+          'scripts',
+        );
+        if (Directory(workspacePath).existsSync()) return workspacePath;
+      }
     }
 
     // Fallback to bundled scripts
@@ -112,23 +115,23 @@ class PythonRunner {
 
     // Listen to stdout/stderr and forward to logs in real-time.
     // Suppress all lines after the === RESULT === marker (contains credentials in JSON).
-    var _seenResultMarker = false;
-    _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
+    var seenResultMarker = false;
+    final stdoutDone = _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
       stdout.write(data);
       for (final line in data.split('\n')) {
         final trimmed = line.trim();
         if (trimmed.contains('=== RESULT ===')) {
-          _seenResultMarker = true;
+          seenResultMarker = true;
           continue;
         }
-        if (!_seenResultMarker && trimmed.isNotEmpty) {
+        if (!seenResultMarker && trimmed.isNotEmpty) {
           onLog('[py] ${redact(trimmed)}');
         }
       }
-    });
+    }).asFuture<void>();
 
     // Redact stderr to prevent credential leakage from Python tracebacks
-    _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
+    final stderrDone = _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
       stderr.write(data);
       for (final line in data.split('\n')) {
         final trimmed = line.trim();
@@ -136,7 +139,7 @@ class PythonRunner {
           onLog('[py:err] ${redact(trimmed)}');
         }
       }
-    });
+    }).asFuture<void>();
 
     // Wait for process with timeout
     try {
@@ -148,6 +151,11 @@ class PythonRunner {
           throw TimeoutException('Script timed out', timeout);
         },
       );
+      // Ensure all stream data is consumed before reading buffers
+      await Future.wait([
+        stdoutDone.catchError((_) {}),
+        stderrDone.catchError((_) {}),
+      ]);
       return (
         exitCode: exitCode,
         stdout: stdout.toString(),

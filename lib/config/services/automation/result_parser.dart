@@ -28,6 +28,9 @@ class ResultParser {
             }
           }
 
+          // If braces never balanced, closeBrace == openBrace — skip
+          if (braceCount != 0) return null;
+
           final jsonObject = jsonStr.substring(openBrace, closeBrace + 1);
           return json.decode(jsonObject);
         }

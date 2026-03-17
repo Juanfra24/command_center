@@ -16,6 +16,14 @@ enum SetupStep {
   failed,
 }
 
+/// Thrown when Python setup fails and cannot proceed.
+class SetupFailedException implements Exception {
+  final String message;
+  SetupFailedException(this.message);
+  @override
+  String toString() => 'SetupFailedException: $message';
+}
+
 /// Service to manage Python environment setup and dependencies
 class PythonSetupService extends GetxService {
   bool isSetupComplete = false;
@@ -195,7 +203,8 @@ class PythonSetupService extends GetxService {
     return result;
   }
 
-  /// Initialize and setup if needed
+  /// Initialize and setup if needed.
+  /// Throws [SetupFailedException] if Python setup fails critically.
   Future<void> initializeSetup() async {
     if (isSetupComplete) return;
 
@@ -215,6 +224,9 @@ class PythonSetupService extends GetxService {
     }
 
     logger.i('Installing/Repairing Python dependencies and drivers...');
-    await installDependencies();
+    final success = await installDependencies();
+    if (!success) {
+      throw SetupFailedException(setupError ?? 'Python setup failed');
+    }
   }
 }

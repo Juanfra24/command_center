@@ -120,14 +120,17 @@ class IpqsService extends GetxService {
     }
   }
 
-  /// Score a single IP address
-  Future<IpqsResult> scoreIp(String ipAddress) async {
+  /// Score a single IP address.
+  /// When [isBatch] is true, caller owns the isLoading flag.
+  Future<IpqsResult> scoreIp(String ipAddress, {bool isBatch = false}) async {
     if (apiKey == null || apiKey!.isEmpty) {
       return IpqsResult.error('IPQS API key not configured');
     }
 
-    isLoading.value = true;
-    lastError.value = null;
+    if (!isBatch) {
+      isLoading.value = true;
+      lastError.value = null;
+    }
 
     try {
       final result = await _apiClient.scoreIp(apiKey!, ipAddress);
@@ -136,7 +139,7 @@ class IpqsService extends GetxService {
       lastError.value = e.toString();
       return IpqsResult.error(e.toString());
     } finally {
-      isLoading.value = false;
+      if (!isBatch) isLoading.value = false;
     }
   }
 
@@ -146,19 +149,25 @@ class IpqsService extends GetxService {
     final results = <String, IpqsResult>{};
     const maxConcurrent = 3;
 
-    // Process in batches of maxConcurrent
-    for (var i = 0; i < ipAddresses.length; i += maxConcurrent) {
-      final batch = ipAddresses.skip(i).take(maxConcurrent).toList();
-      final batchResults = await Future.wait(
-        batch.map((ip) => scoreIp(ip).then((r) => MapEntry(ip, r))),
-      );
-      for (final entry in batchResults) {
-        results[entry.key] = entry.value;
+    isLoading.value = true;
+    try {
+      // Process in batches of maxConcurrent
+      for (var i = 0; i < ipAddresses.length; i += maxConcurrent) {
+        final batch = ipAddresses.skip(i).take(maxConcurrent).toList();
+        final batchResults = await Future.wait(
+          batch.map(
+              (ip) => scoreIp(ip, isBatch: true).then((r) => MapEntry(ip, r))),
+        );
+        for (final entry in batchResults) {
+          results[entry.key] = entry.value;
+        }
+        // Small delay between batches to avoid rate limiting
+        if (i + maxConcurrent < ipAddresses.length) {
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
       }
-      // Small delay between batches to avoid rate limiting
-      if (i + maxConcurrent < ipAddresses.length) {
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
+    } finally {
+      isLoading.value = false;
     }
 
     return results;

@@ -18,6 +18,7 @@ class MicrobotSetupService extends GetxService {
   final progress = ''.obs;
   final progressPercent = 0.0.obs;
   final isComplete = false.obs;
+  final isSkipped = false.obs;
 
   bool _isRunning = false;
 
@@ -46,10 +47,10 @@ class MicrobotSetupService extends GetxService {
       // Step 2: Java 17
       currentStep.value = MicrobotSetupStep.java;
       progress.value = 'Checking Java 17...';
-      final javaPath = await _javaInstaller.findJavaPath();
+      var javaPath = await _javaInstaller.findJavaPath();
       if (javaPath == null) {
         progress.value = 'Downloading Java 17 Runtime...';
-        await _javaInstaller.install(onProgress: (downloaded, total) {
+        javaPath = await _javaInstaller.install(onProgress: (downloaded, total) {
           if (total > 0) {
             final pct = downloaded / total;
             progressPercent.value = 0.33 + (pct * 0.33);
@@ -58,6 +59,11 @@ class MicrobotSetupService extends GetxService {
             progress.value = 'Downloading Java 17... $mb MB / $totalMb MB';
           }
         });
+      }
+      // Verify Java is actually usable after install
+      final verifiedJava = await _javaInstaller.findJavaPath();
+      if (verifiedJava == null) {
+        throw Exception('Java 17 installation failed — java not found after install');
       }
       progressPercent.value = 0.66;
 
@@ -85,9 +91,42 @@ class MicrobotSetupService extends GetxService {
     } catch (e) {
       logger.e('Setup failed: $e');
       currentStep.value = MicrobotSetupStep.failed;
-      progress.value = 'Setup failed. Check logs for details.';
+      progress.value = 'Setup failed: ${_sanitizeError(e)}';
     } finally {
       _isRunning = false;
     }
+  }
+
+  /// Whether the app can proceed (setup succeeded or was skipped).
+  bool get canProceed => isComplete.value || isSkipped.value;
+
+  /// Retry setup after a failure.
+  Future<void> retry() async {
+    if (_isRunning) return;
+    currentStep.value = MicrobotSetupStep.idle;
+    progress.value = '';
+    progressPercent.value = 0.0;
+    isComplete.value = false;
+    await ensureDependencies();
+  }
+
+  /// Skip setup and proceed without bot engine.
+  void skip() {
+    isSkipped.value = true;
+    currentStep.value = MicrobotSetupStep.complete;
+    progress.value = 'Skipped — bot engine unavailable';
+    logger.w('Setup skipped by user');
+  }
+
+  static String _sanitizeError(Object error) {
+    final msg = error.toString();
+    // Strip exception type prefixes for cleaner UI display
+    if (msg.startsWith('SetupFailedException: ')) {
+      return msg.substring('SetupFailedException: '.length);
+    }
+    if (msg.startsWith('Exception: ')) {
+      return msg.substring('Exception: '.length);
+    }
+    return msg;
   }
 }
