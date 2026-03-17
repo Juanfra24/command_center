@@ -80,11 +80,8 @@ class ProxySyncService {
   Future<void> _createNewSlot(WebshareProxySlot webProxy) async {
     final now = DateTime.now();
 
-    // Log the webProxy data for debugging
     logger.i('Creating new slot #${webProxy.slotNumber}');
     logger.i('  Webshare ID: ${webProxy.id}');
-    logger.i('  Username from Webshare: ${webProxy.username}');
-    logger.i('  Password length: ${webProxy.password.length}');
     logger.i('  Proxy Address: ${webProxy.proxyAddress}');
     logger.i('  Port: ${webProxy.port}');
 
@@ -98,6 +95,7 @@ class ProxySyncService {
         username: webProxy.username,
         password: webProxy.password,
         port: webProxy.port,
+        socksPort: webProxy.socksPort,
         createdAt: webProxy.createdAt,
         lastUpdated: now,
         totalIpChanges: 0,
@@ -127,7 +125,7 @@ class ProxySyncService {
         isDatacenter: true,
         isTor: false,
         fraudScore: 0,
-        abuseConfidence: 0,
+        recentAbuse: false,
         assignedAt: now,
         removedAt: null,
         lastVerification: webProxy.lastVerification ?? now,
@@ -158,26 +156,11 @@ class ProxySyncService {
     final ipChanged = currentIp?.ipAddress != webProxy.proxyAddress;
 
     if (usernameChanged) {
-      logger.i('Username changed for slot #${webProxy.slotNumber}:');
-      logger.i('  Old: ${existingSlot.username}');
-      logger.i('  New: ${webProxy.username}');
+      logger.i('Credentials updated for slot #${webProxy.slotNumber}');
     }
 
-    // Always update slot with latest data from Webshare
-    await _proxyRepository.updateSlot(
-      existingSlot.copyWith(
-        webshareId: webProxy.id,
-        username: webProxy.username,
-        password: webProxy.password,
-        port: webProxy.port,
-        isActive: webProxy.valid,
-        isDeleted: false,
-        deletedAt: null,
-        lastUpdated: now,
-      ),
-    );
-
     // Handle IP change if needed
+    int? newIpId;
     if (ipChanged) {
       logger.i('IP changed for slot #${webProxy.slotNumber}');
       logger.i('  Old: ${currentIp?.ipAddress}');
@@ -189,7 +172,7 @@ class ProxySyncService {
       }
 
       // Create new IP record
-      final newIpId = await _proxyRepository.insertIpAddress(
+      newIpId = await _proxyRepository.insertIpAddress(
         ProxyIpAddressEntity(
           ipAddress: webProxy.proxyAddress,
           hostname: webProxy.proxyAddress,
@@ -208,7 +191,7 @@ class ProxySyncService {
           isDatacenter: true,
           isTor: false,
           fraudScore: 0,
-          abuseConfidence: 0,
+          recentAbuse: false,
           assignedAt: now,
           removedAt: null,
           lastVerification: webProxy.lastVerification ?? now,
@@ -217,15 +200,26 @@ class ProxySyncService {
           timesAssigned: 1,
         ),
       );
-
-      // Update slot with new IP reference and increment change count
-      await _proxyRepository.updateSlot(
-        existingSlot.copyWith(
-          currentIpAddressId: newIpId,
-          totalIpChanges: existingSlot.totalIpChanges + 1,
-        ),
-      );
     }
+
+    // Single consolidated slot update with all changes
+    await _proxyRepository.updateSlot(
+      existingSlot.copyWith(
+        webshareId: webProxy.id,
+        username: webProxy.username,
+        password: webProxy.password,
+        port: webProxy.port,
+        socksPort: webProxy.socksPort,
+        isActive: webProxy.valid,
+        isDeleted: false,
+        deletedAt: null,
+        lastUpdated: now,
+        currentIpAddressId: newIpId ?? existingSlot.currentIpAddressId,
+        totalIpChanges: ipChanged
+            ? existingSlot.totalIpChanges + 1
+            : existingSlot.totalIpChanges,
+      ),
+    );
   }
 }
 

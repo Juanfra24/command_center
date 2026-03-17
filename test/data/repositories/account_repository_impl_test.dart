@@ -43,6 +43,7 @@ CharacterEntity _makeCharacter({
     accountId: accountId,
     name: name,
     banned: banned,
+    defaultScriptName: null,
     actualSkills: SkillsEntity.empty(),
     targetSkills: SkillsEntity.empty(),
   );

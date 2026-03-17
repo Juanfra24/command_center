@@ -12,91 +12,109 @@ import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
-class WebshareConfigDialog {
-  WebshareConfigDialog._();
+class WebshareConfigDialog extends StatefulWidget {
+  const WebshareConfigDialog._();
 
   static void show(BuildContext context) {
-    final apiKeyController = TextEditingController();
-    final isProcessing = false.obs;
-    final statusMessage = Rxn<String>();
-    final isError = false.obs;
-
-    bool isConfigured = false;
-    try {
-      isConfigured = Get.find<WebshareService>().isConfigured.value;
-    } catch (_) {}
-
     showDialog(
       context: context,
-      builder: (dialogContext) => ContentDialog(
-        title: Text(
-            isConfigured ? 'Webshare Configuration' : 'Configure Webshare'),
-        content: Obx(() => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isConfigured)
-                  const ApiKeyConfiguredBanner(
-                    title: 'Webshare Connected',
-                    subtitle: 'Your proxy slots are synced',
-                  )
-                else
-                  ApiKeyFormField(
-                    controller: apiKeyController,
-                    isProcessing: isProcessing,
-                    description:
-                        'Enter your Webshare API key to sync your proxy slots.',
-                    hint:
-                        'You can find your API key in your Webshare dashboard under API settings.',
-                    placeholder: 'Enter your Webshare API key',
-                  ),
-                ProcessingStatusBar(
-                  statusMessage: statusMessage,
-                  isError: isError,
-                  isProcessing: isProcessing,
-                ),
-              ],
-            )),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-          if (isConfigured)
-            UnlinkActionButton(
-              isProcessing: isProcessing,
-              onUnlink: () => _handleUnlink(
-                  context, dialogContext, isProcessing, statusMessage, isError),
-            )
-          else
-            ConnectActionButton(
-              isProcessing: isProcessing,
-              label: 'Connect & Sync',
-              icon: FluentIcons.sync,
-              onConnect: () => _handleConnect(context, dialogContext,
-                  apiKeyController, isProcessing, statusMessage, isError),
-            ),
-        ],
-      ),
+      builder: (_) => const WebshareConfigDialog._(),
     );
   }
 
-  static Future<void> _handleUnlink(
-    BuildContext context,
-    BuildContext dialogContext,
-    RxBool isProcessing,
-    Rxn<String> statusMessage,
-    RxBool isError,
-  ) async {
-    isProcessing.value = true;
-    statusMessage.value = 'Unlinking...';
-    isError.value = false;
+  @override
+  State<WebshareConfigDialog> createState() => _WebshareConfigDialogState();
+}
+
+class _WebshareConfigDialogState extends State<WebshareConfigDialog> {
+  final _apiKeyController = TextEditingController();
+  final _isProcessing = false.obs;
+  final _statusMessage = Rxn<String>();
+  final _isError = false.obs;
+
+  late final bool _isConfigured;
+
+  @override
+  void initState() {
+    super.initState();
+    bool configured = false;
+    try {
+      configured = Get.find<WebshareService>().isConfigured.value;
+    } catch (_) {}
+    _isConfigured = configured;
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _isProcessing.close();
+    _statusMessage.close();
+    _isError.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title:
+          Text(_isConfigured ? 'Webshare Configuration' : 'Configure Webshare'),
+      content: Obx(() => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_isConfigured)
+                const ApiKeyConfiguredBanner(
+                  title: 'Webshare Connected',
+                  subtitle: 'Your proxy slots are synced',
+                )
+              else
+                ApiKeyFormField(
+                  controller: _apiKeyController,
+                  isProcessing: _isProcessing,
+                  description:
+                      'Enter your Webshare API key to sync your proxy slots.',
+                  hint:
+                      'You can find your API key in your Webshare dashboard under API settings.',
+                  placeholder: 'Enter your Webshare API key',
+                ),
+              ProcessingStatusBar(
+                statusMessage: _statusMessage,
+                isError: _isError,
+                isProcessing: _isProcessing,
+              ),
+            ],
+          )),
+      actions: [
+        Button(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+        if (_isConfigured)
+          UnlinkActionButton(
+            isProcessing: _isProcessing,
+            onUnlink: () => _handleUnlink(context),
+          )
+        else
+          ConnectActionButton(
+            isProcessing: _isProcessing,
+            label: 'Connect & Sync',
+            icon: FluentIcons.sync,
+            onConnect: () => _handleConnect(context),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _handleUnlink(BuildContext outerContext) async {
+    _isProcessing.value = true;
+    _statusMessage.value = 'Unlinking...';
+    _isError.value = false;
     try {
       final result = await Get.find<WebshareService>().clearApiKey();
       switch (result) {
         case Success():
           try {
-            statusMessage.value = 'Clearing proxy data...';
+            _statusMessage.value = 'Clearing proxy data...';
             await Get.find<ProxyController>().clearAllProxyData();
           } catch (e) {
             logger
@@ -107,84 +125,77 @@ class WebshareConfigDialog {
           } catch (e) {
             logger.w('OnboardingService not available: $e');
           }
-          if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          if (context.mounted) {
-            showInfoBarToast(context,
+          if (mounted) Navigator.of(context).pop();
+          if (outerContext.mounted) {
+            showInfoBarToast(outerContext,
                 title: 'Unlinked',
                 message:
                     'Webshare has been disconnected and all proxy data cleared.',
                 severity: InfoBarSeverity.warning);
           }
         case Failure(:final message):
-          statusMessage.value = message;
-          isError.value = true;
+          _statusMessage.value = message;
+          _isError.value = true;
       }
     } catch (e) {
-      statusMessage.value = 'Error: $e';
-      isError.value = true;
+      _statusMessage.value = 'Error: $e';
+      _isError.value = true;
     } finally {
-      isProcessing.value = false;
+      _isProcessing.value = false;
     }
   }
 
-  static Future<void> _handleConnect(
-    BuildContext context,
-    BuildContext dialogContext,
-    TextEditingController apiKeyController,
-    RxBool isProcessing,
-    Rxn<String> statusMessage,
-    RxBool isError,
-  ) async {
-    if (apiKeyController.text.isEmpty) {
-      statusMessage.value = 'Please enter an API key';
-      isError.value = true;
+  Future<void> _handleConnect(BuildContext outerContext) async {
+    if (_apiKeyController.text.isEmpty) {
+      _statusMessage.value = 'Please enter an API key';
+      _isError.value = true;
       return;
     }
-    isProcessing.value = true;
-    statusMessage.value = 'Testing connection...';
-    isError.value = false;
+    _isProcessing.value = true;
+    _statusMessage.value = 'Testing connection...';
+    _isError.value = false;
     try {
       final webshareService = Get.find<WebshareService>();
       final testResult =
-          await webshareService.testAndConnect(apiKeyController.text);
+          await webshareService.testAndConnect(_apiKeyController.text);
       switch (testResult) {
         case Failure(:final message):
-          statusMessage.value = message;
-          isError.value = true;
-          isProcessing.value = false;
+          _statusMessage.value = message;
+          _isError.value = true;
+          _isProcessing.value = false;
           return;
         case Success():
           break;
       }
-      statusMessage.value = 'Saving configuration...';
+      _statusMessage.value = 'Saving configuration...';
       final saveResult =
-          await webshareService.saveApiKey(apiKeyController.text);
+          await webshareService.saveApiKey(_apiKeyController.text);
       switch (saveResult) {
         case Failure(:final message):
-          statusMessage.value = message;
-          isError.value = true;
-          isProcessing.value = false;
+          _statusMessage.value = message;
+          _isError.value = true;
+          _isProcessing.value = false;
           return;
         case Success():
           break;
       }
-      statusMessage.value = 'Syncing proxy slots...';
+      _statusMessage.value = 'Syncing proxy slots...';
       bool syncSuccess = false;
       try {
         await Get.find<ProxyController>().syncWithWebshare();
         syncSuccess = true;
       } catch (e) {
-        statusMessage.value = 'Sync failed: $e';
-        isError.value = true;
+        _statusMessage.value = 'Sync failed: $e';
+        _isError.value = true;
       }
       if (syncSuccess) {
         try {
           await Get.find<OnboardingService>().markInitialSyncComplete();
         } catch (_) {}
       }
-      if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-      if (context.mounted) {
-        showInfoBarToast(context,
+      if (mounted) Navigator.of(context).pop();
+      if (outerContext.mounted) {
+        showInfoBarToast(outerContext,
             title: syncSuccess ? 'Success' : 'Partial Success',
             message: syncSuccess
                 ? 'Webshare connected and proxies synced!'
@@ -194,10 +205,10 @@ class WebshareConfigDialog {
                 : InfoBarSeverity.warning);
       }
     } catch (e) {
-      statusMessage.value = 'Error: $e';
-      isError.value = true;
+      _statusMessage.value = 'Error: $e';
+      _isError.value = true;
     } finally {
-      isProcessing.value = false;
+      _isProcessing.value = false;
     }
   }
 }

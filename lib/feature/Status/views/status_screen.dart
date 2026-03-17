@@ -1,6 +1,12 @@
+import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
+import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
+import 'package:command_center/feature/Status/views/components/bot_farm_summary_bar.dart';
+import 'package:command_center/feature/Status/views/components/search_filter_bar.dart';
+import 'package:command_center/feature/Status/views/components/status_selection_bar.dart';
 import 'package:command_center/feature/Status/views/components/summary_cards.dart';
 import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
+import 'package:command_center/feature/Status/views/dialogs/launch_dialog.dart';
 import 'package:command_center/feature/Status/views/sections/account_list_section.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
@@ -10,8 +16,6 @@ class StatusScreen extends GetView<StatusController> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-
     return ScaffoldPage(
       header: PageHeader(
         title: const Text('Accounts & Characters'),
@@ -28,81 +32,53 @@ class StatusScreen extends GetView<StatusController> {
             CommandBarButton(
               icon: const Icon(FluentIcons.refresh),
               label: const Text('Refresh'),
-              onPressed: () async {
-                await controller.getAccountsData();
-                await controller.updateRunningProcesses();
-              },
+              onPressed: () => controller.getAccountsData(),
             ),
           ],
         ),
       ),
       content: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(
-            child: ProgressRing(),
-          );
-        }
-
-        if (controller.accountList.isEmpty) {
-          return _buildEmptyState(context, theme);
-        }
-
+        if (controller.isLoading.value) return const Center(child: ProgressRing());
+        if (controller.accountList.isEmpty) return _buildEmptyState(context);
         return _buildAccountsContent(context);
       }),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, FluentThemeData theme) {
+  Widget _buildEmptyState(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final canCreate = CreateCharacterDialog.canCreate();
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 80, height: 80,
             decoration: BoxDecoration(
               color: theme.accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(40),
             ),
-            child: Icon(
-              FluentIcons.people,
-              size: 40,
-              color: theme.accentColor,
-            ),
+            child: Icon(FluentIcons.people, size: 40, color: theme.accentColor),
           ),
           const SizedBox(height: 24),
-          Text(
-            'No Accounts Yet',
-            style: theme.typography.subtitle,
-          ),
+          Text('No Accounts Yet', style: theme.typography.subtitle),
           const SizedBox(height: 8),
-          Text(
-            'Create your first character to get started.',
-            style: theme.typography.body,
-          ),
+          Text('Create your first character to get started.', style: theme.typography.body),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: CreateCharacterDialog.canCreate()
-                ? () => CreateCharacterDialog.show(context)
-                : null,
+            onPressed: canCreate ? () => CreateCharacterDialog.show(context) : null,
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(FluentIcons.add, size: 16),
-                  SizedBox(width: 8),
-                  Text('New Character'),
-                ],
+                children: [Icon(FluentIcons.add, size: 16), SizedBox(width: 8), Text('New Character')],
               ),
             ),
           ),
-          if (!CreateCharacterDialog.canCreate()) ...[
+          if (!canCreate) ...[
             const SizedBox(height: 12),
-            Text(
-              'Connect Webshare first to sync proxy slots',
-              style: theme.typography.caption?.copyWith(color: Colors.orange),
-            ),
+            Text('Connect Webshare first to sync proxy slots',
+                style: theme.typography.caption?.copyWith(color: Colors.orange)),
           ],
         ],
       ),
@@ -110,21 +86,42 @@ class StatusScreen extends GetView<StatusController> {
   }
 
   Widget _buildAccountsContent(BuildContext context) {
-    final totalCharacters = controller.accountList
-        .fold<int>(0, (sum, account) => sum + account.characters.length);
-
-    return SingleChildScrollView(
+    final sel = Get.find<StatusSelectionController>();
+    return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SummaryCards(
-            totalAccounts: controller.accountList.length,
-            totalCharacters: totalCharacters,
-            runningProcesses: controller.processClients.length,
-          ),
-          const SizedBox(height: 24),
-          AccountListSection(controller: controller),
+          Obx(() {
+            final w = Get.find<WatchdogService>();
+            w.trackedClients.length;
+            final chars = controller.accountList.fold<int>(0, (s, a) => s + a.characters.length);
+            return SummaryCards(
+              totalAccounts: controller.accountList.length,
+              totalCharacters: chars,
+              runningProcesses: w.runningCount,
+            );
+          }),
+          const SizedBox(height: 16),
+          Obx(() {
+            final total = controller.accountList.fold<int>(0, (s, a) => s + a.characters.length);
+            return SearchFilterBar(
+              showingCount: sel.filteredCount.value,
+              totalCount: total,
+            );
+          }),
+          const SizedBox(height: 8),
+          Obx(() => sel.hasSelection
+              ? StatusSelectionBar(controller: controller, selectionController: sel)
+              : BotFarmSummaryBar(
+                  onStartAll: () async {
+                    final c = await LaunchDialog.show(context);
+                    if (c != null) await controller.launchAll(c);
+                  },
+                  onStopAll: () => controller.stopAll(),
+                )),
+          const SizedBox(height: 8),
+          Expanded(child: AccountListSection(controller: controller)),
         ],
       ),
     );

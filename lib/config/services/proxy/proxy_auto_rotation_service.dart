@@ -58,34 +58,34 @@ class ProxyAutoRotationService {
   Future<void> _processResults(List<ScoredIpResult> results) async {
     final threshold = _configService.autoRotationThreshold.value;
 
-    // Filter to below-threshold IPs, sorted worst first
+    // Filter to above-threshold IPs (high fraud score = bad), sorted worst first
     _recentlyRotatedSlotIds.clear();
-    final belowThreshold = results
-        .where((r) => r.score < threshold && r.slot.id != null)
+    final aboveThreshold = results
+        .where((r) => r.score > threshold && r.slot.id != null)
         .toList()
-      ..sort((a, b) => a.score.compareTo(b.score)); // worst first
+      ..sort((a, b) => b.score.compareTo(a.score)); // worst (highest) first
 
-    if (belowThreshold.isEmpty) return;
+    if (aboveThreshold.isEmpty) return;
 
     logger.i(
-        'Auto-rotation: ${belowThreshold.length} IPs below threshold ($threshold)');
+        'Auto-rotation: ${aboveThreshold.length} IPs above fraud threshold ($threshold)');
 
     int replacedCount = 0;
     int failedCount = 0;
 
-    for (final scored in belowThreshold) {
+    for (final scored in aboveThreshold) {
       // Skip if already rotated this cycle
       if (_recentlyRotatedSlotIds.contains(scored.slot.id!)) continue;
 
       // Check quota
       final planInfo = await _replacementService.fetchPlanInfo();
       if (planInfo == null || planInfo.proxyReplacementsAvailable <= 0) {
-        final remaining = belowThreshold.length - replacedCount - failedCount;
+        final remaining = aboveThreshold.length - replacedCount - failedCount;
         await _notificationService.createNotification(
           type: NotificationType.quotaExhausted,
           severity: NotificationSeverity.error,
           title: 'Replacement Quota Exhausted',
-          message: '$remaining proxies still below threshold. Webshare quota: '
+          message: '$remaining proxies still above fraud threshold. Webshare quota: '
               '${planInfo?.proxyReplacementsAvailable ?? 0}/'
               '${planInfo?.proxyReplacementsTotal ?? 0} remaining.',
         );
@@ -115,26 +115,31 @@ class ProxyAutoRotationService {
           if (newIp != null) {
             final scoreResult = await _ipqsService.scoreIp(newIp.ipAddress);
             if (scoreResult.success) {
-              final newScore = scoreResult.normalizedScore;
+              final newScore = scoreResult.fraudScore;
               await _proxyRepository.updateIpAddress(
                 newIp.copyWith(
                   ipScore: newScore,
                   scoreLevel: ProxyIpAddressEntity.getScoreLevel(newScore),
-                  fraudScore: scoreResult.fraudScore,
+                  fraudScore: newScore,
                   isVpn: scoreResult.isVpn,
                   isProxy: scoreResult.isProxy,
                   isDatacenter: scoreResult.isDatacenter,
                   isTor: scoreResult.isTor,
-                  abuseConfidence: scoreResult.recentAbuse ? 100 : 0,
+                  recentAbuse: scoreResult.recentAbuse,
+                  isCrawler: scoreResult.isCrawler,
+                  connectionType: scoreResult.connectionType,
+                  isp: scoreResult.isp,
+                  organization: scoreResult.organization,
+                  region: scoreResult.region,
                   lastScoreCheck: DateTime.now(),
                 ),
               );
 
-              if (newScore < threshold) {
+              if (newScore > threshold) {
                 await _notificationService.createNotification(
                   type: NotificationType.rotationFailed,
                   severity: NotificationSeverity.warning,
-                  title: 'New IP Below Threshold',
+                  title: 'New IP Above Fraud Threshold',
                   message: '${scored.slot.slotName}: replacement IP scored '
                       '${newScore.toStringAsFixed(0)}. Manual review recommended.',
                 );
@@ -172,7 +177,7 @@ class ProxyAutoRotationService {
         severity: NotificationSeverity.info,
         title: 'Auto-Rotation Complete',
         message:
-            'Replaced $replacedCount proxies. All new IPs scored above threshold.',
+            'Replaced $replacedCount proxies. All new IPs scored below fraud threshold.',
       );
     } else if (replacedCount > 0 && failedCount > 0) {
       await _notificationService.createNotification(
@@ -190,6 +195,35 @@ class ProxyAutoRotationService {
         message:
             'All $failedCount replacement attempts failed. Manual review recommended.',
       );
+    }
+  }
+
+  /// Rotate the IP for a specific slot (triggered by watchdog on ban detection).
+  /// Looks up the active IP via repository (not controller — services don't depend on controllers).
+  Future<bool> rotateSlot(int slotId) async {
+    final currentIp = await _proxyRepository.getActiveIpForSlot(slotId);
+    if (currentIp == null) {
+      logger.w('rotateSlot: no active IP for slot $slotId');
+      return false;
+    }
+
+    final result = await _replacementService.replaceProxyIp(
+      currentIp,
+      keepSameCountry: true,
+    );
+
+    switch (result) {
+      case Success():
+        try {
+          await _syncService.syncWithWebshare();
+        } catch (e) {
+          logger.w('rotateSlot: sync after replacement failed: $e');
+        }
+        logger.i('rotateSlot: replaced IP for slot $slotId');
+        return true;
+      case Failure(:final message):
+        logger.w('rotateSlot: failed for slot $slotId: $message');
+        return false;
     }
   }
 }

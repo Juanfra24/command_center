@@ -18,7 +18,7 @@ class IpqsService extends GetxService {
   ConfigRepository? _configRepository;
 
   // Observable states
-  final apiKey = Rxn<String>();
+  String? apiKey;
   final isConfigured = false.obs;
   final isLoading = false.obs;
   final lastError = Rxn<String>();
@@ -38,10 +38,10 @@ class IpqsService extends GetxService {
     try {
       if (_configRepository == null) return;
 
-      apiKey.value = await _configRepository!.getValue(_keyApiKey);
+      apiKey = await _configRepository!.getValue(_keyApiKey);
 
       final setupValue = await _configRepository!.getValue(_keyIsSetup);
-      isConfigured.value = setupValue == 'true' && apiKey.value != null;
+      isConfigured.value = setupValue == 'true' && apiKey != null;
     } catch (e) {
       logger.e('Error loading IPQS config: $e');
     }
@@ -57,12 +57,12 @@ class IpqsService extends GetxService {
       await _configRepository!.setValue(_keyApiKey, key);
       await _configRepository!.setValue(_keyIsSetup, 'true');
 
-      apiKey.value = key;
+      apiKey = key;
       isConfigured.value = true;
       return Result.success(null);
     } catch (e) {
       logger.e('Error saving IPQS API key: $e');
-      return Result.failure('Failed to save IPQS API key: $e', e);
+      return Result.failure('Failed to save IPQS API key. Check logs for details.');
     }
   }
 
@@ -76,12 +76,12 @@ class IpqsService extends GetxService {
       await _configRepository!.deleteValue(_keyApiKey);
       await _configRepository!.setValue(_keyIsSetup, 'false');
 
-      apiKey.value = null;
+      apiKey = null;
       isConfigured.value = false;
       return Result.success(null);
     } catch (e) {
       logger.e('Error clearing IPQS API key: $e');
-      return Result.failure('Failed to clear IPQS API key: $e', e);
+      return Result.failure('Failed to clear IPQS API key. Check logs for details.');
     }
   }
 
@@ -122,7 +122,7 @@ class IpqsService extends GetxService {
 
   /// Score a single IP address
   Future<IpqsResult> scoreIp(String ipAddress) async {
-    if (apiKey.value == null || apiKey.value!.isEmpty) {
+    if (apiKey == null || apiKey!.isEmpty) {
       return IpqsResult.error('IPQS API key not configured');
     }
 
@@ -130,7 +130,7 @@ class IpqsService extends GetxService {
     lastError.value = null;
 
     try {
-      final result = await _apiClient.scoreIp(apiKey.value!, ipAddress);
+      final result = await _apiClient.scoreIp(apiKey!, ipAddress);
       return result;
     } catch (e) {
       lastError.value = e.toString();

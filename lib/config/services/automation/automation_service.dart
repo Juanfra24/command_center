@@ -60,11 +60,11 @@ class AutomationService extends GetxService {
   /// Returns an error [AutomationResult] if setup fails, otherwise null.
   Future<AutomationResult?> _ensurePythonSetup() async {
     final ps = Get.find<PythonSetupService>();
-    if (ps.isSetupComplete.value) return null;
+    if (ps.isSetupComplete) return null;
     _log('Python dependencies not installed, installing now...');
     if (!await ps.installDependencies()) {
       return AutomationResult.error(
-        'Python setup failed: ${ps.setupError.value ?? "Unknown error"}',
+        'Python setup failed: ${ps.setupError ?? "Unknown error"}',
       );
     }
     _log('Verifying Python dependency installation...');
@@ -139,12 +139,14 @@ class AutomationService extends GetxService {
   Future<AutomationResult> _runAndParse(
     List<String> args, {
     Duration? timeout,
+    Map<String, String>? environment,
   }) async {
     _runner.logCommand(args);
     final raw = await _runner.run(
       args,
       workingDirectory: _runner.scriptsPath,
       timeout: timeout ?? defaultTimeout,
+      environment: environment,
     );
     final result = ResultParser.processScriptOutput(
       exitCode: raw.exitCode,
@@ -156,6 +158,17 @@ class AutomationService extends GetxService {
     return result;
   }
 
+  /// Build environment map with sensitive credentials (not exposed in argv).
+  Map<String, String> _buildSecureEnv(String proxyUrl,
+      {String? imapUser, String? imapPass}) {
+    final env = <String, String>{
+      'CC_PROXY_URL': proxyUrl,
+    };
+    if (imapUser != null) env['CC_IMAP_USER'] = imapUser;
+    if (imapPass != null) env['CC_IMAP_PASS'] = imapPass;
+    return env;
+  }
+
   /// Validate proxy IP matches expected.
   Future<AutomationResult> validateProxyIp({
     required ProxySlotEntity slot,
@@ -165,13 +178,15 @@ class AutomationService extends GetxService {
         slot: slot,
         timeoutMessage: 'Proxy validation timed out. The browser may be stuck. '
             'Try again or check your proxy settings.',
-        body: (ip, proxy) => _runAndParse([
-          _runner.scriptFile,
-          'validate',
-          proxy,
-          ip,
-          '--debug',
-        ]),
+        body: (ip, proxy) => _runAndParse(
+          [
+            _runner.scriptFile,
+            'validate',
+            ip,
+            '--debug',
+          ],
+          environment: _buildSecureEnv(proxy),
+        ),
       );
 
   /// Create a new Jagex account through the proxy.
@@ -192,14 +207,13 @@ class AutomationService extends GetxService {
             [
               _runner.scriptFile,
               'create-account',
-              proxy,
               ip,
               '--debug',
               if (imapHost != null) ...['--imap-host', imapHost],
-              if (imapUser != null) ...['--imap-user', imapUser],
-              if (imapPass != null) ...['--imap-pass', imapPass],
             ],
             timeout: accountCreationTimeout,
+            environment:
+                _buildSecureEnv(proxy, imapUser: imapUser, imapPass: imapPass),
           );
           if (result.isAccountCreated && result.data != null) {
             _log('Account email: ${result.data!['email'] ?? 'N/A'}');
@@ -220,7 +234,6 @@ class AutomationService extends GetxService {
           final args = [
             _runner.scriptFile,
             'session',
-            proxy,
             ip,
             '--keep-open',
             '--debug',
@@ -229,6 +242,7 @@ class AutomationService extends GetxService {
           final session = await _runner.startSession(
             args,
             workingDirectory: _runner.scriptsPath,
+            environment: _buildSecureEnv(proxy),
           );
           if (session.exited) {
             final json = ResultParser.extractJsonResult(session.output);

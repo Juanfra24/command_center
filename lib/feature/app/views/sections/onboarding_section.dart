@@ -3,6 +3,7 @@ import 'package:command_center/feature/app/views/components/setup_checklist_item
 import 'package:command_center/feature/app/views/dialogs/ipqs_onboarding_dialog.dart';
 import 'package:command_center/feature/app/views/dialogs/webshare_config_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:get/get.dart';
 
 class OnboardingSection extends StatelessWidget {
   final OnboardingService? onboardingService;
@@ -65,27 +66,32 @@ class OnboardingSection extends StatelessWidget {
   }
 
   Widget _buildSetupChecklist(BuildContext context) {
-    final isWebshareComplete =
-        onboardingService?.isWebshareConfigured.value ?? false;
-    final isIpqsComplete = onboardingService?.isIpqsConfigured.value ?? false;
+    if (onboardingService == null) {
+      return const SizedBox.shrink();
+    }
 
-    return Column(
-      children: [
-        SetupChecklistItem(
-          title: 'Connect Webshare & Sync Proxies',
-          subtitle: 'Connect your proxy provider and import slots',
-          isComplete: isWebshareComplete,
-          onTap: () => WebshareConfigDialog.show(context),
-        ),
-        const SizedBox(height: 12),
-        SetupChecklistItem(
-          title: 'Configure IPQualityScore',
-          subtitle: 'Enable IP scoring and fraud detection',
-          isComplete: isIpqsComplete,
-          isEnabled: isWebshareComplete,
-          onTap: () => IpqsOnboardingDialog.show(context),
-        ),
-      ],
-    );
+    return Obx(() {
+      final isWebshareComplete = onboardingService!.isWebshareConfigured.value;
+      final isIpqsComplete = onboardingService!.isIpqsConfigured.value;
+
+      return Column(
+        children: [
+          SetupChecklistItem(
+            title: 'Connect Webshare & Sync Proxies',
+            subtitle: 'Connect your proxy provider and import slots',
+            isComplete: isWebshareComplete,
+            onTap: () => WebshareConfigDialog.show(context),
+          ),
+          const SizedBox(height: 12),
+          SetupChecklistItem(
+            title: 'Configure IPQualityScore',
+            subtitle: 'Enable IP scoring and fraud detection',
+            isComplete: isIpqsComplete,
+            isEnabled: isWebshareComplete,
+            onTap: () => IpqsOnboardingDialog.show(context),
+          ),
+        ],
+      );
+    });
   }
 }

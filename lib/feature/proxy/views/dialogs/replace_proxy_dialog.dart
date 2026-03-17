@@ -45,10 +45,10 @@ class ReplaceProxyDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InfoBar(
-              title: const Text('Low Score Detected'),
+              title: const Text('High Fraud Score Detected'),
               content: Text(
-                'This proxy IP (${currentIp.ipAddress}) has a score of ${currentIp.ipScore.toStringAsFixed(0)}, '
-                'which is below the recommended threshold of 50. '
+                'This proxy IP (${currentIp.ipAddress}) has a fraud score of ${currentIp.fraudScore.toStringAsFixed(0)}, '
+                'which is above the recommended threshold of 60. '
                 'Replacing it will request a new IP from Webshare.',
               ),
               severity: InfoBarSeverity.warning,

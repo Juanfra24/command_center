@@ -45,6 +45,7 @@ void main() {
     int slotId = 1,
     bool isActive = true,
     double ipScore = 0,
+    double fraudScore = 0,
     DateTime? lastScoreCheck,
   }) {
     return ProxyIpAddressEntity(
@@ -65,8 +66,7 @@ void main() {
       isProxy: true,
       isDatacenter: false,
       isTor: false,
-      fraudScore: 0,
-      abuseConfidence: 0,
+      fraudScore: fraudScore,
       assignedAt: now,
       lastVerification: now,
       lastScoreCheck: lastScoreCheck,
@@ -177,8 +177,10 @@ void main() {
 
       proxyController.proxySlots.add(slot);
       proxyController.ipAddresses.add(ip);
+      proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.hasScoredIps, isTrue);
+      expect(scoringController.hasScoredIps.value, isTrue);
     });
 
     test('hasScoredIps returns false when no IPs are scored', () {
@@ -187,40 +189,66 @@ void main() {
 
       proxyController.proxySlots.add(slot);
       proxyController.ipAddresses.add(ip);
+      proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.hasScoredIps, isFalse);
+      expect(scoringController.hasScoredIps.value, isFalse);
     });
 
-    test('averageIpScore computes correctly', () {
+    test('averageFraudScore computes correctly', () {
       proxyController.proxySlots.addAll([
         makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10),
         makeSlot(id: 2, slotNumber: 2, currentIpAddressId: 20),
       ]);
       proxyController.ipAddresses.addAll([
-        makeIp(id: 10, slotId: 1, ipScore: 80, lastScoreCheck: DateTime.now()),
-        makeIp(id: 20, slotId: 2, ipScore: 60, lastScoreCheck: DateTime.now()),
+        makeIp(
+            id: 10,
+            slotId: 1,
+            fraudScore: 20,
+            lastScoreCheck: DateTime.now()),
+        makeIp(
+            id: 20,
+            slotId: 2,
+            fraudScore: 40,
+            lastScoreCheck: DateTime.now()),
       ]);
+      proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.averageIpScore, equals(70.0));
+      expect(scoringController.averageFraudScore.value, equals(30.0));
     });
 
-    test('averageIpScore returns 0 when no scored IPs', () {
-      expect(scoringController.averageIpScore, equals(0));
+    test('averageFraudScore returns 0 when no scored IPs', () {
+      expect(scoringController.averageFraudScore.value, equals(0));
     });
 
-    test('lowScoreCount counts IPs below 50', () {
+    test('lowScoreCount counts IPs with fraud score above 60', () {
       proxyController.proxySlots.addAll([
         makeSlot(id: 1, slotNumber: 1, currentIpAddressId: 10),
         makeSlot(id: 2, slotNumber: 2, currentIpAddressId: 20),
         makeSlot(id: 3, slotNumber: 3, currentIpAddressId: 30),
       ]);
       proxyController.ipAddresses.addAll([
-        makeIp(id: 10, slotId: 1, ipScore: 30, lastScoreCheck: DateTime.now()),
-        makeIp(id: 20, slotId: 2, ipScore: 80, lastScoreCheck: DateTime.now()),
-        makeIp(id: 30, slotId: 3, ipScore: 40, lastScoreCheck: DateTime.now()),
+        makeIp(
+            id: 10,
+            slotId: 1,
+            fraudScore: 70,
+            lastScoreCheck: DateTime.now()),
+        makeIp(
+            id: 20,
+            slotId: 2,
+            fraudScore: 20,
+            lastScoreCheck: DateTime.now()),
+        makeIp(
+            id: 30,
+            slotId: 3,
+            fraudScore: 80,
+            lastScoreCheck: DateTime.now()),
       ]);
+      proxyController.rebuildIpLookup();
+      scoringController.recalculateStatsForTest();
 
-      expect(scoringController.lowScoreCount, equals(2));
+      expect(scoringController.lowScoreCount.value, equals(2));
     });
   });
 

@@ -91,7 +91,7 @@ class IpqsApiClient {
   /// Score a single IP address
   Future<IpqsResult> scoreIp(String apiKey, String ipAddress) async {
     try {
-      final uri = Uri.parse('$_baseUrl/$apiKey/$ipAddress?strictness=1');
+      final uri = Uri.parse('$_baseUrl/$ipAddress?strictness=1&key=$apiKey');
 
       final response = await http.get(
         uri,
@@ -105,8 +105,10 @@ class IpqsApiClient {
         return IpqsResult.error('API request failed: ${response.statusCode}');
       }
     } catch (e) {
-      logger.e('IPQS API request failed: $e');
-      return IpqsResult.error('Request failed: $e');
+      // Scrub API key from exception messages (URL may contain key= param)
+      final sanitized = e.toString().replaceAll(RegExp(r'key=[^&\s]+'), 'key=***');
+      logger.e('IPQS API request failed: $sanitized');
+      return IpqsResult.error('IPQS request failed. Check logs for details.');
     }
   }
 }

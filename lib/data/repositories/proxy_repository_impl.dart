@@ -62,6 +62,7 @@ class ProxyRepositoryImpl implements ProxyRepository {
             username: slot.username,
             password: slot.password,
             port: Value(slot.port),
+            socksPort: Value(slot.socksPort),
             createdAt: Value(slot.createdAt),
             lastUpdated: Value(slot.lastUpdated),
             totalIpChanges: Value(slot.totalIpChanges),
@@ -88,6 +89,7 @@ class ProxyRepositoryImpl implements ProxyRepository {
         username: Value(slot.username),
         password: Value(slot.password),
         port: Value(slot.port),
+        socksPort: Value(slot.socksPort),
         lastUpdated: Value(DateTime.now()),
         totalIpChanges: Value(slot.totalIpChanges),
         isActive: Value(slot.isActive),
@@ -107,6 +109,17 @@ class ProxyRepositoryImpl implements ProxyRepository {
         isActive: const Value(false),
       ),
     );
+  }
+
+  @override
+  Future<void> softDeleteAllSlots() async {
+    await (_db.update(_db.proxySlotsTable)
+          ..where((t) => t.isDeleted.equals(false)))
+        .write(ProxySlotsTableCompanion(
+      isDeleted: const Value(true),
+      isActive: const Value(false),
+      deletedAt: Value(DateTime.now()),
+    ));
   }
 
   @override
@@ -177,9 +190,10 @@ class ProxyRepositoryImpl implements ProxyRepository {
   @override
   Future<ProxyIpAddressEntity?> getActiveIpForSlot(int slotId) async {
     final query = _db.select(_db.proxyIpAddressesTable)
-      ..where((tbl) => tbl.slotId.equals(slotId) & tbl.isActive.equals(true));
-    final result = await query.getSingleOrNull();
-    return result != null ? _mapIpAddressRow(result) : null;
+      ..where((tbl) => tbl.slotId.equals(slotId) & tbl.isActive.equals(true))
+      ..limit(1);
+    final results = await query.get();
+    return results.isEmpty ? null : _mapIpAddressRow(results.first);
   }
 
   @override
@@ -202,8 +216,13 @@ class ProxyRepositoryImpl implements ProxyRepository {
             isProxy: Value(ip.isProxy),
             isDatacenter: Value(ip.isDatacenter),
             isTor: Value(ip.isTor),
+            isCrawler: Value(ip.isCrawler),
+            connectionType: Value(ip.connectionType),
+            isp: Value(ip.isp),
+            organization: Value(ip.organization),
+            region: Value(ip.region),
+            recentAbuse: Value(ip.recentAbuse),
             fraudScore: Value(ip.fraudScore),
-            abuseConfidence: Value(ip.abuseConfidence),
             assignedAt: Value(ip.assignedAt),
             removedAt: Value(ip.removedAt),
             lastVerification: Value(ip.lastVerification),
@@ -239,8 +258,13 @@ class ProxyRepositoryImpl implements ProxyRepository {
         isProxy: Value(ip.isProxy),
         isDatacenter: Value(ip.isDatacenter),
         isTor: Value(ip.isTor),
+        isCrawler: Value(ip.isCrawler),
+        connectionType: Value(ip.connectionType),
+        isp: Value(ip.isp),
+        organization: Value(ip.organization),
+        region: Value(ip.region),
+        recentAbuse: Value(ip.recentAbuse),
         fraudScore: Value(ip.fraudScore),
-        abuseConfidence: Value(ip.abuseConfidence),
         removedAt: Value(ip.removedAt),
         lastVerification: Value(ip.lastVerification),
         lastScoreCheck: Value(ip.lastScoreCheck),
@@ -297,6 +321,7 @@ class ProxyRepositoryImpl implements ProxyRepository {
       username: row.username,
       password: row.password,
       port: row.port,
+      socksPort: row.socksPort,
       createdAt: row.createdAt,
       lastUpdated: row.lastUpdated,
       totalIpChanges: row.totalIpChanges,
@@ -328,8 +353,13 @@ class ProxyRepositoryImpl implements ProxyRepository {
       isProxy: row.isProxy,
       isDatacenter: row.isDatacenter,
       isTor: row.isTor,
+      isCrawler: row.isCrawler,
+      connectionType: row.connectionType,
+      isp: row.isp,
+      organization: row.organization,
+      region: row.region,
+      recentAbuse: row.recentAbuse,
       fraudScore: row.fraudScore,
-      abuseConfidence: row.abuseConfidence,
       assignedAt: row.assignedAt,
       removedAt: row.removedAt,
       lastVerification: row.lastVerification,

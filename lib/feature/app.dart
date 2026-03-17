@@ -1,20 +1,29 @@
-import 'dart:io';
-
+import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/feature/app/views/splash_screen.dart';
+import 'package:command_center/config/services/ipqs/ipqs_service.dart';
+import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
+import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/feature/app/views/sections/onboarding_section.dart';
 import 'package:command_center/feature/app/views/sections/settings_section.dart';
 import 'package:command_center/config/theme/fluent_app_theme.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
 import 'package:command_center/core/resource/dependency_injection.dart';
+import 'package:command_center/core/widgets/toast_overlay.dart';
 import 'package:command_center/core/widgets/window_title_bar.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/views/status_screen.dart';
 import 'package:command_center/feature/main_menu/views/main_menu_screen.dart';
+import 'package:command_center/feature/notification/controller/notification_controller.dart';
 import 'package:command_center/feature/notification/views/components/notification_bell.dart';
+import 'package:command_center/feature/dev_tools/views/dev_tools_screen.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/proxy_screen.dart';
 import 'package:command_center/feature/music/controller/music_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -31,6 +40,17 @@ class _AppState extends State<App> with WindowListener {
   PaneDisplayMode _paneDisplayMode = PaneDisplayMode.open;
   final FlyoutController _flyoutController = FlyoutController();
 
+  /// Resolved once after DI is ready — avoids Get.find() in every build call.
+  MusicController? _musicController;
+  NotificationService? _notificationService;
+  NotificationController? _notificationController;
+  WebshareService? _webshareService;
+  IpqsService? _ipqsService;
+  AppConfigService? _appConfigService;
+
+  /// GetX ever() workers for onboarding service observables
+  final List<Worker> _onboardingWorkers = [];
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +65,57 @@ class _AppState extends State<App> with WindowListener {
     // Initialize async services in proper order
     await AppBindings.initializeAsyncServices();
 
+    // Setup dependencies (Java + Microbot JAR) — splash screen shows progress
+    if (Get.isRegistered<MicrobotSetupService>()) {
+      await Get.find<MicrobotSetupService>().ensureDependencies();
+    }
+
+    // Phase 2b: BotEngine + WatchdogService (depends on setup completing first)
+    await AppBindings.initializePostSetup();
+
+    // Resolve controllers once after services are ready
+    try {
+      _musicController = Get.find<MusicController>();
+    } catch (e) {
+      logger.e('Failed to resolve MusicController: $e');
+    }
+    try {
+      _notificationService = Get.find<NotificationService>();
+      _notificationController = Get.find<NotificationController>();
+    } catch (e) {
+      logger.e('Failed to resolve NotificationService/Controller: $e');
+    }
+    try {
+      _webshareService = Get.find<WebshareService>();
+    } catch (e) {
+      logger.e('Failed to resolve WebshareService: $e');
+    }
+    try {
+      _ipqsService = Get.find<IpqsService>();
+    } catch (e) {
+      logger.e('Failed to resolve IpqsService: $e');
+    }
+    try {
+      _appConfigService = Get.find<AppConfigService>();
+    } catch (e) {
+      logger.e('Failed to resolve AppConfigService: $e');
+    }
+
+    // Optional: instant transition when onboarding completes without waiting
+    // for a user-driven setState (e.g. navigation).
+    try {
+      final obs = Get.find<OnboardingService>();
+      _onboardingWorkers.add(ever(obs.isWebshareConfigured, (_) {
+        if (obs.isOnboardingComplete && mounted) setState(() {});
+      }));
+      _onboardingWorkers.add(ever(obs.isIpqsConfigured, (_) {
+        if (obs.isOnboardingComplete && mounted) setState(() {});
+      }));
+      _onboardingWorkers.add(ever(obs.isInitialSyncComplete, (_) {
+        if (obs.isOnboardingComplete && mounted) setState(() {});
+      }));
+    } catch (_) {}
+
     if (mounted) {
       setState(() => _initialized = true);
     }
@@ -52,6 +123,9 @@ class _AppState extends State<App> with WindowListener {
 
   @override
   void dispose() {
+    for (final w in _onboardingWorkers) {
+      w.dispose();
+    }
     windowManager.removeListener(this);
     _flyoutController.dispose();
     super.dispose();
@@ -116,7 +190,13 @@ class _AppState extends State<App> with WindowListener {
               ),
               title: const Text('RuneScape Bot Command Center'),
               actions: [
-                NotificationBell(flyoutController: _flyoutController),
+                if (_notificationService != null &&
+                    _notificationController != null)
+                  NotificationBell(
+                    flyoutController: _flyoutController,
+                    notificationService: _notificationService!,
+                    notificationController: _notificationController!,
+                  ),
                 const SizedBox(width: 8),
                 _buildMusicButton(),
                 const SizedBox(width: 8),
@@ -126,8 +206,8 @@ class _AppState extends State<App> with WindowListener {
             // Main content
             Expanded(
               child: _initialized
-                  ? _buildMainContent(isDark)
-                  : _buildLoadingScreen(),
+                  ? ToastOverlay(child: _buildMainContent(isDark))
+                  : _buildSplashScreen(),
             ),
           ],
         ),
@@ -135,74 +215,74 @@ class _AppState extends State<App> with WindowListener {
     });
   }
 
-  Widget _buildLoadingScreen() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ProgressRing(),
-          SizedBox(height: 16),
-          Text('Loading...'),
-        ],
-      ),
-    );
+  Widget _buildSplashScreen() {
+    final setupService = Get.isRegistered<MicrobotSetupService>()
+        ? Get.find<MicrobotSetupService>()
+        : null;
+    return SplashScreen(setupService: setupService);
   }
 
   Widget _buildMainContent(bool isDark) {
-    return Obx(() {
-      // Check onboarding status
-      OnboardingService? onboardingService;
-      bool needsOnboarding = false;
+    // Direct read — no Obx wrapper around NavigationView.
+    // Onboarding completes at most once per session; the ever() listeners
+    // set up in _initializeApp call setState() for an instant transition.
+    OnboardingService? onboardingService;
+    bool needsOnboarding = false;
 
-      try {
-        onboardingService = Get.find<OnboardingService>();
-        needsOnboarding = !onboardingService.isOnboardingComplete;
-      } catch (_) {
-        // Service not ready yet
-      }
+    try {
+      onboardingService = Get.find<OnboardingService>();
+      needsOnboarding = !onboardingService.isOnboardingComplete;
+    } catch (_) {
+      // Service not ready yet
+    }
 
-      return NavigationView(
-        appBar: const NavigationAppBar(
-          height: 0, // Hide default app bar since we use custom title bar
-          automaticallyImplyLeading: false,
-        ),
-        pane: NavigationPane(
-          selected: _currentIndex,
-          onChanged: (index) => setState(() => _currentIndex = index),
-          displayMode: _paneDisplayMode,
-          toggleable:
-              false, // Disable built-in toggle since we have our own in title bar
-          items: [
-            PaneItem(
-              icon: const Icon(FluentIcons.home),
-              title: const Text('Home'),
-              body:
-                  _buildHomeWithOnboarding(needsOnboarding, onboardingService),
+    return NavigationView(
+      appBar: const NavigationAppBar(
+        height: 0, // Hide default app bar since we use custom title bar
+        automaticallyImplyLeading: false,
+      ),
+      pane: NavigationPane(
+        selected: _currentIndex,
+        onChanged: (index) => setState(() => _currentIndex = index),
+        displayMode: _paneDisplayMode,
+        toggleable:
+            false, // Disable built-in toggle since we have our own in title bar
+        items: [
+          PaneItem(
+            icon: const Icon(FluentIcons.home),
+            title: const Text('Home'),
+            body:
+                _buildHomeWithOnboarding(needsOnboarding, onboardingService),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.server),
+            title: const Text('Accounts'),
+            body: _buildAccountsWithOnboarding(needsOnboarding),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.globe),
+            title: const Text('Proxies'),
+            body: ProxyScreen(onNavigateToSettings: navigateToSettings),
+          ),
+        ],
+        footerItems: [
+          PaneItemSeparator(),
+          PaneItem(
+            icon: const Icon(FluentIcons.settings),
+            title: const Text('Settings'),
+            body: Builder(
+              builder: (context) => _buildSettingsPage(isDark, context),
             ),
+          ),
+          if (kDebugMode)
             PaneItem(
-              icon: const Icon(FluentIcons.server),
-              title: const Text('Accounts'),
-              body: _buildAccountsWithOnboarding(needsOnboarding),
+              icon: const Icon(FluentIcons.code),
+              title: const Text('Dev Tools'),
+              body: const DevToolsScreen(),
             ),
-            PaneItem(
-              icon: const Icon(FluentIcons.globe),
-              title: const Text('Proxies'),
-              body: ProxyScreen(onNavigateToSettings: navigateToSettings),
-            ),
-          ],
-          footerItems: [
-            PaneItemSeparator(),
-            PaneItem(
-              icon: const Icon(FluentIcons.settings),
-              title: const Text('Settings'),
-              body: Builder(
-                builder: (context) => _buildSettingsPage(isDark, context),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+        ],
+      ),
+    );
   }
 
   Widget _buildHomeWithOnboarding(
@@ -210,7 +290,9 @@ class _AppState extends State<App> with WindowListener {
     if (needsOnboarding) {
       return _buildOnboardingRequired(onboardingService);
     }
-    return MainMenuScreen(onNavigateToIndex: _navigateToIndex);
+    return MainMenuScreen(
+      onNavigateToIndex: _navigateToIndex,
+    );
   }
 
   Widget _buildAccountsWithOnboarding(bool needsOnboarding) {
@@ -223,25 +305,22 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildMusicButton() {
-    try {
-      final musicController = Get.find<MusicController>();
-      return Obx(() => IconButton(
-            icon: Icon(
-              musicController.isPlaying.value
-                  ? FluentIcons.music_in_collection_fill
-                  : FluentIcons.music_note,
-            ),
-            onPressed: () {
-              if (musicController.isPlaying.value) {
-                musicController.pauseAudio();
-              } else {
-                musicController.playAudio();
-              }
-            },
-          ));
-    } catch (e) {
-      return const SizedBox.shrink();
-    }
+    final mc = _musicController;
+    if (mc == null) return const SizedBox.shrink();
+    return Obx(() => IconButton(
+          icon: Icon(
+            mc.isPlaying.value
+                ? FluentIcons.music_in_collection_fill
+                : FluentIcons.music_note,
+          ),
+          onPressed: () {
+            if (mc.isPlaying.value) {
+              mc.pauseAudio();
+            } else {
+              mc.playAudio();
+            }
+          },
+        ));
   }
 
   Widget _buildThemeToggle(bool isDark) {
@@ -261,25 +340,19 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildSettingsPage(bool isDark, BuildContext context) {
-    return SettingsSection(isDark: isDark);
+    return SettingsSection(
+      isDark: isDark,
+      musicController: _musicController,
+      webshareService: _webshareService,
+      ipqsService: _ipqsService,
+      appConfigService: _appConfigService,
+    );
   }
 
   @override
   void onWindowClose() async {
-    // Properly close all resources and processes
+    // Clean up controllers — bots are left running for recapture on next launch
     try {
-      // Stop any running bots/processes
-      try {
-        final statusController = Get.find<StatusController>();
-        // Kill all running processes
-        for (final process in statusController.processClients.values) {
-          try {
-            Process.killPid(process.processId);
-          } catch (_) {}
-        }
-      } catch (_) {}
-
-      // Clean up controllers
       try {
         await Get.delete<StatusController>(force: true);
       } catch (_) {}

@@ -1,13 +1,15 @@
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
+import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:command_center/feature/proxy/views/components/proxy_slot_card_body.dart';
 import 'package:command_center/feature/proxy/views/components/proxy_slot_card_header.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:get/get.dart';
 
 class ProxySlotCard extends StatefulWidget {
   final ProxySlotEntity slot;
   final ProxyIpAddressEntity? currentIp;
-  final bool isSelected;
+  final ProxyController controller;
   final VoidCallback onSelect;
   final Future<bool> Function(ProxySlotEntity slot, String newName)
       onUpdateSlotName;
@@ -16,7 +18,7 @@ class ProxySlotCard extends StatefulWidget {
     super.key,
     required this.slot,
     required this.currentIp,
-    required this.isSelected,
+    required this.controller,
     required this.onSelect,
     required this.onUpdateSlotName,
   });
@@ -68,7 +70,6 @@ class _ProxySlotCardState extends State<ProxySlotCard> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final isSelected = widget.isSelected;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -76,51 +77,55 @@ class _ProxySlotCardState extends State<ProxySlotCard> {
         onTap: widget.onSelect,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.accentColor.withValues(alpha: 0.15)
-                  : theme.resources.cardBackgroundFillColorDefault,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
+          child: Obx(() {
+            final isSelected =
+                widget.controller.selectedSlot.value?.id == widget.slot.id;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
                 color: isSelected
-                    ? theme.accentColor
-                    : theme.resources.dividerStrokeColorDefault,
-                width: isSelected ? 2 : 1,
+                    ? theme.accentColor.withValues(alpha: 0.15)
+                    : theme.resources.cardBackgroundFillColorDefault,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected
+                      ? theme.accentColor
+                      : theme.resources.dividerStrokeColorDefault,
+                  width: isSelected ? 2 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: theme.accentColor.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: theme.accentColor.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ProxySlotCardHeader(
-                  slot: widget.slot,
-                  currentIp: widget.currentIp,
-                  isSelected: isSelected,
-                  isEditing: _isEditing,
-                  editingNameController: _editingNameController,
-                  onStartEditing: _startEditing,
-                  onSaveSlotName: _saveSlotName,
-                  onCancelEditing: _cancelEditing,
-                ),
-                const SizedBox(height: 8),
-                ProxySlotCardBody(
-                  slot: widget.slot,
-                  currentIp: widget.currentIp,
-                ),
-              ],
-            ),
-          ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ProxySlotCardHeader(
+                    slot: widget.slot,
+                    currentIp: widget.currentIp,
+                    isSelected: isSelected,
+                    isEditing: _isEditing,
+                    editingNameController: _editingNameController,
+                    onStartEditing: _startEditing,
+                    onSaveSlotName: _saveSlotName,
+                    onCancelEditing: _cancelEditing,
+                  ),
+                  const SizedBox(height: 8),
+                  ProxySlotCardBody(
+                    slot: widget.slot,
+                    currentIp: widget.currentIp,
+                  ),
+                ],
+              ),
+            );
+          }),
         ),
       ),
     );

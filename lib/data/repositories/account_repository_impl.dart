@@ -20,14 +20,18 @@ class AccountRepositoryImpl implements AccountRepository {
   @override
   Future<List<AccountEntity>> getAllAccounts() async {
     final accounts = await _db.select(_db.accountsTable).get();
-    final result = <AccountEntity>[];
+    final allCharacters = await _db.select(_db.charactersTable).get();
 
-    for (final account in accounts) {
-      final characters = await _getCharactersForAccount(account.id);
-      result.add(_mapAccountRow(account, characters));
+    // Group characters by accountId for O(1) lookup
+    final charsByAccountId = <int, List<CharacterEntity>>{};
+    for (final charRow in allCharacters) {
+      final entity = _mapCharacterRow(charRow);
+      charsByAccountId.putIfAbsent(charRow.accountId, () => []).add(entity);
     }
 
-    return result;
+    return accounts
+        .map((a) => _mapAccountRow(a, charsByAccountId[a.id] ?? []))
+        .toList();
   }
 
   @override
@@ -144,6 +148,16 @@ class AccountRepositoryImpl implements AccountRepository {
     return result;
   }
 
+  @override
+  Future<void> updateCharacterBanned(int characterId, bool banned) async {
+    await (_db.update(_db.charactersTable)
+          ..where((tbl) => tbl.id.equals(characterId)))
+        .write(CharactersTableCompanion(
+      banned: Value(banned),
+      lastUpdated: Value(DateTime.now()),
+    ));
+  }
+
   // ============ Character Operations (Private) ============
 
   Future<List<CharacterEntity>> _getCharactersForAccount(int accountId) async {
@@ -159,6 +173,7 @@ class AccountRepositoryImpl implements AccountRepository {
             accountId: character.accountId,
             name: character.name,
             banned: Value(character.banned),
+            defaultScriptName: Value(character.defaultScriptName),
             actualSkillsJson:
                 Value(jsonEncode(character.actualSkills.toJson())),
             targetSkillsJson:
@@ -167,6 +182,19 @@ class AccountRepositoryImpl implements AccountRepository {
             lastUpdated: Value(DateTime.now()),
           ),
         );
+  }
+
+  @override
+  Future<void> updateCharacterDefaultScript(
+    int characterId,
+    String? scriptName,
+  ) async {
+    await (_db.update(_db.charactersTable)
+          ..where((t) => t.id.equals(characterId)))
+        .write(CharactersTableCompanion(
+      defaultScriptName: Value(scriptName),
+      lastUpdated: Value(DateTime.now()),
+    ));
   }
 
   // ============ Mapping Helpers ============
@@ -215,6 +243,7 @@ class AccountRepositoryImpl implements AccountRepository {
       accountId: row.accountId,
       name: row.name,
       banned: row.banned,
+      defaultScriptName: row.defaultScriptName,
       actualSkills: actualSkills,
       targetSkills: targetSkills,
     );

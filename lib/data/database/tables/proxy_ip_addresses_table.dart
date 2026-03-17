@@ -65,6 +65,21 @@ class ProxyIpAddressesTable extends Table {
   /// Abuse confidence percentage (0-100)
   IntColumn get abuseConfidence => integer().withDefault(const Constant(0))();
 
+  BoolColumn get isCrawler =>
+      boolean().nullable().named('is_crawler')();
+
+  TextColumn get connectionType =>
+      text().nullable().named('connection_type')();
+
+  TextColumn get isp => text().nullable()();
+
+  TextColumn get organization => text().nullable()();
+
+  TextColumn get region => text().nullable()();
+
+  BoolColumn get recentAbuse =>
+      boolean().nullable().named('recent_abuse')();
+
   // Timestamps
   /// When this IP was assigned to the slot
   DateTimeColumn get assignedAt => dateTime().withDefault(currentDateAndTime)();

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:command_center/core/constants/app_values.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
@@ -30,14 +31,16 @@ class PythonRunner {
     );
     if (Directory(devScriptsPath).existsSync()) return devScriptsPath;
 
-    // Try relative to workspace
-    final workspacePath = path.join(
-      Platform.environment['USERPROFILE'] ?? '',
-      'projects',
-      'command_center',
-      'scripts',
-    );
-    if (Directory(workspacePath).existsSync()) return workspacePath;
+    // Try relative to workspace (development only — USERPROFILE is user-controlled)
+    if (kDebugMode) {
+      final workspacePath = path.join(
+        Platform.environment['USERPROFILE'] ?? '',
+        'projects',
+        'command_center',
+        'scripts',
+      );
+      if (Directory(workspacePath).existsSync()) return workspacePath;
+    }
 
     // Fallback to bundled scripts
     return path.join(execDir, 'data', 'scripts');
@@ -52,8 +55,6 @@ class PythonRunner {
     try {
       onLog('Building proxy URL for slot #${slot.slotNumber}');
       onLog('  Slot ID: ${slot.id}');
-      onLog('  Username: ${slot.username}');
-      onLog('  Password: ${slot.password.replaceAll(RegExp(r'.'), '*')}');
       onLog('  Port: ${slot.port}');
 
       if (slot.username.isEmpty || slot.password.isEmpty) {
@@ -77,18 +78,27 @@ class PythonRunner {
     }
   }
 
+  /// Redact secrets from a string (proxy creds and named flag values).
+  static String redact(String input) {
+    return input
+        .replaceAll(RegExp(r':[^:@]+@'), ':***@') // proxy user:pass@host
+        .replaceAll(RegExp(r'--imap-pass\s+\S+'), '--imap-pass ***')
+        .replaceAll(RegExp(r'--imap-user\s+\S+'), '--imap-user ***');
+  }
+
   /// Log redacted command for debugging
   void logCommand(List<String> args) {
     onLog('Full Python command:');
-    onLog(
-        '  python ${args.join(' ')}'.replaceAll(RegExp(r':[^:@]+@'), ':***@'));
+    onLog(redact('  python ${args.join(' ')}'));
   }
 
   /// Run a Python script with timeout and cancellation support.
+  /// Sensitive credentials should be passed via [environment] instead of [args].
   Future<({int exitCode, String stdout, String stderr})> run(
     List<String> args, {
     required String workingDirectory,
     Duration timeout = const Duration(minutes: 2),
+    Map<String, String>? environment,
   }) async {
     onLog('Running Python with timeout: ${timeout.inSeconds}s');
 
@@ -97,25 +107,33 @@ class PythonRunner {
 
     // -u flag disables Python's stdout/stderr buffering so we get logs in real-time
     _currentProcess = await Process.start('python', ['-u', ...args],
-        workingDirectory: workingDirectory);
+        workingDirectory: workingDirectory,
+        environment: environment);
 
-    // Listen to stdout/stderr and forward to logs in real-time
+    // Listen to stdout/stderr and forward to logs in real-time.
+    // Suppress all lines after the === RESULT === marker (contains credentials in JSON).
+    var _seenResultMarker = false;
     _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
       stdout.write(data);
       for (final line in data.split('\n')) {
         final trimmed = line.trim();
-        if (trimmed.isNotEmpty && !trimmed.startsWith('===')) {
-          onLog('[py] $trimmed');
+        if (trimmed.contains('=== RESULT ===')) {
+          _seenResultMarker = true;
+          continue;
+        }
+        if (!_seenResultMarker && trimmed.isNotEmpty) {
+          onLog('[py] ${redact(trimmed)}');
         }
       }
     });
 
+    // Redact stderr to prevent credential leakage from Python tracebacks
     _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
       stderr.write(data);
       for (final line in data.split('\n')) {
         final trimmed = line.trim();
         if (trimmed.isNotEmpty) {
-          onLog('[py:err] $trimmed');
+          onLog('[py:err] ${redact(trimmed)}');
         }
       }
     });
@@ -149,19 +167,21 @@ class PythonRunner {
     List<String> args, {
     required String workingDirectory,
     Duration warmup = const Duration(seconds: 8),
+    Map<String, String>? environment,
   }) async {
     final outputBuffer = StringBuffer();
 
     _currentProcess = await Process.start('python', ['-u', ...args],
-        workingDirectory: workingDirectory);
+        workingDirectory: workingDirectory,
+        environment: environment);
 
     _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
       outputBuffer.write(data);
-      onLog(data.trim());
+      onLog(redact(data.trim()));
     });
 
     _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
-      onLog('[stderr] ${data.trim()}');
+      onLog('[stderr] ${redact(data.trim())}');
     });
 
     // Wait for the browser to start and proxy to connect

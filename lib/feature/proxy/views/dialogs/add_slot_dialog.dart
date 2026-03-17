@@ -2,7 +2,7 @@ import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-class AddSlotDialog extends StatelessWidget {
+class AddSlotDialog extends StatefulWidget {
   final ProxyController controller;
 
   const AddSlotDialog({super.key, required this.controller});
@@ -16,12 +16,26 @@ class AddSlotDialog extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final nameController = TextEditingController();
-    final usernameController = TextEditingController();
-    final passwordController = TextEditingController();
-    final portController = TextEditingController(text: '8080');
+  State<AddSlotDialog> createState() => _AddSlotDialogState();
+}
 
+class _AddSlotDialogState extends State<AddSlotDialog> {
+  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _portController = TextEditingController(text: '8080');
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _portController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ContentDialog(
       title: const Text('Add Proxy Slot'),
       content: Column(
@@ -30,7 +44,7 @@ class AddSlotDialog extends StatelessWidget {
           InfoLabel(
             label: 'Slot Name',
             child: TextBox(
-              controller: nameController,
+              controller: _nameController,
               placeholder: 'e.g., US Proxy 1',
             ),
           ),
@@ -38,7 +52,7 @@ class AddSlotDialog extends StatelessWidget {
           InfoLabel(
             label: 'Username',
             child: TextBox(
-              controller: usernameController,
+              controller: _usernameController,
               placeholder: 'Webshare username',
             ),
           ),
@@ -46,15 +60,16 @@ class AddSlotDialog extends StatelessWidget {
           InfoLabel(
             label: 'Password',
             child: TextBox(
-              controller: passwordController,
+              controller: _passwordController,
               placeholder: 'Webshare password',
+              obscureText: true,
             ),
           ),
           const SizedBox(height: 16),
           InfoLabel(
             label: 'Port',
             child: TextBox(
-              controller: portController,
+              controller: _portController,
               placeholder: '8080',
             ),
           ),
@@ -68,7 +83,7 @@ class AddSlotDialog extends StatelessWidget {
         FilledButton(
           onPressed: () async {
             // Validate required fields
-            if (nameController.text.trim().isEmpty) {
+            if (_nameController.text.trim().isEmpty) {
               await displayInfoBar(context, builder: (ctx, close) {
                 return const InfoBar(
                   title: Text('Slot name is required'),
@@ -77,8 +92,8 @@ class AddSlotDialog extends StatelessWidget {
               });
               return;
             }
-            if (usernameController.text.trim().isEmpty ||
-                passwordController.text.trim().isEmpty) {
+            if (_usernameController.text.trim().isEmpty ||
+                _passwordController.text.trim().isEmpty) {
               await displayInfoBar(context, builder: (ctx, close) {
                 return const InfoBar(
                   title: Text('Username and password are required'),
@@ -87,7 +102,7 @@ class AddSlotDialog extends StatelessWidget {
               });
               return;
             }
-            final port = int.tryParse(portController.text);
+            final port = int.tryParse(_portController.text);
             if (port == null || port < 1 || port > 65535) {
               await displayInfoBar(context, builder: (ctx, close) {
                 return const InfoBar(
@@ -99,17 +114,17 @@ class AddSlotDialog extends StatelessWidget {
             }
             final newSlot = ProxySlotEntity(
               id: null,
-              slotName: nameController.text.trim(),
-              slotNumber: controller.totalSlots + 1,
-              username: usernameController.text.trim(),
-              password: passwordController.text.trim(),
+              slotName: _nameController.text.trim(),
+              slotNumber: widget.controller.totalSlots + 1,
+              username: _usernameController.text.trim(),
+              password: _passwordController.text.trim(),
               port: port,
               createdAt: DateTime.now(),
               lastUpdated: DateTime.now(),
               totalIpChanges: 0,
               isActive: true,
             );
-            await controller.addProxySlot(newSlot);
+            await widget.controller.addProxySlot(newSlot);
             if (context.mounted) Navigator.pop(context);
           },
           child: const Text('Add'),

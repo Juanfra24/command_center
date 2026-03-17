@@ -6,13 +6,19 @@ import 'package:get/get.dart';
 
 class NotificationBell extends StatelessWidget {
   final FlyoutController flyoutController;
+  final NotificationService notificationService;
+  final NotificationController notificationController;
 
-  const NotificationBell({super.key, required this.flyoutController});
+  const NotificationBell({
+    super.key,
+    required this.flyoutController,
+    required this.notificationService,
+    required this.notificationController,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final notificationService = Get.find<NotificationService>();
       final count = notificationService.unreadCount.value;
       return FlyoutTarget(
         controller: flyoutController,
@@ -43,9 +49,7 @@ class NotificationBell extends StatelessWidget {
             ],
           ),
           onPressed: () {
-            try {
-              Get.find<NotificationController>().loadNotifications();
-            } catch (_) {}
+            notificationController.loadNotifications();
             flyoutController.showFlyout(
               barrierDismissible: true,
               dismissOnPointerMoveAway: false,

@@ -15,8 +15,10 @@ class OnboardingService extends GetxService {
   final isWebshareConfigured = false.obs;
   final isIpqsConfigured = false.obs;
   final isInitialSyncComplete = false.obs;
-  final isStatusSyncComplete = false.obs;
   final isLoading = true.obs;
+
+  // Workers list to prevent duplicate ever() listeners
+  final List<Worker> _workers = [];
 
   // Computed state - is onboarding complete?
   bool get isOnboardingComplete =>
@@ -32,6 +34,12 @@ class OnboardingService extends GetxService {
 
   /// Check the current onboarding status
   Future<void> checkOnboardingStatus() async {
+    // Cancel previous listeners to prevent duplicates
+    for (final w in _workers) {
+      w.dispose();
+    }
+    _workers.clear();
+
     isLoading.value = true;
 
     try {
@@ -43,12 +51,12 @@ class OnboardingService extends GetxService {
         isWebshareConfigured.value = webshareService.isConfigured.value;
 
         // Listen for changes in webshare configuration
-        ever(webshareService.isConfigured, (configured) {
+        _workers.add(ever(webshareService.isConfigured, (configured) {
           isWebshareConfigured.value = configured;
           if (configured) {
             _saveWebshareConfigured();
           }
-        });
+        }));
       } catch (_) {
         isWebshareConfigured.value =
             prefs.getBool(_webshareConfiguredKey) ?? false;
@@ -60,12 +68,12 @@ class OnboardingService extends GetxService {
         isIpqsConfigured.value = ipqsService.isConfigured.value;
 
         // Listen for changes in IPQS configuration
-        ever(ipqsService.isConfigured, (configured) {
+        _workers.add(ever(ipqsService.isConfigured, (configured) {
           isIpqsConfigured.value = configured;
           if (configured) {
             _saveIpqsConfigured();
           }
-        });
+        }));
       } catch (_) {
         isIpqsConfigured.value = prefs.getBool(_ipqsConfiguredKey) ?? false;
       }
@@ -73,20 +81,6 @@ class OnboardingService extends GetxService {
       // Check initial sync status
       isInitialSyncComplete.value =
           prefs.getBool(_initialSyncCompleteKey) ?? false;
-
-      // Check status sync
-      try {
-        final statusController = Get.find<StatusController>();
-        isStatusSyncComplete.value = !statusController.isLoading.value;
-
-        ever(statusController.isLoading, (loading) {
-          if (!loading) {
-            isStatusSyncComplete.value = true;
-          }
-        });
-      } catch (_) {
-        isStatusSyncComplete.value = false;
-      }
     } catch (e) {
       // Default to not configured on error
       isWebshareConfigured.value = false;
@@ -167,6 +161,5 @@ class OnboardingService extends GetxService {
 
     isWebshareConfigured.value = false;
     isInitialSyncComplete.value = false;
-    isStatusSyncComplete.value = false;
   }
 }

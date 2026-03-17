@@ -4,6 +4,11 @@ enum NotificationType {
   rotationCompleted,
   rotationFailed,
   quotaExhausted,
+  banDetected,
+  maxRetriesReached,
+  clientRelaunched,
+  clientFailed,
+  toast, // Toast-originated persistent notifications
 }
 
 enum NotificationSeverity { info, warning, error }

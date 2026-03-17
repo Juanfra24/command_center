@@ -11,6 +11,7 @@ class ProxySlotEntity extends Equatable {
   final String username;
   final String password;
   final int port;
+  final int? socksPort;
   final DateTime createdAt;
   final DateTime lastUpdated;
   final int totalIpChanges;
@@ -27,6 +28,7 @@ class ProxySlotEntity extends Equatable {
     required this.username,
     required this.password,
     required this.port,
+    this.socksPort,
     required this.createdAt,
     required this.lastUpdated,
     required this.totalIpChanges,
@@ -45,6 +47,7 @@ class ProxySlotEntity extends Equatable {
       username: '',
       password: '',
       port: 0,
+      socksPort: null,
       createdAt: DateTime.now(),
       lastUpdated: DateTime.now(),
       totalIpChanges: 0,
@@ -54,37 +57,47 @@ class ProxySlotEntity extends Equatable {
     );
   }
 
+  static const _absent = Object();
+
   ProxySlotEntity copyWith({
     int? id,
     String? webshareId,
     String? slotName,
     int? slotNumber,
-    int? currentIpAddressId,
+    Object? currentIpAddressId = _absent,
     String? username,
     String? password,
     int? port,
+    Object? socksPort = _absent,
     DateTime? createdAt,
     DateTime? lastUpdated,
     int? totalIpChanges,
     bool? isActive,
     bool? isDeleted,
-    DateTime? deletedAt,
+    Object? deletedAt = _absent,
   }) {
     return ProxySlotEntity(
       id: id ?? this.id,
       webshareId: webshareId ?? this.webshareId,
       slotName: slotName ?? this.slotName,
       slotNumber: slotNumber ?? this.slotNumber,
-      currentIpAddressId: currentIpAddressId ?? this.currentIpAddressId,
+      currentIpAddressId: identical(currentIpAddressId, _absent)
+          ? this.currentIpAddressId
+          : currentIpAddressId as int?,
       username: username ?? this.username,
       password: password ?? this.password,
       port: port ?? this.port,
+      socksPort: identical(socksPort, _absent)
+          ? this.socksPort
+          : socksPort as int?,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,
       isActive: isActive ?? this.isActive,
       isDeleted: isDeleted ?? this.isDeleted,
-      deletedAt: deletedAt ?? this.deletedAt,
+      deletedAt: identical(deletedAt, _absent)
+          ? this.deletedAt
+          : deletedAt as DateTime?,
     );
   }
 
@@ -102,6 +115,7 @@ class ProxySlotEntity extends Equatable {
         username,
         password,
         port,
+        socksPort,
         createdAt,
         lastUpdated,
         totalIpChanges,

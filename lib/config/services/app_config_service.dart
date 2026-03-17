@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/data/database_service.dart';
@@ -17,6 +19,10 @@ class AppConfigService extends GetxService {
   static const String _keyImapPass = 'imap_pass';
   static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
   static const String _keyAutoRotationThreshold = 'auto_rotation_threshold';
+  static const String _keyScriptRegistry = 'script_registry';
+  static const String _keyMicrobotJarPath = 'microbot_jar_path';
+  static const String _keyMicrobotJarVersion = 'microbot_jar_version';
+  static const String _keyMicrobotJavaPath = 'microbot_java_path';
 
   ConfigRepository? _configRepository;
 
@@ -24,9 +30,10 @@ class AppConfigService extends GetxService {
   final webshareApiKey = Rxn<String>();
   final isWebshareSetup = false.obs;
   final themeMode = 'system'.obs; // 'light', 'dark', 'system'
-  final isLoading = true.obs;
+  bool isLoading = true;
   final autoRotationEnabled = true.obs;
-  final autoRotationThreshold = 40.obs;
+  final autoRotationThreshold = 60.obs;
+  final scriptRegistry = <String>['Tutorial Journey'].obs;
 
   Future<AppConfigService> init() async {
     try {
@@ -50,7 +57,7 @@ class AppConfigService extends GetxService {
 
   /// Load configuration from SQLite
   Future<void> loadConfig() async {
-    isLoading.value = true;
+    isLoading = true;
     try {
       if (_configRepository == null) return;
 
@@ -69,11 +76,22 @@ class AppConfigService extends GetxService {
 
       final threshold =
           await _configRepository!.getValue(_keyAutoRotationThreshold);
-      autoRotationThreshold.value = int.tryParse(threshold ?? '') ?? 40;
+      autoRotationThreshold.value = int.tryParse(threshold ?? '') ?? 60;
+
+      final registryJson =
+          await _configRepository!.getValue(_keyScriptRegistry);
+      if (registryJson != null) {
+        try {
+          final decoded = jsonDecode(registryJson) as List;
+          scriptRegistry.value = decoded.cast<String>();
+        } catch (e) {
+          logger.e('Error parsing script registry: $e');
+        }
+      }
     } catch (e) {
       logger.e('Error loading config: $e');
     } finally {
-      isLoading.value = false;
+      isLoading = false;
     }
   }
 
@@ -92,7 +110,7 @@ class AppConfigService extends GetxService {
       return Result.success(null);
     } catch (e) {
       logger.e('Error saving Webshare API key: $e');
-      return Result.failure('Failed to save Webshare API key: $e', e);
+      return Result.failure('Failed to save Webshare API key. Check logs for details.');
     }
   }
 
@@ -111,7 +129,7 @@ class AppConfigService extends GetxService {
       return Result.success(null);
     } catch (e) {
       logger.e('Error clearing Webshare API key: $e');
-      return Result.failure('Failed to clear Webshare API key: $e', e);
+      return Result.failure('Failed to clear Webshare API key. Check logs for details.');
     }
   }
 
@@ -177,6 +195,76 @@ class AppConfigService extends GetxService {
       logger.e('Error saving auto-rotation threshold: $e');
       return Result.failure('Failed to save auto-rotation threshold: $e', e);
     }
+  }
+
+  /// Add a script name to the registry
+  Future<Result<void>> addScript(String scriptName) async {
+    if (_configRepository == null) {
+      return Result.failure('Config repository not initialized');
+    }
+    if (scriptRegistry.contains(scriptName)) {
+      return Result.failure('Script already exists');
+    }
+    try {
+      scriptRegistry.add(scriptName);
+      await _configRepository!
+          .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
+      return Result.success(null);
+    } catch (e) {
+      scriptRegistry.remove(scriptName);
+      logger.e('Error saving script registry: $e');
+      return Result.failure('Failed to save script registry: $e', e);
+    }
+  }
+
+  /// Remove a script name from the registry
+  Future<Result<void>> removeScript(String scriptName) async {
+    if (_configRepository == null) {
+      return Result.failure('Config repository not initialized');
+    }
+    if (!scriptRegistry.contains(scriptName)) {
+      return Result.failure('Script not found');
+    }
+    try {
+      scriptRegistry.remove(scriptName);
+      await _configRepository!
+          .setValue(_keyScriptRegistry, jsonEncode(scriptRegistry));
+      return Result.success(null);
+    } catch (e) {
+      scriptRegistry.add(scriptName);
+      logger.e('Error saving script registry: $e');
+      return Result.failure('Failed to save script registry: $e', e);
+    }
+  }
+
+  /// Get Microbot JAR path
+  Future<String?> getMicrobotJarPath() async {
+    return _configRepository?.getValue(_keyMicrobotJarPath);
+  }
+
+  /// Save Microbot JAR path
+  Future<void> saveMicrobotJarPath(String path) async {
+    await _configRepository?.setValue(_keyMicrobotJarPath, path);
+  }
+
+  /// Get Microbot JAR version
+  Future<String?> getMicrobotJarVersion() async {
+    return _configRepository?.getValue(_keyMicrobotJarVersion);
+  }
+
+  /// Save Microbot JAR version
+  Future<void> saveMicrobotJarVersion(String version) async {
+    await _configRepository?.setValue(_keyMicrobotJarVersion, version);
+  }
+
+  /// Get Microbot Java path
+  Future<String?> getMicrobotJavaPath() async {
+    return _configRepository?.getValue(_keyMicrobotJavaPath);
+  }
+
+  /// Save Microbot Java path
+  Future<void> saveMicrobotJavaPath(String path) async {
+    await _configRepository?.setValue(_keyMicrobotJavaPath, path);
   }
 
   /// Get ThemeMode from string

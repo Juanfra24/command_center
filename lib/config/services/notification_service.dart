@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/widgets/toast_data.dart';
 import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/domain/repositories/notification_repository.dart';
 import 'package:get/get.dart';
 
-class NotificationService {
+class NotificationService extends GetxService {
   final NotificationRepository _repository;
 
   final unreadCount = 0.obs;
+
+  final _toastController = StreamController<ToastData>.broadcast();
+  Stream<ToastData> get toastStream => _toastController.stream;
 
   NotificationService(this._repository);
 
@@ -66,6 +71,31 @@ class NotificationService {
       unreadCount.value = await _repository.getUnreadCount();
     } catch (e) {
       logger.e('Failed to refresh unread count: $e');
+    }
+  }
+
+  Future<void> showToast({
+    required String title,
+    String? subtitle,
+    required ToastSeverity severity,
+  }) async {
+    _toastController.add(ToastData(
+      title: title,
+      subtitle: subtitle,
+      severity: severity,
+    ));
+
+    // Persist error/warning toasts as notifications
+    if (severity == ToastSeverity.error ||
+        severity == ToastSeverity.warning) {
+      await createNotification(
+        type: NotificationType.toast,
+        severity: severity == ToastSeverity.error
+            ? NotificationSeverity.error
+            : NotificationSeverity.warning,
+        title: title,
+        message: subtitle ?? '',
+      );
     }
   }
 }

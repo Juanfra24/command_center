@@ -16,11 +16,16 @@ extension ShadedColorToAccent on ShadedColor {
   }
 }
 
-AccentColor getScoreColor(double score, {bool hasBeenScored = true}) {
+/// Returns a color for a fraud score (0-100, lower = better).
+/// - 0-30  → green  (excellent)
+/// - 31-60 → yellow (fair)
+/// - 61-80 → orange (poor)
+/// - 81-100 → red   (bad)
+AccentColor getScoreColor(double fraudScore, {bool hasBeenScored = true}) {
   if (!hasBeenScored) return Colors.grey.toAccentColor();
-  if (score >= 90) return Colors.green;
-  if (score >= 70) return Colors.teal;
-  if (score >= 50) return Colors.orange;
+  if (fraudScore <= 30) return Colors.green;
+  if (fraudScore <= 60) return Colors.yellow;
+  if (fraudScore <= 80) return Colors.orange;
   return Colors.red;
 }
 
@@ -36,7 +41,7 @@ class IpScoreIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scoreColor =
-        getScoreColor(ip.ipScore, hasBeenScored: ip.hasBeenScored);
+        getScoreColor(ip.fraudScore, hasBeenScored: ip.hasBeenScored);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -57,7 +62,7 @@ class IpScoreIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            ip.hasBeenScored ? ip.ipScore.toStringAsFixed(0) : '?',
+            ip.hasBeenScored ? ip.fraudScore.toStringAsFixed(0) : '?',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

@@ -41,9 +41,9 @@ def validate_proxy_format(proxy: str) -> Optional[str]:
         r"([^:@\s]+):(\d+)|([^:@\s]+):([^@\s]+)@([^:@\s]+):(\d+)", proxy
     )
     if not ok:
-        return f"Bad proxy format: {proxy}. Use host:port or user:pass@host:port"
+        return f"Bad proxy format: {mask_proxy(proxy)}. Use host:port or user:pass@host:port"
     if proxy.count("@") > 1:
-        return f"Proxy contains multiple '@': {proxy}. URL-encode the password."
+        return f"Proxy contains multiple '@': {mask_proxy(proxy)}. URL-encode the password."
     return None
 
 

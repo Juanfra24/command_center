@@ -11,10 +11,11 @@
 #include <algorithm>
 #include <regex>
 #include <thread>
-#include <chrono>
-#include <random>
 #include <sstream>
-#include <fstream>
+#include <vector>
+#include <comdef.h>
+#include <Wbemidl.h>
+#pragma comment(lib, "wbemuuid.lib")
 
 std::string GetEnvironmentVariable(const std::string &var)
 {
@@ -29,36 +30,64 @@ std::string GetEnvironmentVariable(const std::string &var)
     return "";
 }
 
-void ExecuteCommandAsync(const std::string &command)
+void RunDetachedProcess(const std::string &command)
 {
     std::thread([command]()
                 {
-        // Generate a unique filename for the temporary file
-        auto now = std::chrono::high_resolution_clock::now();
-        auto duration = now.time_since_epoch();
-        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        STARTUPINFOA si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
 
-        std::random_device rd;  // Will be used to obtain a seed for the random number engine
-        std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-        std::uniform_int_distribution<> distrib(1, 1000);
+        std::vector<char> cmdBuf(command.begin(), command.end());
+        cmdBuf.push_back('\0');
 
-        std::stringstream ss;
-        ss << "temp_" << milliseconds << "_" << distrib(gen) << ".txt";
-        std::string tempFileName = ss.str();
-
-        std::string fullCommand = "cmd /c " + command + " > " + tempFileName + " && type " + tempFileName + " && del " + tempFileName;
-        system(fullCommand.c_str()); })
-        .detach(); // Detach the thread to run independently
+        if (CreateProcessA(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE,
+                           CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+        {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+        } })
+        .detach();
 }
 
-bool isValidInput(const std::string &input)
+bool containsShellMetachars(const std::string &input)
 {
-    return std::regex_match(input, std::regex("^[a-zA-Z0-9_\\-\\.\\:\\\\ ]+$"));
+    return input.find_first_of("&|;<>`$") != std::string::npos;
 }
 
-void RunGameClient(const std::string &characterName, const std::string &proxyAddress, const std::string &scriptName = "Tutorial Journey")
+int RunGameClient(const flutter::EncodableMap &args)
 {
-    if (!isValidInput(characterName) || !isValidInput(proxyAddress) || !isValidInput(scriptName))
+    auto getString = [&](const char *key) -> std::string {
+        auto it = args.find(flutter::EncodableValue(key));
+        if (it != args.end() && std::holds_alternative<std::string>(it->second))
+            return std::get<std::string>(it->second);
+        return "";
+    };
+    auto getBool = [&](const char *key, bool defaultVal = false) -> bool {
+        auto it = args.find(flutter::EncodableValue(key));
+        if (it != args.end() && std::holds_alternative<bool>(it->second))
+            return std::get<bool>(it->second);
+        return defaultVal;
+    };
+
+    std::string characterName = getString("characterName");
+    std::string proxyAddress = getString("proxyAddress");
+    std::string scriptName = getString("scriptName");
+    std::string world = getString("world");
+    std::string render = getString("render");
+    std::string scriptParams = getString("scriptParams");
+    std::string advancedFlags = getString("advancedFlags");
+    bool covert = getBool("covert");
+    bool destroyOnBan = getBool("destroyOnBan", true);
+    bool destroy = getBool("destroy", true);
+    bool minimized = getBool("minimized", true);
+
+    // Validate structured fields against shell metacharacters
+    if (containsShellMetachars(characterName) || containsShellMetachars(proxyAddress) ||
+        containsShellMetachars(scriptName) || containsShellMetachars(world) ||
+        containsShellMetachars(render) || containsShellMetachars(scriptParams))
     {
         throw std::invalid_argument("Unsafe characters in input.");
     }
@@ -71,38 +100,164 @@ void RunGameClient(const std::string &characterName, const std::string &proxyAdd
     {
         command += " -proxy \"" + proxyAddress + "\"";
     }
+    if (!world.empty() && world != "auto")
+    {
+        command += " -world " + world;
+    }
+    if (covert)
+    {
+        command += " -covert";
+    }
+    if (!render.empty() && render != "NONE")
+    {
+        command += " -render " + render;
+    }
+    if (destroy)
+    {
+        command += " -destroy";
+    }
+    if (destroyOnBan)
+    {
+        command += " -destroy-on-ban";
+    }
+    if (minimized)
+    {
+        command += " -minimized";
+    }
+    if (!advancedFlags.empty())
+    {
+        command += " " + advancedFlags;
+    }
+    // -params must be last per DreamBot requirements
+    if (!scriptParams.empty())
+    {
+        command += " -params " + scriptParams;
+    }
 
-    ExecuteCommandAsync(command); // Run the command asynchronously
+    // Use CreateProcess instead of system() — no CMD shell, returns PID directly
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    // CreateProcess needs a mutable copy of the command string
+    std::vector<char> cmdBuf(command.begin(), command.end());
+    cmdBuf.push_back('\0');
+
+    if (!CreateProcessA(nullptr, cmdBuf.data(), nullptr, nullptr, FALSE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+    {
+        throw std::runtime_error("CreateProcess failed with error " + std::to_string(GetLastError()));
+    }
+
+    int pid = static_cast<int>(pi.dwProcessId);
+
+    // Close handles — we don't need to wait on the process
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return pid;
 }
 
 void ListJavaProcesses(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> &result)
 {
-    std::string tempFileName = "temp_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) + ".txt";
-    std::string command = "wmic process where \"name='java.exe' or name='javaw.exe'\" get CommandLine,ProcessId /FORMAT:LIST";
-    std::string fullCommand = "cmd /c " + command + " > " + tempFileName;
-    system(fullCommand.c_str());
+    IWbemLocator *pLocator = nullptr;
+    IWbemServices *pServices = nullptr;
+    IEnumWbemClassObject *pEnumerator = nullptr;
 
-    std::ifstream file(tempFileName, std::ios::binary);
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-    std::remove(tempFileName.c_str());
-
-    std::string encoded = base64_encode(reinterpret_cast<const unsigned char *>(content.data()), content.size());
-
-    if (encoded.empty())
+    HRESULT hr = CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER,
+                                  IID_IWbemLocator, (LPVOID *)&pLocator);
+    if (FAILED(hr))
     {
-        result->Error("No Data", "Failed to retrieve or encode process data.");
+        result->Error("WMI Error", "Failed to create WbemLocator");
+        return;
     }
-    else
+
+    hr = pLocator->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), nullptr, nullptr, nullptr,
+                                  0, nullptr, nullptr, &pServices);
+    if (FAILED(hr))
     {
-        result->Success(flutter::EncodableValue(encoded));
+        pLocator->Release();
+        result->Error("WMI Error", "Failed to connect to WMI");
+        return;
     }
+
+    hr = CoSetProxyBlanket(pServices, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr,
+                           RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
+                           nullptr, EOAC_NONE);
+    if (FAILED(hr))
+    {
+        pServices->Release();
+        pLocator->Release();
+        result->Error("WMI Error", "Failed to set proxy blanket");
+        return;
+    }
+
+    hr = pServices->ExecQuery(
+        bstr_t("WQL"),
+        bstr_t("SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'java.exe' OR Name = 'javaw.exe'"),
+        WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+        nullptr, &pEnumerator);
+    if (FAILED(hr))
+    {
+        pServices->Release();
+        pLocator->Release();
+        result->Error("WMI Error", "WMI query failed");
+        return;
+    }
+
+    flutter::EncodableList processList;
+    IWbemClassObject *pObj = nullptr;
+    ULONG numReturned = 0;
+
+    while (pEnumerator->Next(WBEM_INFINITE, 1, &pObj, &numReturned) == S_OK)
+    {
+        VARIANT vtPid, vtCmd;
+        VariantInit(&vtPid);
+        VariantInit(&vtCmd);
+
+        int pid = 0;
+        std::string commandLine;
+
+        if (SUCCEEDED(pObj->Get(L"ProcessId", 0, &vtPid, nullptr, nullptr)) && vtPid.vt == VT_UI4)
+        {
+            pid = static_cast<int>(vtPid.uintVal);
+        }
+        if (SUCCEEDED(pObj->Get(L"CommandLine", 0, &vtCmd, nullptr, nullptr)) && vtCmd.vt == VT_BSTR)
+        {
+            int len = WideCharToMultiByte(CP_UTF8, 0, vtCmd.bstrVal, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0)
+            {
+                std::string utf8(len - 1, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, vtCmd.bstrVal, -1, &utf8[0], len, nullptr, nullptr);
+                commandLine = utf8;
+            }
+        }
+
+        VariantClear(&vtPid);
+        VariantClear(&vtCmd);
+        pObj->Release();
+
+        if (!commandLine.empty())
+        {
+            flutter::EncodableMap entry;
+            entry[flutter::EncodableValue("pid")] = flutter::EncodableValue(pid);
+            entry[flutter::EncodableValue("commandLine")] = flutter::EncodableValue(commandLine);
+            processList.push_back(flutter::EncodableValue(entry));
+        }
+    }
+
+    pEnumerator->Release();
+    pServices->Release();
+    pLocator->Release();
+
+    result->Success(flutter::EncodableValue(processList));
 }
 
 void KillProcessAndChilds(const std::string &pidStr)
 {
-    // Using taskkill to kill a pid and its children
-    ExecuteCommandAsync("taskkill /F /PID " + pidStr + " /T");
+    RunDetachedProcess("taskkill /F /PID " + pidStr + " /T");
 }
 
 void HandleMethodCall(
@@ -131,37 +286,26 @@ void HandleMethodCall(
         KillProcessAndChilds(pidStr);
         result->Success(flutter::EncodableValue("Process and its children terminated successfully"));
     }
-    else if (method_call.method_name().compare("runCmdCommand") == 0)
-    {
-        const auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
-        if (!arguments || arguments->find(flutter::EncodableValue("command")) == arguments->end())
-        {
-            result->Error("Invalid arguments", "Expected a command string.");
-            return;
-        }
-        std::string cmdCommand = std::get<std::string>(arguments->at(flutter::EncodableValue("command")));
-        ExecuteCommandAsync(cmdCommand);
-        result->Success(flutter::EncodableValue("Command executed successfully"));
-    }
     else if (method_call.method_name().compare("runGameClient") == 0)
     {
         const auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
         if (!arguments)
         {
-            result->Error("Invalid arguments", "Expected arguments for character name, proxy, and optionally script name.");
+            result->Error("Invalid arguments", "Expected arguments map.");
             return;
         }
-        std::string characterName = std::get<std::string>(arguments->at(flutter::EncodableValue("characterName")));
-        std::string proxyAddress = std::get<std::string>(arguments->at(flutter::EncodableValue("proxyAddress")));
-        std::string scriptName = arguments->find(flutter::EncodableValue("scriptName")) != arguments->end() ? std::get<std::string>(arguments->at(flutter::EncodableValue("scriptName"))) : "Tutorial Journey";
         try
         {
-            RunGameClient(characterName, proxyAddress, scriptName);
-            result->Success(flutter::EncodableValue("Game client launched successfully"));
+            int pid = RunGameClient(*arguments);
+            result->Success(flutter::EncodableValue(pid));
         }
         catch (const std::invalid_argument &e)
         {
             result->Error("Invalid Input", e.what());
+        }
+        catch (const std::runtime_error &e)
+        {
+            result->Error("Launch Error", e.what());
         }
     }
     else

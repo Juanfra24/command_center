@@ -75,8 +75,7 @@ void main() {
         isProxy: true,
         isDatacenter: false,
         isTor: false,
-        fraudScore: 100 - ipScore,
-        abuseConfidence: 0,
+        fraudScore: ipScore,
         assignedAt: now,
         lastVerification: now,
         lastScoreCheck: now,
@@ -127,7 +126,7 @@ void main() {
 
     // Default stubs for config observables
     when(() => mockConfig.autoRotationEnabled).thenReturn(true.obs);
-    when(() => mockConfig.autoRotationThreshold).thenReturn(40.obs);
+    when(() => mockConfig.autoRotationThreshold).thenReturn(60.obs);
     when(() => mockWebshare.isConfigured).thenReturn(true.obs);
 
     // Default stub for notification service
@@ -153,7 +152,7 @@ void main() {
     test('skips when auto-rotation is disabled', () async {
       when(() => mockConfig.autoRotationEnabled).thenReturn(false.obs);
 
-      await service.processScoreResults([makeResult(1, 'Slot 1', 20)]);
+      await service.processScoreResults([makeResult(1, 'Slot 1', 80)]);
 
       verifyNever(() => mockReplacement.fetchPlanInfo());
       verifyNever(() => mockReplacement.replaceProxyIp(any()));
@@ -162,25 +161,25 @@ void main() {
     test('skips when webshare is not configured', () async {
       when(() => mockWebshare.isConfigured).thenReturn(false.obs);
 
-      await service.processScoreResults([makeResult(1, 'Slot 1', 20)]);
-
-      verifyNever(() => mockReplacement.fetchPlanInfo());
-      verifyNever(() => mockReplacement.replaceProxyIp(any()));
-    });
-
-    test('skips IPs above threshold', () async {
-      // Threshold is 40, score is 80 => above threshold, should skip
       await service.processScoreResults([makeResult(1, 'Slot 1', 80)]);
 
       verifyNever(() => mockReplacement.fetchPlanInfo());
       verifyNever(() => mockReplacement.replaceProxyIp(any()));
     });
 
-    test('replaces IPs below threshold, worst first', () async {
-      // Two IPs below threshold (40): score 20 and score 30
+    test('skips IPs below fraud threshold', () async {
+      // Threshold is 60, score is 20 => below threshold, should skip
+      await service.processScoreResults([makeResult(1, 'Slot 1', 20)]);
+
+      verifyNever(() => mockReplacement.fetchPlanInfo());
+      verifyNever(() => mockReplacement.replaceProxyIp(any()));
+    });
+
+    test('replaces IPs above fraud threshold, worst first', () async {
+      // Two IPs above threshold (60): score 80 and score 70
       final results = [
-        makeResult(2, 'Slot 2', 30),
-        makeResult(1, 'Slot 1', 20),
+        makeResult(2, 'Slot 2', 70),
+        makeResult(1, 'Slot 1', 80),
       ];
 
       when(() => mockReplacement.fetchPlanInfo())
@@ -192,13 +191,13 @@ void main() {
 
       when(() => mockSync.syncWithWebshare()).thenAnswer((_) async {});
 
-      // After replacement, return new IPs with good scores
+      // After replacement, return new IPs with good (low) fraud scores
       when(() => mockProxyRepo.getActiveIpForSlot(1))
-          .thenAnswer((_) async => makeIp(100, 1, '5.5.5.1', ipScore: 80));
+          .thenAnswer((_) async => makeIp(100, 1, '5.5.5.1', ipScore: 20));
       when(() => mockProxyRepo.getActiveIpForSlot(2))
-          .thenAnswer((_) async => makeIp(200, 2, '5.5.5.2', ipScore: 80));
+          .thenAnswer((_) async => makeIp(200, 2, '5.5.5.2', ipScore: 20));
 
-      // fraudScore: 20 => normalizedScore: 80 (above threshold)
+      // fraudScore: 20 => below threshold (60), good IP
       when(() => mockIpqs.scoreIp(any())).thenAnswer((_) async => IpqsResult(
             success: true,
             fraudScore: 20,
@@ -214,7 +213,7 @@ void main() {
             keepSameCountry: true,
           )).captured;
 
-      // Should be worst first: slot 1 (score 20) then slot 2 (score 30)
+      // Should be worst first: slot 1 (score 80) then slot 2 (score 70)
       expect(capturedIps.length, 2);
       expect((capturedIps[0] as ProxyIpAddressEntity).slotId, 1);
       expect((capturedIps[1] as ProxyIpAddressEntity).slotId, 2);
@@ -230,8 +229,8 @@ void main() {
 
     test('stops and notifies on quota exhaustion', () async {
       final results = [
-        makeResult(1, 'Slot 1', 10),
-        makeResult(2, 'Slot 2', 20),
+        makeResult(1, 'Slot 1', 90),
+        makeResult(2, 'Slot 2', 80),
       ];
 
       // Quota exhausted from the start
@@ -253,8 +252,8 @@ void main() {
           )).called(1);
     });
 
-    test('does not retry when new IP is also below threshold', () async {
-      final results = [makeResult(1, 'Slot 1', 20)];
+    test('does not retry when new IP is also above fraud threshold', () async {
+      final results = [makeResult(1, 'Slot 1', 80)];
 
       when(() => mockReplacement.fetchPlanInfo())
           .thenAnswer((_) async => makePlan(available: 10));
@@ -265,11 +264,11 @@ void main() {
 
       when(() => mockSync.syncWithWebshare()).thenAnswer((_) async {});
 
-      // New IP is also below threshold (score 30 < 40)
+      // New IP is also above fraud threshold (score 70 > 60)
       when(() => mockProxyRepo.getActiveIpForSlot(1))
-          .thenAnswer((_) async => makeIp(100, 1, '9.9.9.1', ipScore: 30));
+          .thenAnswer((_) async => makeIp(100, 1, '9.9.9.1', ipScore: 70));
 
-      // fraudScore: 70 => normalizedScore: 30 (below threshold of 40)
+      // fraudScore: 70 => above threshold of 60, still bad
       when(() => mockIpqs.scoreIp('9.9.9.1'))
           .thenAnswer((_) async => IpqsResult(success: true, fraudScore: 70));
 
@@ -281,11 +280,11 @@ void main() {
       verify(() => mockReplacement.replaceProxyIp(any(), keepSameCountry: true))
           .called(1);
 
-      // Should send warning about new IP below threshold
+      // Should send warning about new IP above fraud threshold
       verify(() => mockNotification.createNotification(
             type: NotificationType.rotationFailed,
             severity: NotificationSeverity.warning,
-            title: 'New IP Below Threshold',
+            title: 'New IP Above Fraud Threshold',
             message: any(named: 'message'),
           )).called(1);
 
@@ -299,7 +298,7 @@ void main() {
     });
 
     test('handles replacement failure gracefully', () async {
-      final results = [makeResult(1, 'Slot 1', 20)];
+      final results = [makeResult(1, 'Slot 1', 80)];
 
       when(() => mockReplacement.fetchPlanInfo())
           .thenAnswer((_) async => makePlan(available: 10));
@@ -321,9 +320,9 @@ void main() {
 
     test('quota exhaustion mid-cycle stops remaining replacements', () async {
       final results = [
-        makeResult(1, 'Slot 1', 10),
-        makeResult(2, 'Slot 2', 20),
-        makeResult(3, 'Slot 3', 30),
+        makeResult(1, 'Slot 1', 90),
+        makeResult(2, 'Slot 2', 80),
+        makeResult(3, 'Slot 3', 70),
       ];
 
       int fetchCount = 0;
@@ -340,9 +339,9 @@ void main() {
 
       when(() => mockSync.syncWithWebshare()).thenAnswer((_) async {});
 
-      // New IP scores above threshold
+      // New IP scores below fraud threshold (good)
       when(() => mockProxyRepo.getActiveIpForSlot(any()))
-          .thenAnswer((_) async => makeIp(100, 1, '9.9.9.9', ipScore: 80));
+          .thenAnswer((_) async => makeIp(100, 1, '9.9.9.9', ipScore: 20));
 
       when(() => mockIpqs.scoreIp(any())).thenAnswer((_) async => IpqsResult(
             success: true,
@@ -380,8 +379,8 @@ void main() {
         totalIpChanges: 0,
         isActive: true,
       );
-      final ip = makeIp(10, 0, '1.2.3.4', ipScore: 10);
-      final result = ScoredIpResult(ip: ip, slot: slot, score: 10);
+      final ip = makeIp(10, 0, '1.2.3.4', ipScore: 90);
+      final result = ScoredIpResult(ip: ip, slot: slot, score: 90);
 
       await service.processScoreResults([result]);
 
@@ -390,7 +389,7 @@ void main() {
 
     test('concurrent call is skipped while running', () async {
       // Simulate a slow replacement that takes time
-      final results = [makeResult(1, 'Slot 1', 20)];
+      final results = [makeResult(1, 'Slot 1', 80)];
 
       when(() => mockReplacement.fetchPlanInfo())
           .thenAnswer((_) async => makePlan(available: 10));

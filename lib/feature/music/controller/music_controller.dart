@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,11 @@ class MusicController extends GetxController {
 
   final AudioPlayer audioPlayer = AudioPlayer();
 
+  // Stream subscriptions
+  late final StreamSubscription _stateSubscription;
+  late final StreamSubscription _positionSubscription;
+  late final StreamSubscription _durationSubscription;
+
   // Observables
   var isPlaying = false.obs;
   var currentPosition = '00:00'.obs;
@@ -17,15 +23,15 @@ class MusicController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    audioPlayer.onPlayerStateChanged.listen((state) {
+    _stateSubscription = audioPlayer.onPlayerStateChanged.listen((state) {
       isPlaying.value = state == PlayerState.playing;
     });
 
-    audioPlayer.onPositionChanged.listen((position) {
+    _positionSubscription = audioPlayer.onPositionChanged.listen((position) {
       currentPosition.value = _formatDuration(position);
     });
 
-    audioPlayer.onDurationChanged.listen((duration) {
+    _durationSubscription = audioPlayer.onDurationChanged.listen((duration) {
       completeDuration.value = _formatDuration(duration);
     });
 
@@ -92,6 +98,9 @@ class MusicController extends GetxController {
 
   @override
   void onClose() {
+    _stateSubscription.cancel();
+    _positionSubscription.cancel();
+    _durationSubscription.cancel();
     audioPlayer.dispose();
     super.onClose();
   }

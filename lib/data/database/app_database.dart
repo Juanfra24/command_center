@@ -27,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -57,6 +57,49 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 4) {
           await m.createTable(notificationsTable);
+        }
+        if (from < 5) {
+          // Add new IPQS columns to proxy_ip_addresses
+          await m.addColumn(
+            proxyIpAddressesTable,
+            proxyIpAddressesTable.isCrawler,
+          );
+          await m.addColumn(
+            proxyIpAddressesTable,
+            proxyIpAddressesTable.connectionType,
+          );
+          await m.addColumn(
+            proxyIpAddressesTable,
+            proxyIpAddressesTable.isp,
+          );
+          await m.addColumn(
+            proxyIpAddressesTable,
+            proxyIpAddressesTable.organization,
+          );
+          await m.addColumn(
+            proxyIpAddressesTable,
+            proxyIpAddressesTable.region,
+          );
+          await m.addColumn(
+            proxyIpAddressesTable,
+            proxyIpAddressesTable.recentAbuse,
+          );
+          // Populate recentAbuse from abuseConfidence
+          // NOTE: Drift table name is `proxy_ip_addresses_table` (snake_case of class name)
+          await customStatement(
+            'UPDATE proxy_ip_addresses_table SET recent_abuse = CASE '
+            'WHEN abuse_confidence > 0 THEN 1 '
+            'WHEN abuse_confidence = 0 THEN 0 '
+            'ELSE NULL END',
+          );
+          // Add defaultScriptName to characters
+          await m.addColumn(
+            charactersTable,
+            charactersTable.defaultScriptName,
+          );
+        }
+        if (from < 6) {
+          await m.addColumn(proxySlotsTable, proxySlotsTable.socksPort);
         }
       },
       beforeOpen: (details) async {
