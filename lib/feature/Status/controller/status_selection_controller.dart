@@ -6,6 +6,7 @@ class StatusSelectionController extends GetxController {
   final searchQuery = ''.obs;
   final statusFilter = 'all'.obs;
   final scriptFilter = 'all'.obs;
+  final filteredCount = 0.obs;
 
   bool isSelected(int id) => selectedIds.contains(id);
 

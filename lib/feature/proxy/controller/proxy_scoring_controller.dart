@@ -171,11 +171,15 @@ class ProxyScoringController extends GetxController {
             final slot = _proxyController.proxySlots
                 .firstWhereOrNull((s) => s.id == ip.slotId);
             if (slot != null) {
-              await _autoRotationService!.processScoreResults([
-                ScoredIpResult(ip: ip, slot: slot, score: newScore),
-              ]);
-              // Reload after auto-rotation may have changed IPs
-              await _proxyController.loadIpAddresses();
+              // Use fresh IP entity from reloaded data (not the stale pre-scoring entity)
+              final freshIp = _proxyController.getCurrentIpForSlot(slot);
+              if (freshIp != null) {
+                await _autoRotationService!.processScoreResults([
+                  ScoredIpResult(ip: freshIp, slot: slot, score: newScore),
+                ]);
+                // Reload after auto-rotation may have changed IPs
+                await _proxyController.loadIpAddresses();
+              }
             }
           }
         }
@@ -266,6 +270,8 @@ class ProxyScoringController extends GetxController {
       await _proxyRepository.updateIpAddress(
         ip.copyWith(
           ipScore: newScore,
+          fraudScore: newScore,
+          scoreLevel: ProxyIpAddressEntity.getScoreLevel(newScore),
           lastScoreCheck: DateTime.now(),
         ),
       );
