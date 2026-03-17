@@ -11,7 +11,7 @@ class MicrobotJarDownloader {
   final String _basePath;
 
   static const _releasesUrl =
-      'https://api.github.com/repos/Juanfra24/Microbot/releases/latest';
+      'https://api.github.com/repos/Juanfra24/Microbot_Frieren/releases/latest';
 
   MicrobotJarDownloader({
     required AppConfigService appConfig,
