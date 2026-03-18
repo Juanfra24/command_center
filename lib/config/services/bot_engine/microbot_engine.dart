@@ -73,9 +73,19 @@ class MicrobotEngine implements BotEngine {
       _profileWriter.profilePath(characterId: characterId),
       'status.port',
     );
+    // Delete any stale port file from a previous crashed session
+    final staleFile = File(portFilePath);
+    if (await staleFile.exists()) {
+      await staleFile.delete();
+    }
     int? statusPort;
     for (int i = 0; i < 20; i++) {
       await Future.delayed(const Duration(milliseconds: 500));
+      // Abort early if process already exited
+      if (!_activePids.contains(pid)) {
+        logger.w('Process $pid exited before Status API was ready');
+        break;
+      }
       final portFile = File(portFilePath);
       if (await portFile.exists()) {
         final content = (await portFile.readAsString()).trim();
@@ -108,7 +118,9 @@ class MicrobotEngine implements BotEngine {
   }) {
     final profileDir = _profileWriter.profilePath(characterId: characterId);
     final args = <String>[];
-    final jvmArgs = config.jvmArgs ?? '-Xmx512m';
+    final jvmArgs = (config.jvmArgs == null || config.jvmArgs!.isEmpty)
+        ? '-Xmx512m'
+        : config.jvmArgs!;
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
     args.addAll(['-jar', jarPath]);
     args.add('--cc-profile-dir=$profileDir');

@@ -28,6 +28,7 @@ class WatchdogService extends GetxService {
 
   Timer? _pollTimer;
   bool _tickInProgress = false;
+  bool _disposed = false;
   final HttpClient _statusHttpClient = HttpClient()
     ..connectionTimeout = const Duration(seconds: 2);
 
@@ -61,6 +62,7 @@ class WatchdogService extends GetxService {
 
   @override
   void onClose() {
+    _disposed = true;
     _pollTimer?.cancel();
     _statusHttpClient.close();
     super.onClose();
@@ -127,7 +129,7 @@ class WatchdogService extends GetxService {
   }
 
   Future<void> _tick() async {
-    if (trackedClients.isEmpty || _tickInProgress) return;
+    if (_disposed || trackedClients.isEmpty || _tickInProgress) return;
     _tickInProgress = true;
 
     try {
