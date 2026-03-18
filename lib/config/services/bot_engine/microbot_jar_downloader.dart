@@ -30,11 +30,20 @@ class MicrobotJarDownloader {
     final existingPath = await _appConfig.getMicrobotJarPath();
     final existingVersion = await _appConfig.getMicrobotJarVersion();
 
+    final token = await _appConfig.getGithubPat();
+    if (token == null || token.isEmpty) {
+      logger.w('GitHub PAT not configured — cannot access private repo');
+      if (existingPath != null && File(existingPath).existsSync()) {
+        return existingPath;
+      }
+      return null;
+    }
+
     // Check for updates (gracefully handle rate limiting)
     String? remoteVersion;
     String? downloadUrl;
     try {
-      final release = await _fetchLatestRelease();
+      final release = await _fetchLatestRelease(token);
       remoteVersion = release['tag_name'] as String?;
       final assets = (release['assets'] as List?)?.cast<Map<String, dynamic>>();
       downloadUrl = assets != null ? findShadedJarUrl(assets) : null;
@@ -63,15 +72,12 @@ class MicrobotJarDownloader {
 
     // Download the JAR
     final jarPath = p.join(microbotDir, 'microbot-shaded.jar');
-    final token = await _appConfig.getGithubPat();
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(downloadUrl));
       // Private repo assets require Bearer token + octet-stream accept
-      if (token != null && token.isNotEmpty) {
-        request.headers.set('Authorization', 'Bearer $token');
-        request.headers.set('Accept', 'application/octet-stream');
-      }
+      request.headers.set('Authorization', 'Bearer $token');
+      request.headers.set('Accept', 'application/octet-stream');
       final response = await request.close();
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -112,12 +118,7 @@ class MicrobotJarDownloader {
     return jarPath;
   }
 
-  Future<Map<String, dynamic>> _fetchLatestRelease() async {
-    final token = await _appConfig.getGithubPat();
-    if (token == null || token.isEmpty) {
-      throw Exception('GitHub PAT not configured — cannot access private repo');
-    }
-
+  Future<Map<String, dynamic>> _fetchLatestRelease(String token) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(_releasesUrl));
@@ -147,7 +148,7 @@ class MicrobotJarDownloader {
     for (final asset in assets) {
       final name = asset['name'] as String? ?? '';
       if (name.endsWith('-shaded.jar')) {
-        return asset['browser_download_url'] as String?;
+        return asset['url'] as String?;
       }
     }
     return null;

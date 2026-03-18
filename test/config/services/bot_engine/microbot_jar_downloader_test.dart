@@ -6,18 +6,18 @@ void main() {
   group('MicrobotJarDownloader', () {
     test('findShadedJarUrl finds correct asset from release JSON', () {
       final assets = [
-        {'name': 'microbot-1.0.0.jar', 'browser_download_url': 'https://example.com/normal.jar'},
-        {'name': 'microbot-1.0.0-shaded.jar', 'browser_download_url': 'https://example.com/shaded.jar'},
-        {'name': 'source.zip', 'browser_download_url': 'https://example.com/source.zip'},
+        {'name': 'microbot-1.0.0.jar', 'url': 'https://api.github.com/repos/test/releases/assets/1'},
+        {'name': 'microbot-1.0.0-shaded.jar', 'url': 'https://api.github.com/repos/test/releases/assets/2'},
+        {'name': 'source.zip', 'url': 'https://api.github.com/repos/test/releases/assets/3'},
       ];
 
       final result = MicrobotJarDownloader.findShadedJarUrl(assets);
-      expect(result, 'https://example.com/shaded.jar');
+      expect(result, 'https://api.github.com/repos/test/releases/assets/2');
     });
 
     test('findShadedJarUrl returns null when no shaded JAR', () {
       final assets = [
-        {'name': 'source.zip', 'browser_download_url': 'https://example.com/source.zip'},
+        {'name': 'source.zip', 'url': 'https://api.github.com/repos/test/releases/assets/3'},
       ];
 
       final result = MicrobotJarDownloader.findShadedJarUrl(assets);
