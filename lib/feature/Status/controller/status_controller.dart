@@ -133,7 +133,7 @@ class StatusController extends GetxController {
     }
 
     try {
-      final pid = await _botEngine!.launch(
+      final result = await _botEngine!.launch(
         characterId: character.id!,
         characterName: character.name,
         email: account.email,
@@ -151,7 +151,8 @@ class StatusController extends GetxController {
         password: account.password,
         proxyUrl: proxyUrl,
         launchConfig: config,
-        pid: pid,
+        pid: result.pid,
+        statusPort: result.statusPort,
         status: ClientStatus.running,
         launchedAt: DateTime.now(),
       );

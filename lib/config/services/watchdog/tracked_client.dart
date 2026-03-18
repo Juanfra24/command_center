@@ -1,3 +1,4 @@
+import 'package:command_center/config/services/bot_engine/bot_status.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 
 /// Mutable in-memory model tracking a running bot client.
@@ -14,6 +15,8 @@ class TrackedClient {
   String? proxyUrl;                      // Mutable: full socks5:// URL, updated on proxy rotation
   final LaunchConfig launchConfig;
   int? pid;
+  int? statusPort;
+  BotStatus? lastStatus;
   ClientStatus status;
   DateTime? launchedAt;
   int retryCount;
@@ -31,6 +34,8 @@ class TrackedClient {
     this.proxyUrl,
     required this.launchConfig,
     this.pid,
+    this.statusPort,
+    this.lastStatus,
     this.status = ClientStatus.running,
     this.launchedAt,
     this.retryCount = 0,
