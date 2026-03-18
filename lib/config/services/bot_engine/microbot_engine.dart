@@ -1,9 +1,11 @@
 import 'dart:io';
+
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_profile_writer.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:path/path.dart' as p;
 
 class MicrobotEngine implements BotEngine {
   final String javaPath;
@@ -28,7 +30,7 @@ class MicrobotEngine implements BotEngine {
   String get engineName => 'Microbot';
 
   @override
-  Future<int> launch({
+  Future<LaunchResult> launch({
     required int characterId,
     required String characterName,
     required String email,
@@ -66,7 +68,36 @@ class MicrobotEngine implements BotEngine {
       _pidToCharacterId.remove(pid);
     });
 
-    return pid;
+    // Poll for status port file (max 10s, 500ms intervals)
+    final portFilePath = p.join(
+      _profileWriter.profilePath(characterId: characterId),
+      'status.port',
+    );
+    // Delete any stale port file from a previous crashed session
+    final staleFile = File(portFilePath);
+    if (await staleFile.exists()) {
+      await staleFile.delete();
+    }
+    int? statusPort;
+    for (int i = 0; i < 20; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      // Abort early if process already exited
+      if (!_activePids.contains(pid)) {
+        logger.w('Process $pid exited before Status API was ready');
+        break;
+      }
+      final portFile = File(portFilePath);
+      if (await portFile.exists()) {
+        final content = (await portFile.readAsString()).trim();
+        statusPort = int.tryParse(content);
+        if (statusPort != null) {
+          logger.i('Status API port for $characterName: $statusPort');
+          break;
+        }
+      }
+    }
+
+    return (pid: pid, statusPort: statusPort);
   }
 
   @override
@@ -85,11 +116,15 @@ class MicrobotEngine implements BotEngine {
     required String? proxyUrl,
     required LaunchConfig config,
   }) {
+    final profileDir = _profileWriter.profilePath(characterId: characterId);
     final args = <String>[];
-    final jvmArgs = config.jvmArgs ?? '-Xmx512m';
+    final jvmArgs = (config.jvmArgs == null || config.jvmArgs!.isEmpty)
+        ? '-Xmx512m'
+        : config.jvmArgs!;
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
     args.addAll(['-jar', jarPath]);
-    args.add('--profile=bot-$characterId');
+    args.add('--cc-profile-dir=$profileDir');
+    args.add('--status-port-file=${p.join(profileDir, 'status.port')}');
     if (proxyUrl != null) {
       args.add('--proxy=$proxyUrl');
     }
