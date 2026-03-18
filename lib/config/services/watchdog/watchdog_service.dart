@@ -28,6 +28,8 @@ class WatchdogService extends GetxService {
 
   Timer? _pollTimer;
   bool _tickInProgress = false;
+  final HttpClient _statusHttpClient = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 2);
 
   final trackedClients = <String, TrackedClient>{}.obs;
 
@@ -60,6 +62,7 @@ class WatchdogService extends GetxService {
   @override
   void onClose() {
     _pollTimer?.cancel();
+    _statusHttpClient.close();
     super.onClose();
   }
 
@@ -178,9 +181,7 @@ class WatchdogService extends GetxService {
           // Poll Status API if port is known
           if (client.statusPort != null) {
             try {
-              final httpClient = HttpClient()
-                ..connectionTimeout = const Duration(seconds: 2);
-              final request = await httpClient
+              final request = await _statusHttpClient
                   .getUrl(Uri.parse(
                       'http://127.0.0.1:${client.statusPort}/status'))
                   .timeout(const Duration(seconds: 2));
@@ -188,13 +189,16 @@ class WatchdogService extends GetxService {
                   await request.close().timeout(const Duration(seconds: 2));
               if (response.statusCode == 200) {
                 final body = await response.transform(utf8.decoder).join();
-                client.lastStatus = BotStatus.fromJson(
+                final newStatus = BotStatus.fromJson(
                     jsonDecode(body) as Map<String, dynamic>);
-                changed = true;
+                if (client.lastStatus?.status != newStatus.status ||
+                    client.lastStatus?.scriptRunning != newStatus.scriptRunning) {
+                  changed = true;
+                }
+                client.lastStatus = newStatus;
               } else {
                 client.lastStatus = null;
               }
-              httpClient.close();
             } catch (_) {
               client.lastStatus = null;
             }
