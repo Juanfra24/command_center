@@ -15,6 +15,12 @@ class NotificationService extends GetxService {
 
   NotificationService(this._repository);
 
+  @override
+  void onClose() {
+    _toastController.close();
+    super.onClose();
+  }
+
   Future<void> init() async {
     await refreshUnreadCount();
   }

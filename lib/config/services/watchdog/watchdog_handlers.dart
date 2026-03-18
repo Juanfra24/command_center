@@ -98,6 +98,8 @@ class WatchdogHandlers {
       return false; // Still cooling down
     }
 
+    // Increment retryCount before attempt — otherwise failures never count
+    // toward the retry limit, causing infinite retry loops.
     client.retryCount++;
 
     try {

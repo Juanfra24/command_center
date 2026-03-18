@@ -52,7 +52,6 @@ class ProxyCommandBar extends StatelessWidget {
                         ? null
                         : () async {
                             await controller.syncWithWebshare();
-                            await controller.loadData();
                           },
               ),
           ],

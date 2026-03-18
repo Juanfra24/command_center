@@ -11,7 +11,7 @@ class MicrobotJarDownloader {
   final String _basePath;
 
   static const _releasesUrl =
-      'https://api.github.com/repos/chsami/Microbot/releases/latest';
+      'https://api.github.com/repos/Juanfra24/Microbot_Frieren/releases/latest';
 
   MicrobotJarDownloader({
     required AppConfigService appConfig,
@@ -30,11 +30,20 @@ class MicrobotJarDownloader {
     final existingPath = await _appConfig.getMicrobotJarPath();
     final existingVersion = await _appConfig.getMicrobotJarVersion();
 
+    final token = await _appConfig.getGithubPat();
+    if (token == null || token.isEmpty) {
+      logger.w('GitHub PAT not configured — cannot access private repo');
+      if (existingPath != null && File(existingPath).existsSync()) {
+        return existingPath;
+      }
+      return null;
+    }
+
     // Check for updates (gracefully handle rate limiting)
     String? remoteVersion;
     String? downloadUrl;
     try {
-      final release = await _fetchLatestRelease();
+      final release = await _fetchLatestRelease(token);
       remoteVersion = release['tag_name'] as String?;
       final assets = (release['assets'] as List?)?.cast<Map<String, dynamic>>();
       downloadUrl = assets != null ? findShadedJarUrl(assets) : null;
@@ -66,7 +75,16 @@ class MicrobotJarDownloader {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(downloadUrl));
+      // Private repo assets require Bearer token + octet-stream accept
+      request.headers.set('Authorization', 'Bearer $token');
+      request.headers.set('Accept', 'application/octet-stream');
       final response = await request.close();
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'JAR download failed with HTTP ${response.statusCode}');
+      }
+
       final totalBytes = response.contentLength;
       var downloadedBytes = 0;
 
@@ -100,15 +118,22 @@ class MicrobotJarDownloader {
     return jarPath;
   }
 
-  Future<Map<String, dynamic>> _fetchLatestRelease() async {
+  Future<Map<String, dynamic>> _fetchLatestRelease(String token) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(_releasesUrl));
       request.headers.set('Accept', 'application/vnd.github+json');
+      request.headers.set('Authorization', 'Bearer $token');
       final response = await request.close();
 
+      if (response.statusCode == 401) {
+        throw Exception('GitHub PAT invalid or expired');
+      }
       if (response.statusCode == 403 || response.statusCode == 429) {
         throw Exception('GitHub API rate limited');
+      }
+      if (response.statusCode == 404) {
+        throw Exception('Release not found — check repo URL and PAT permissions');
       }
 
       final body = await response.transform(utf8.decoder).join();
@@ -123,7 +148,7 @@ class MicrobotJarDownloader {
     for (final asset in assets) {
       final name = asset['name'] as String? ?? '';
       if (name.endsWith('-shaded.jar')) {
-        return asset['browser_download_url'] as String?;
+        return asset['url'] as String?;
       }
     }
     return null;

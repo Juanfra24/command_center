@@ -12,7 +12,7 @@ Map<String, int> generateOsrsStats() {
     "Smithing",
     "Agility", "Herblore", "Thieving", "Slayer", "Farming", "Runecrafting",
     "Construction",
-    "Hunter", "Hunter" // Note that Hunter is intentionally listed twice
+    "Hunter"
   ];
 
   var numSkills = skillNames.length;
@@ -52,7 +52,7 @@ Map<String, int> generateOsrsStats() {
         skillLevels[skill] = skillLevels[skill]! + 1;
         adjustment--;
       } else if (adjustment < 0 && skillLevels[skill]! > 1) {
-        skillLevels[skill] = skillLevels[skill]! + 1;
+        skillLevels[skill] = skillLevels[skill]! - 1;
         adjustment++;
       }
       if (adjustment == 0) break;

@@ -67,7 +67,13 @@ class _AppState extends State<App> with WindowListener {
 
     // Setup dependencies (Java + Microbot JAR) — splash screen shows progress
     if (Get.isRegistered<MicrobotSetupService>()) {
-      await Get.find<MicrobotSetupService>().ensureDependencies();
+      final setupService = Get.find<MicrobotSetupService>();
+      await setupService.ensureDependencies();
+
+      // If setup failed, wait for user to retry or skip before continuing
+      while (!setupService.canProceed) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
     }
 
     // Phase 2b: BotEngine + WatchdogService (depends on setup completing first)

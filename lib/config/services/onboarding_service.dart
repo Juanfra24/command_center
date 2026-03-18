@@ -156,10 +156,20 @@ class OnboardingService extends GetxService {
   Future<void> resetOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_webshareConfiguredKey);
+    await prefs.remove(_ipqsConfiguredKey);
     await prefs.remove(_initialSyncCompleteKey);
     await prefs.remove('webshare_api_key');
 
     isWebshareConfigured.value = false;
+    isIpqsConfigured.value = false;
     isInitialSyncComplete.value = false;
+  }
+
+  @override
+  void onClose() {
+    for (final w in _workers) {
+      w.dispose();
+    }
+    super.onClose();
   }
 }

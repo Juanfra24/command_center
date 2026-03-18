@@ -152,16 +152,24 @@ class AppBindings extends Bindings {
 
   /// Phase 2b: Register BotEngine + WatchdogService.
   /// Called AFTER MicrobotSetupService.ensureDependencies() downloads Java/JAR.
+  /// Skips BotEngine registration if setup failed (no Java/JAR paths).
   static Future<void> initializePostSetup() async {
     final appDataPath = Get.find<AppDataPath>();
     final basePath = await appDataPath.basePath;
     final appConfig = Get.find<AppConfigService>();
-    final javaPath = await appConfig.getMicrobotJavaPath() ?? 'java';
-    final jarPath = await appConfig.getMicrobotJarPath() ?? '';
+    final javaPath = await appConfig.getMicrobotJavaPath();
+    final jarPath = await appConfig.getMicrobotJarPath();
+
+    // Only create BotEngine if we have a valid Java path.
+    // JAR can be null (user can still use the app without bot engine).
+    if (javaPath == null) {
+      logger.w('Skipping BotEngine setup — Java not available');
+      return;
+    }
 
     final microbotEngine = MicrobotEngine(
       javaPath: javaPath,
-      jarPath: jarPath,
+      jarPath: jarPath ?? '',
       profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
       nativeCommands: Get.find<NativeCommandsService>(),
       onLog: (msg) => logger.i(msg),

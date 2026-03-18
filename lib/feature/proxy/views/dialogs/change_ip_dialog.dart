@@ -53,33 +53,33 @@ class ChangeIpDialog extends StatelessWidget {
         ),
         FilledButton(
           onPressed: () async {
-            Navigator.pop(context);
-
             final success = await controller.rotateSlotIp(slot);
 
-            if (context.mounted) {
-              displayInfoBar(
-                context,
-                builder: (context, close) {
-                  return InfoBar(
-                    title: Text(success ? 'Success' : 'Error'),
-                    content: Text(
-                      success
-                          ? 'IP rotation initiated. Syncing...'
-                          : Get.find<ProxyController>().lastSyncError.value ??
-                              'Failed to rotate IP',
-                    ),
-                    severity: success
-                        ? InfoBarSeverity.success
-                        : InfoBarSeverity.error,
-                    action: IconButton(
-                      icon: const Icon(FluentIcons.clear),
-                      onPressed: close,
-                    ),
-                  );
-                },
-              );
-            }
+            if (!context.mounted) return;
+
+            displayInfoBar(
+              context,
+              builder: (ctx, close) {
+                return InfoBar(
+                  title: Text(success ? 'Success' : 'Error'),
+                  content: Text(
+                    success
+                        ? 'IP rotation initiated. Syncing...'
+                        : Get.find<ProxyController>().lastSyncError.value ??
+                            'Failed to rotate IP',
+                  ),
+                  severity: success
+                      ? InfoBarSeverity.success
+                      : InfoBarSeverity.error,
+                  action: IconButton(
+                    icon: const Icon(FluentIcons.clear),
+                    onPressed: close,
+                  ),
+                );
+              },
+            );
+
+            if (context.mounted) Navigator.pop(context);
           },
           child: const Text('Rotate IP'),
         ),

@@ -30,7 +30,7 @@ class Validator {
     //   return 'Please enter valid mobile number';
     // }
     else if (value.length < 8) {
-      return 'Phone number can\'t be greater than 8 digit';
+      return 'Phone number must be at least 8 digits';
     }
     return null;
   }

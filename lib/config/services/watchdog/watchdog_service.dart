@@ -86,7 +86,8 @@ class WatchdogService extends GetxService {
     final wasEmpty = trackedClients.isEmpty;
     trackedClients[client.characterName] = client;
     trackedClients.refresh();
-    if (wasEmpty) _startPolling(); // tighten interval from 30s to 10s
+    // Switch to faster polling when first client is added
+    if (wasEmpty) _startPolling();
     logger.i('Tracking ${client.characterName} (PID: ${client.pid})');
   }
 
