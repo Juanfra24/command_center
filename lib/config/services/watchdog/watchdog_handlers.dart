@@ -103,7 +103,7 @@ class WatchdogHandlers {
     client.retryCount++;
 
     try {
-      final pid = await _botEngine.launch(
+      final result = await _botEngine.launch(
         characterId: client.characterId,
         characterName: client.characterName,
         email: client.email,
@@ -111,11 +111,12 @@ class WatchdogHandlers {
         proxyUrl: client.proxyUrl,
         config: client.launchConfig,
       );
-      client.pid = pid;
+      client.pid = result.pid;
+      client.statusPort = result.statusPort;
       client.status = ClientStatus.running;
       client.launchedAt = DateTime.now();
       logger.i(
-          'Relaunched ${client.characterName} (PID: $pid, attempt ${client.retryCount}/${WatchdogService.maxRetries})');
+          'Relaunched ${client.characterName} (PID: ${result.pid}, attempt ${client.retryCount}/${WatchdogService.maxRetries})');
       await _notificationService.createNotification(
         type: NotificationType.clientRelaunched,
         severity: NotificationSeverity.info,
@@ -133,9 +134,11 @@ class WatchdogHandlers {
 
   /// Match a tracked client to a live process by characterId in command line.
   int? discoverPid(TrackedClient client, List<ProcessClient> liveProcesses) {
-    final profileArg = '--profile=bot-${client.characterId}';
+    final profileArg = '--cc-profile-dir=';
+    final suffix = 'bot-${client.characterId}';
     for (final process in liveProcesses) {
-      if (process.commandLine.contains(profileArg)) {
+      if (process.commandLine.contains(profileArg) &&
+          process.commandLine.contains(suffix)) {
         return process.processId;
       }
     }
@@ -168,7 +171,7 @@ class WatchdogHandlers {
 
       int recaptured = 0;
       final recapturedCharacterIds = <int>{};
-      final profileRegex = RegExp(r'--profile=bot-(\d+)');
+      final profileRegex = RegExp(r'--cc-profile-dir=.*bot-(\d+)');
 
       for (final process in processes) {
         final profileMatch = profileRegex.firstMatch(process.commandLine);
