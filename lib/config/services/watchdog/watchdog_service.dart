@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show HttpClient;
 
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
+import 'package:command_center/config/services/bot_engine/bot_status.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
@@ -170,6 +173,30 @@ class WatchdogService extends GetxService {
             if (client.retryCount > 0) {
               client.retryCount = 0;
               changed = true;
+            }
+          }
+          // Poll Status API if port is known
+          if (client.statusPort != null) {
+            try {
+              final httpClient = HttpClient()
+                ..connectionTimeout = const Duration(seconds: 2);
+              final request = await httpClient
+                  .getUrl(Uri.parse(
+                      'http://127.0.0.1:${client.statusPort}/status'))
+                  .timeout(const Duration(seconds: 2));
+              final response =
+                  await request.close().timeout(const Duration(seconds: 2));
+              if (response.statusCode == 200) {
+                final body = await response.transform(utf8.decoder).join();
+                client.lastStatus = BotStatus.fromJson(
+                    jsonDecode(body) as Map<String, dynamic>);
+                changed = true;
+              } else {
+                client.lastStatus = null;
+              }
+              httpClient.close();
+            } catch (_) {
+              client.lastStatus = null;
             }
           }
           continue;
