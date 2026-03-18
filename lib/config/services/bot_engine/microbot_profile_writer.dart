@@ -25,7 +25,7 @@ class MicrobotProfileWriter {
       settings.writeln('world=$world');
     }
     settings.writeln('script=$scriptName');
-    await File(p.join(dir.path, 'settings.properties'))
+    await File(p.join(dir.path, 'commandcenter.properties'))
         .writeAsString(settings.toString());
 
     final credentials = StringBuffer();
