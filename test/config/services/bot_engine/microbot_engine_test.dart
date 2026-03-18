@@ -2,12 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
+import 'package:path/path.dart' as p;
 
-MicrobotEngine _makeEngine({String jarPath = '/app/microbot-shaded.jar'}) {
+MicrobotEngine _makeEngine({
+  String jarPath = '/app/microbot-shaded.jar',
+  String profilesBasePath = '/profiles',
+}) {
   return MicrobotEngine(
     javaPath: '/java/bin/java.exe',
     jarPath: jarPath,
-    profilesBasePath: '/profiles',
+    profilesBasePath: profilesBasePath,
     nativeCommands: NativeCommandsService(),
     onLog: (_) {},
   );
@@ -27,10 +31,12 @@ void main() {
         proxyUrl: 'socks5://user:pass@1.2.3.4:1080',
         config: const LaunchConfig(scriptName: 'Tutorial', jvmArgs: '-Xmx384m'),
       );
+      final expectedProfileDir = p.join('/profiles', 'bot-42');
       expect(args[0], '-Xmx384m');
       expect(args[1], '-jar');
       expect(args[2], '/app/microbot-shaded.jar');
-      expect(args, contains('--profile=bot-42'));
+      expect(args, contains('--cc-profile-dir=$expectedProfileDir'));
+      expect(args, contains('--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
       expect(args, contains('--proxy=socks5://user:pass@1.2.3.4:1080'));
       expect(args, contains('--safe-mode'));
     });
