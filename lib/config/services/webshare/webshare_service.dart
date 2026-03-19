@@ -9,7 +9,6 @@ import 'package:command_center/config/services/webshare/webshare_replacement_han
 export 'package:command_center/config/services/webshare/webshare_api_client.dart'
     show
         WebshareProxySlot,
-        WebshareProxyConfig,
         WebsharePlanInfo,
         WebshareApiException;
 
@@ -189,19 +188,6 @@ class WebshareService extends GetxService {
       return await _apiClient.replaceProxy(_apiKey!, proxyId);
     } catch (e) {
       logger.e('Error replacing proxy: $e');
-      return null;
-    }
-  }
-
-  /// Get proxy configuration for a specific proxy
-  Future<WebshareProxyConfig?> getProxyConfig(String proxyId) async {
-    if (_apiKey == null) {
-      throw Exception('Webshare API key not configured');
-    }
-    try {
-      return await _apiClient.getProxyConfig(_apiKey!, proxyId);
-    } catch (e) {
-      logger.e('Error fetching proxy config: $e');
       return null;
     }
   }

@@ -132,22 +132,6 @@ class WebshareApiClient {
         'Failed to replace proxy', response.statusCode, response.body);
   }
 
-  /// GET /proxy/list/:id/ — fetch proxy configuration.
-  Future<WebshareProxyConfig> getProxyConfig(
-      String apiKey, String proxyId) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrlV2/proxy/list/$proxyId/'),
-      headers: _headers(apiKey),
-    );
-
-    if (response.statusCode == 200) {
-      return WebshareProxyConfig.fromJson(jsonDecode(response.body));
-    }
-
-    throw WebshareApiException(
-        'Failed to fetch proxy config', response.statusCode, response.body);
-  }
-
   /// GET /subscription/plan/ — fetch subscription plans.
   Future<List<Map<String, dynamic>>> getSubscriptionPlans(String apiKey) async {
     final response = await http.get(
