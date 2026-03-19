@@ -14,6 +14,8 @@ import 'package:get/get.dart';
 /// Scoring UI state lives in [ProxyScoringController].
 /// Replacement UI state lives in [ProxyReplacementController].
 class ProxyController extends GetxController {
+  final List<Worker> _workers = [];
+
   ProxyRepository? _proxyRepository;
   WebshareService? _webshareService;
   ProxySyncService? _syncService;
@@ -69,12 +71,12 @@ class ProxyController extends GetxController {
       isWebshareConfigured.value = _webshareService!.isConfigured.value;
 
       // Listen for configuration changes
-      ever(_webshareService!.isConfigured, (configured) {
+      _workers.add(ever(_webshareService!.isConfigured, (configured) {
         isWebshareConfigured.value = configured;
         if (configured) {
           syncWithWebshare();
         }
-      });
+      }));
     } catch (e) {
       logger.w('WebshareService not initialized yet');
     }
@@ -289,5 +291,13 @@ class ProxyController extends GetxController {
       logger.e('Error updating slot name: $e');
       return false;
     }
+  }
+
+  @override
+  void onClose() {
+    for (final w in _workers) {
+      w.dispose();
+    }
+    super.onClose();
   }
 }
