@@ -35,13 +35,4 @@ class ThemeManage {
     _saveThemeMode(!isDarkModeActive());
   }
 
-  static void setDarkMode() {
-    _themeMode.value = ThemeMode.dark;
-    _saveThemeMode(true);
-  }
-
-  static void setLightMode() {
-    _themeMode.value = ThemeMode.light;
-    _saveThemeMode(false);
-  }
 }
