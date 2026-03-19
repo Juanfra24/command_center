@@ -70,8 +70,9 @@ class MicrobotJarDownloader {
 
     logger.i('Downloading Microbot $remoteVersion...');
 
-    // Download the JAR
+    // Download to .tmp first for atomic rename — never corrupt the existing JAR
     final jarPath = p.join(microbotDir, 'microbot-shaded.jar');
+    final tmpPath = '$jarPath.tmp';
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(downloadUrl));
@@ -88,7 +89,7 @@ class MicrobotJarDownloader {
       final totalBytes = response.contentLength;
       var downloadedBytes = 0;
 
-      final file = File(jarPath).openWrite();
+      final file = File(tmpPath).openWrite();
       try {
         await for (final chunk in response) {
           file.add(chunk);
@@ -98,12 +99,19 @@ class MicrobotJarDownloader {
       } finally {
         await file.close();
       }
+
+      // Atomic rename: .tmp → final path (old JAR is overwritten)
+      await File(tmpPath).rename(jarPath);
     } catch (e) {
       logger.e('Failed to download Microbot JAR: $e');
-      // Clean up partial download on failure
-      final partial = File(jarPath);
+      // Clean up .tmp only — existing JAR is untouched
+      final partial = File(tmpPath);
       if (partial.existsSync()) await partial.delete();
-      return existingPath;
+      // Return existing JAR if it still exists, otherwise null
+      if (existingPath != null && File(existingPath).existsSync()) {
+        return existingPath;
+      }
+      return null;
     } finally {
       client.close();
     }
