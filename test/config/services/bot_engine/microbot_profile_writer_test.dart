@@ -31,7 +31,7 @@ void main() {
       final profileDir = Directory(p.join(tempDir.path, 'bot-42'));
       expect(profileDir.existsSync(), isTrue);
 
-      final settings = File(p.join(profileDir.path, 'settings.properties'));
+      final settings = File(p.join(profileDir.path, 'commandcenter.properties'));
       expect(settings.existsSync(), isTrue);
       final settingsContent = settings.readAsStringSync();
       expect(settingsContent, contains('world=301'));
@@ -46,7 +46,7 @@ void main() {
     test('writeProfile handles auto world', () async {
       await writer.writeProfile(characterId: 7, email: 'auto@test.com', password: 'pass', world: 'auto', scriptName: 'Woodcutter');
 
-      final settings = File(p.join(tempDir.path, 'bot-7', 'settings.properties'));
+      final settings = File(p.join(tempDir.path, 'bot-7', 'commandcenter.properties'));
       final content = settings.readAsStringSync();
       expect(content, isNot(contains('world=auto')));
     });
@@ -69,6 +69,21 @@ void main() {
       await writer.cleanStaleProfiles(liveCharacterIds: {1});
       expect(Directory(p.join(tempDir.path, 'bot-1')).existsSync(), isTrue);
       expect(Directory(p.join(tempDir.path, 'bot-2')).existsSync(), isFalse);
+    });
+
+    test('writeProfile writes scriptParams to commandcenter.properties', () async {
+      await writer.writeProfile(
+        characterId: 10,
+        email: 'sp@test.com',
+        password: 'pass',
+        world: 'auto',
+        scriptName: 'Fisher',
+        scriptParams: '1,2,3',
+      );
+
+      final settings = File(p.join(tempDir.path, 'bot-10', 'commandcenter.properties'));
+      final content = settings.readAsStringSync();
+      expect(content, contains('scriptParams=1,2,3'));
     });
 
     test('profilePath returns correct directory path', () {

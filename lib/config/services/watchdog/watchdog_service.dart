@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show HttpClient;
 
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
+import 'package:command_center/config/services/bot_engine/bot_status.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
@@ -25,6 +28,9 @@ class WatchdogService extends GetxService {
 
   Timer? _pollTimer;
   bool _tickInProgress = false;
+  bool _disposed = false;
+  final HttpClient _statusHttpClient = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 2);
 
   final trackedClients = <String, TrackedClient>{}.obs;
 
@@ -56,7 +62,9 @@ class WatchdogService extends GetxService {
 
   @override
   void onClose() {
+    _disposed = true;
     _pollTimer?.cancel();
+    _statusHttpClient.close();
     super.onClose();
   }
 
@@ -121,7 +129,7 @@ class WatchdogService extends GetxService {
   }
 
   Future<void> _tick() async {
-    if (trackedClients.isEmpty || _tickInProgress) return;
+    if (_disposed || trackedClients.isEmpty || _tickInProgress) return;
     _tickInProgress = true;
 
     try {
@@ -170,6 +178,31 @@ class WatchdogService extends GetxService {
             if (client.retryCount > 0) {
               client.retryCount = 0;
               changed = true;
+            }
+          }
+          // Poll Status API if port is known
+          if (client.statusPort != null) {
+            try {
+              final request = await _statusHttpClient
+                  .getUrl(Uri.parse(
+                      'http://127.0.0.1:${client.statusPort}/status'))
+                  .timeout(const Duration(seconds: 2));
+              final response =
+                  await request.close().timeout(const Duration(seconds: 2));
+              if (response.statusCode == 200) {
+                final body = await response.transform(utf8.decoder).join();
+                final newStatus = BotStatus.fromJson(
+                    jsonDecode(body) as Map<String, dynamic>);
+                if (client.lastStatus?.status != newStatus.status ||
+                    client.lastStatus?.scriptRunning != newStatus.scriptRunning) {
+                  changed = true;
+                }
+                client.lastStatus = newStatus;
+              } else {
+                client.lastStatus = null;
+              }
+            } catch (_) {
+              client.lastStatus = null;
             }
           }
           continue;

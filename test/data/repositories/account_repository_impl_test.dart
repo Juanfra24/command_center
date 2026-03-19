@@ -218,6 +218,63 @@ void main() {
       expect(account!.characters.length, equals(1));
       expect(account.characters.first.name, equals('NewChar'));
     });
+
+    test('updateAccount preserves existing character IDs', () async {
+      final id = await repo.insertAccount(
+        _makeAccount(
+          email: 'preserve@test.com',
+          characters: [_makeCharacter(name: 'Keeper')],
+        ),
+      );
+
+      final original = await repo.getAccountById(id);
+      final originalCharId = original!.characters.first.id;
+      expect(originalCharId, isNotNull);
+
+      // Update account with same character (has the ID set)
+      await repo.updateAccount(
+        original.copyWith(
+          characters: [original.characters.first.copyWith(name: 'Renamed')],
+        ),
+      );
+
+      final updated = await repo.getAccountById(id);
+      expect(updated!.characters.first.id, equals(originalCharId),
+          reason: 'Character ID must be preserved across updates');
+      expect(updated.characters.first.name, equals('Renamed'));
+    });
+
+    test('updateAccount adds new characters alongside existing ones', () async {
+      final id = await repo.insertAccount(
+        _makeAccount(
+          email: 'addchar@test.com',
+          characters: [_makeCharacter(name: 'Original')],
+        ),
+      );
+
+      final original = await repo.getAccountById(id);
+      final existingChar = original!.characters.first;
+
+      // Update with existing + new character
+      await repo.updateAccount(
+        original.copyWith(
+          characters: [
+            existingChar, // keep existing
+            _makeCharacter(name: 'NewChar'), // add new (no ID)
+          ],
+        ),
+      );
+
+      final updated = await repo.getAccountById(id);
+      expect(updated!.characters.length, equals(2));
+      expect(updated.characters.any((c) => c.name == 'Original'), isTrue);
+      expect(updated.characters.any((c) => c.name == 'NewChar'), isTrue);
+      // Existing character ID preserved
+      expect(
+        updated.characters.firstWhere((c) => c.name == 'Original').id,
+        equals(existingChar.id),
+      );
+    });
   });
 
   group('AccountRepositoryImpl - Proxy relationship', () {

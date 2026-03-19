@@ -16,6 +16,7 @@ class MicrobotProfileWriter {
     required String password,
     required String world,
     required String scriptName,
+    String scriptParams = '',
   }) async {
     final dir = Directory(profilePath(characterId: characterId));
     await dir.create(recursive: true);
@@ -25,7 +26,10 @@ class MicrobotProfileWriter {
       settings.writeln('world=$world');
     }
     settings.writeln('script=$scriptName');
-    await File(p.join(dir.path, 'settings.properties'))
+    if (scriptParams.isNotEmpty) {
+      settings.writeln('scriptParams=$scriptParams');
+    }
+    await File(p.join(dir.path, 'commandcenter.properties'))
         .writeAsString(settings.toString());
 
     final credentials = StringBuffer();

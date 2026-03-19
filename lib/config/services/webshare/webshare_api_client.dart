@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:command_center/config/services/webshare/webshare_models.dart';
@@ -10,6 +11,7 @@ export 'package:command_center/config/services/webshare/webshare_models.dart';
 class WebshareApiClient {
   static const String _baseUrlV2 = 'https://proxy.webshare.io/api/v2';
   static const String _baseUrlV3 = 'https://proxy.webshare.io/api/v3';
+  static const _requestTimeout = Duration(seconds: 30);
 
   Map<String, String> _headers(String apiKey) => {
         'Authorization': 'Token $apiKey',
@@ -21,7 +23,7 @@ class WebshareApiClient {
     final response = await http.get(
       Uri.parse('$_baseUrlV2/profile/'),
       headers: _headers(apiKey),
-    );
+    ).timeout(_requestTimeout);
     return response.statusCode;
   }
 
@@ -36,7 +38,7 @@ class WebshareApiClient {
         Uri.parse(
             '$_baseUrlV2/proxy/list/?mode=backbone&page=$page&page_size=100'),
         headers: _headers(apiKey),
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode != 200) {
         throw WebshareApiException(
@@ -91,7 +93,7 @@ class WebshareApiClient {
       Uri.parse('$_baseUrlV3/proxy/replace/'),
       headers: _headers(apiKey),
       body: jsonEncode(body),
-    );
+    ).timeout(_requestTimeout);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -107,7 +109,7 @@ class WebshareApiClient {
     final response = await http.get(
       Uri.parse('$_baseUrlV3/proxy/replace/$replacementId/'),
       headers: _headers(apiKey),
-    );
+    ).timeout(_requestTimeout);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -122,7 +124,7 @@ class WebshareApiClient {
     final response = await http.post(
       Uri.parse('$_baseUrlV2/proxy/list/$proxyId/replace/'),
       headers: _headers(apiKey),
-    );
+    ).timeout(_requestTimeout);
 
     if (response.statusCode == 200) {
       return WebshareProxySlot.fromJson(jsonDecode(response.body));
@@ -137,7 +139,7 @@ class WebshareApiClient {
     final response = await http.get(
       Uri.parse('$_baseUrlV2/subscription/plan/'),
       headers: _headers(apiKey),
-    );
+    ).timeout(_requestTimeout);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

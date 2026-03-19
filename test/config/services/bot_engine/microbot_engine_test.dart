@@ -2,12 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
+import 'package:path/path.dart' as p;
 
-MicrobotEngine _makeEngine({String jarPath = '/app/microbot-shaded.jar'}) {
+MicrobotEngine _makeEngine({
+  String jarPath = '/app/microbot-shaded.jar',
+  String profilesBasePath = '/profiles',
+}) {
   return MicrobotEngine(
     javaPath: '/java/bin/java.exe',
     jarPath: jarPath,
-    profilesBasePath: '/profiles',
+    profilesBasePath: profilesBasePath,
     nativeCommands: NativeCommandsService(),
     onLog: (_) {},
   );
@@ -27,10 +31,12 @@ void main() {
         proxyUrl: 'socks5://user:pass@1.2.3.4:1080',
         config: const LaunchConfig(scriptName: 'Tutorial', jvmArgs: '-Xmx384m'),
       );
+      final expectedProfileDir = p.join('/profiles', 'bot-42');
       expect(args[0], '-Xmx384m');
       expect(args[1], '-jar');
       expect(args[2], '/app/microbot-shaded.jar');
-      expect(args, contains('--profile=bot-42'));
+      expect(args, contains('--cc-profile-dir=$expectedProfileDir'));
+      expect(args, contains('--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
       expect(args, contains('--proxy=socks5://user:pass@1.2.3.4:1080'));
       expect(args, contains('--safe-mode'));
     });
@@ -56,6 +62,32 @@ void main() {
       expect(args, contains('-fps'));
       expect(args, contains('15'));
       expect(args, contains('--low-detail'));
+    });
+
+    test('buildLaunchArgs includes --script-params when scriptParams is non-empty', () {
+      final engine = _makeEngine();
+      final args = engine.buildLaunchArgs(
+        characterId: 1,
+        proxyUrl: null,
+        config: const LaunchConfig(scriptName: 'Test', scriptParams: '1,2,3'),
+      );
+      expect(args, contains('--script-params=1,2,3'));
+    });
+
+    test('buildLaunchArgs omits --script-params when scriptParams is empty', () {
+      final engine = _makeEngine();
+      final args = engine.buildLaunchArgs(
+        characterId: 1,
+        proxyUrl: null,
+        config: const LaunchConfig(scriptName: 'Test', scriptParams: ''),
+      );
+      expect(args.any((a) => a.startsWith('--script-params')), isFalse);
+    });
+
+    test('registerRecapturedPid adds PID to activePids', () {
+      final engine = _makeEngine();
+      engine.registerRecapturedPid(pid: 1234, characterId: 42);
+      expect(engine.activePids, contains(1234));
     });
   });
 }

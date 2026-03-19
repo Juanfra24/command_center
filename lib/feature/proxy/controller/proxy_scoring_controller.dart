@@ -11,6 +11,8 @@ import 'package:get/get.dart';
 /// Handles IP quality scoring via IPQualityScore API.
 /// Also exposes score-related statistics and filtering state.
 class ProxyScoringController extends GetxController {
+  final List<Worker> _workers = [];
+
   final ProxyRepository _proxyRepository;
   final IpqsService _ipqsService;
   final ProxyController _proxyController;
@@ -67,12 +69,12 @@ class ProxyScoringController extends GetxController {
   void _initIpqs() {
     isIpqsConfigured.value = _ipqsService.isConfigured.value;
 
-    ever(_ipqsService.isConfigured, (configured) {
+    _workers.add(ever(_ipqsService.isConfigured, (configured) {
       isIpqsConfigured.value = configured;
-    });
+    }));
 
     // Recalculate stats whenever IP addresses change
-    ever(_proxyController.ipAddresses, (_) => _recalculateStats());
+    _workers.add(ever(_proxyController.ipAddresses, (_) => _recalculateStats()));
   }
 
   // --- Cached score statistics ---
@@ -282,5 +284,13 @@ class ProxyScoringController extends GetxController {
       logger.e('Error updating IP score: $e');
       rethrow;
     }
+  }
+
+  @override
+  void onClose() {
+    for (final w in _workers) {
+      w.dispose();
+    }
+    super.onClose();
   }
 }
