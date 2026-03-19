@@ -27,13 +27,26 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+        // Create performance indices
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_ip_slot_active '
+          'ON proxy_ip_addresses_table (slot_id, is_active)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_char_account '
+          'ON characters_table (account_id)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_notif_is_read '
+          'ON notifications_table (is_read)',
+        );
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
@@ -100,6 +113,21 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 6) {
           await m.addColumn(proxySlotsTable, proxySlotsTable.socksPort);
+        }
+        if (from < 7) {
+          // Add indices for the most-queried columns
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_ip_slot_active '
+            'ON proxy_ip_addresses_table (slot_id, is_active)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_char_account '
+            'ON characters_table (account_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_notif_is_read '
+            'ON notifications_table (is_read)',
+          );
         }
       },
       beforeOpen: (details) async {
