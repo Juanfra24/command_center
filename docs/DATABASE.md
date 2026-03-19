@@ -71,6 +71,19 @@ On Windows this is typically `C:\Users\<user>\Documents\command_center.db`.
 │    lastUpdated        │       └─────────────────────────┘
 │          DATETIME     │
 └─────────────────────┘
+
+┌─────────────────────────┐
+│   NotificationsTable     │
+│─────────────────────────│
+│ PK id          INTEGER   │
+│    type         TEXT      │
+│    severity     TEXT      │
+│    title        TEXT      │
+│    message      TEXT      │
+│    isRead       BOOLEAN   │
+│    createdAt    DATETIME  │
+│    readAt       DATETIME? │
+└─────────────────────────┘
 ```
 
 ## Tables
@@ -179,6 +192,23 @@ Game characters belonging to accounts. Each account can have multiple characters
 
 **Source:** `lib/data/database/tables/accounts_table.dart`
 
+### NotificationsTable
+
+Persistent notifications for the UI notification bell/flyout.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | INTEGER | **PK**, auto-increment | |
+| `type` | TEXT | | Notification type (e.g., `auto_rotation`, `ban_detection`) |
+| `severity` | TEXT | default: `'info'` | Severity level: info, warning, error |
+| `title` | TEXT | | Notification title |
+| `message` | TEXT | | Notification body |
+| `isRead` | BOOLEAN | default: false | Whether the user has dismissed it |
+| `createdAt` | DATETIME | default: now | When the notification was created |
+| `readAt` | DATETIME | nullable | When the notification was read |
+
+**Source:** `lib/data/database/tables/notifications_table.dart`
+
 ## Relationships
 
 ```
@@ -195,21 +225,23 @@ Foreign keys are enforced at runtime via `PRAGMA foreign_keys = ON` (set in `bef
 
 ## Schema Version & Migrations
 
-**Current version:** 2
+**Current version:** 4
 
 The schema version is declared in `lib/data/database/app_database.dart`:
 
 ```dart
 @override
-int get schemaVersion => 2;
+int get schemaVersion => 4;
 ```
 
 ### Migration History
 
 | Version | Change |
 |---------|--------|
-| 1 | Initial schema (all 5 tables) |
-| 2 | Added `isDeleted` and `deletedAt` columns to `ProxySlotsTable` |
+| 1 | Initial schema (5 tables: AppConfig, ProxySlots, ProxyIpAddresses, Accounts, Characters) |
+| 2 | Added `isDeleted` and `deletedAt` columns to `ProxySlotsTable` (soft delete) |
+| 3 | Added `ON DELETE CASCADE` to `CharactersTable.accountId` FK (copy-and-recreate) |
+| 4 | Added `NotificationsTable` for persistent notification system |
 
 ### How Migrations Work
 
