@@ -139,6 +139,12 @@ class MicrobotEngine implements BotEngine {
     await _profileWriter.cleanStaleProfiles(liveCharacterIds: liveCharacterIds);
   }
 
+  @override
+  void registerRecapturedPid({required int pid, required int characterId}) {
+    _activePids.add(pid);
+    _pidToCharacterId[pid] = characterId;
+  }
+
   Set<int> get activePids => Set.unmodifiable(_activePids);
 
   static final _credentialPattern = RegExp(r'password=\S+');

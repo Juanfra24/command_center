@@ -63,5 +63,11 @@ void main() {
       expect(args, contains('15'));
       expect(args, contains('--low-detail'));
     });
+
+    test('registerRecapturedPid adds PID to activePids', () {
+      final engine = _makeEngine();
+      engine.registerRecapturedPid(pid: 1234, characterId: 42);
+      expect(engine.activePids, contains(1234));
+    });
   });
 }
