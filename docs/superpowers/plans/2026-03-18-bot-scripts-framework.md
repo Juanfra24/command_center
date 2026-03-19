@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-18-bot-scripts-framework-design.md`
 
+**Justified deviations from spec:**
+- `CCScript.run(Config, String name)` takes an explicit name param instead of spec's `run(Config)` — avoids reflection/annotation scanning for BotStatusModel registration. Cleaner for plugins to pass their descriptor name explicitly.
+- Template-method pattern replaces spec's `MockGameEnvironment` test harness — since Mockito 3.1.0 lacks `mockStatic()`, behaviors expose `protected` query methods that test subclasses override. This is a cleaner design than a centralized mock harness and requires no build config changes. The `MockGameEnvironment.java` and `MockGameEnvironmentTest.java` from the spec's file inventory are therefore not created.
+- `BankingConfig` uses `Predicate<Rs2ItemModel>` instead of spec's `Predicate<Rs2Item>` — matches actual `Rs2Bank.depositAll()` API signature.
+- Behavioral contract tests (status reporting, behavior reset, antiban reset) are tested on `CCScript` base class rather than parameterized per-script — they are framework-level, not script-level.
+
 ---
 
 ## Key Paths
@@ -388,6 +394,7 @@ package net.runelite.client.plugins.microbot.commandcenter.scripts.core.behavior
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.commandcenter.scripts.core.CCBehavior;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 @Slf4j
@@ -429,7 +436,7 @@ public class EatingBehavior implements CCBehavior {
     }
 
     protected boolean hasFood() {
-        return !Rs2Player.getInventoryFood().isEmpty();
+        return !Rs2Inventory.getInventoryFood().isEmpty();
     }
 }
 ```
@@ -502,6 +509,48 @@ public class BankingBehaviorTest {
     @Test
     public void name_isBanking() {
         assertEquals("Banking", behaviorWith(false, false).name());
+    }
+
+    // execute() flow tests
+
+    @Test
+    public void execute_whenBankOpens_completesFullCycle() {
+        // Track which steps were called
+        boolean[] called = new boolean[4]; // deposit, withdraw, close, walkBack
+        BankingConfig config = new BankingConfig(
+            item -> item.getName().contains("Logs"), null, null
+        );
+        BankingBehavior b = new BankingBehavior(config, () -> new WorldPoint(3200, 3200, 0)) {
+            @Override protected boolean isInventoryFull() { return true; }
+            @Override protected boolean walkToAndOpenBank() { return true; }
+            @Override protected boolean isBankOpen() { return true; }
+            @Override protected void depositMatchingItems() { called[0] = true; }
+            @Override protected void withdrawConfiguredItems() { called[1] = true; }
+            @Override protected void closeBank() { called[2] = true; }
+            @Override protected void walkToActivityLocation() { called[3] = true; }
+        };
+        b.execute();
+        assertTrue("deposit should be called", called[0]);
+        assertTrue("withdraw should be called", called[1]);
+        assertTrue("closeBank should be called", called[2]);
+        assertTrue("walkBack should be called", called[3]);
+    }
+
+    @Test
+    public void execute_whenBankFailsToOpen_abortsEarly() {
+        boolean[] called = new boolean[1]; // deposit
+        BankingConfig config = new BankingConfig(null, null, null);
+        BankingBehavior b = new BankingBehavior(config, () -> null) {
+            @Override protected boolean isInventoryFull() { return true; }
+            @Override protected boolean walkToAndOpenBank() { return false; }
+            @Override protected boolean isBankOpen() { return false; }
+            @Override protected void depositMatchingItems() { called[0] = true; }
+            @Override protected void withdrawConfiguredItems() { }
+            @Override protected void closeBank() { }
+            @Override protected void walkToActivityLocation() { }
+        };
+        b.execute();
+        assertFalse("deposit should NOT be called when bank fails to open", called[0]);
     }
 }
 ```
@@ -633,7 +682,7 @@ public class BankingBehavior implements CCBehavior {
 - [ ] **Step 5: Run tests — verify they pass**
 
 Run: `cd /mnt/c/Projects/Microbot_Frieren && ./gradlew :runelite-client:test --tests "net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors.BankingBehaviorTest"`
-Expected: 4 tests PASS
+Expected: 6 tests PASS
 
 - [ ] **Step 6: Commit**
 
@@ -642,7 +691,7 @@ cd /mnt/c/Projects/Microbot_Frieren
 git add runelite-client/src/main/java/net/runelite/client/plugins/microbot/commandcenter/scripts/core/behaviors/BankingConfig.java
 git add runelite-client/src/main/java/net/runelite/client/plugins/microbot/commandcenter/scripts/core/behaviors/BankingBehavior.java
 git add runelite-client/src/test/java/net/runelite/client/plugins/microbot/commandcenter/scripts/core/behaviors/BankingBehaviorTest.java
-git commit -m "feat(scripts): add BankingBehavior + BankingConfig with 4 tests"
+git commit -m "feat(scripts): add BankingBehavior + BankingConfig with 6 tests"
 ```
 
 ---
@@ -752,11 +801,6 @@ public class LootingBehavior implements CCBehavior {
     // --- Overridable for tests ---
 
     protected boolean hasMatchingGroundItem() {
-        LootingParameters params = new LootingParameters(
-            radius, 1, 1, 1,
-            false, false,
-            itemNames.toArray(new String[0])
-        );
         RS2Item[] items = Rs2GroundItem.getAll(radius);
         if (items == null) return false;
         for (RS2Item item : items) {
@@ -833,7 +877,12 @@ public class BuryBonesBehaviorTest {
 }
 ```
 
-- [ ] **Step 2: Implement BuryBonesBehavior**
+- [ ] **Step 2: Run tests — verify they fail**
+
+Run: `cd /mnt/c/Projects/Microbot_Frieren && ./gradlew :runelite-client:test --tests "net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors.BuryBonesBehaviorTest"`
+Expected: FAIL
+
+- [ ] **Step 3: Implement BuryBonesBehavior**
 
 ```java
 package net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors;
@@ -874,12 +923,12 @@ public class BuryBonesBehavior implements CCBehavior {
 }
 ```
 
-- [ ] **Step 3: Run tests — verify they pass**
+- [ ] **Step 4: Run tests — verify they pass**
 
 Run: `cd /mnt/c/Projects/Microbot_Frieren && ./gradlew :runelite-client:test --tests "net.runelite.client.plugins.microbot.commandcenter.scripts.core.behaviors.BuryBonesBehaviorTest"`
 Expected: 3 tests PASS
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /mnt/c/Projects/Microbot_Frieren
@@ -1307,7 +1356,7 @@ public class CCWoodcuttingScript extends CCScript<CCWoodcuttingScript.State> {
         switch (currentState) {
             case CHOPPING:
                 if (isPlayerBusy()) return State.CHOPPING;
-                if (!config.bankLogs() && Rs2Inventory.isFull()) {
+                if (config != null && !config.bankLogs() && isInventoryFull()) {
                     dropAllLogs();
                     return State.CHOPPING;
                 }
@@ -1327,6 +1376,10 @@ public class CCWoodcuttingScript extends CCScript<CCWoodcuttingScript.State> {
 
     protected boolean isPlayerBusy() {
         return Rs2Player.isAnimating() || Rs2Player.isMoving();
+    }
+
+    protected boolean isInventoryFull() {
+        return Rs2Inventory.isFull();
     }
 
     protected boolean findAndChopTree() {
@@ -1663,6 +1716,8 @@ public class CCScriptContractTest {
     }
 }
 ```
+
+**Note:** The spec's 4 behavioral contract tests (`run_callsSetActiveScriptTrue`, `shutdown_callsSetActiveScriptFalse`, `shutdown_resetsAllBehaviors`, `shutdown_resetsAntibanSettings`) are covered by the CCScript base class tests in Task 2 rather than being parameterized per script. Since these behaviors are implemented in `CCScript.run()` and `CCScript.shutdown()` (not in script subclasses), testing them once on the base class is sufficient — parameterizing them per script would only test that Java inheritance works.
 
 - [ ] **Step 2: Run contract tests**
 
