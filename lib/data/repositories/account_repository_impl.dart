@@ -86,27 +86,60 @@ class AccountRepositoryImpl implements AccountRepository {
       throw ArgumentError('Cannot update account without an id');
     }
 
-    await (_db.update(_db.accountsTable)
-          ..where((tbl) => tbl.id.equals(account.id!)))
-        .write(
-      AccountsTableCompanion(
-        accountName: Value(account.accountName),
-        birthday: Value(account.birthday),
-        email: Value(account.email),
-        password: Value(account.password),
-        proxySlotId: Value(account.proxySlotId),
-        lastUpdated: Value(DateTime.now()),
-      ),
-    );
+    await _db.transaction(() async {
+      // Update account fields
+      await (_db.update(_db.accountsTable)
+            ..where((tbl) => tbl.id.equals(account.id!)))
+          .write(
+        AccountsTableCompanion(
+          accountName: Value(account.accountName),
+          birthday: Value(account.birthday),
+          email: Value(account.email),
+          password: Value(account.password),
+          proxySlotId: Value(account.proxySlotId),
+          lastUpdated: Value(DateTime.now()),
+        ),
+      );
 
-    // Update characters - delete existing and re-insert
-    await (_db.delete(_db.charactersTable)
-          ..where((tbl) => tbl.accountId.equals(account.id!)))
-        .go();
+      // Upsert characters: update existing (have ID), insert new (no ID)
+      final incomingIds = account.characters
+          .where((c) => c.id != null)
+          .map((c) => c.id!)
+          .toSet();
 
-    for (final character in account.characters) {
-      await _insertCharacter(character.copyWith(accountId: account.id));
-    }
+      // Delete characters that are no longer in the list
+      final existingChars = await (_db.select(_db.charactersTable)
+            ..where((tbl) => tbl.accountId.equals(account.id!)))
+          .get();
+      for (final existing in existingChars) {
+        if (!incomingIds.contains(existing.id)) {
+          await (_db.delete(_db.charactersTable)
+                ..where((tbl) => tbl.id.equals(existing.id)))
+              .go();
+        }
+      }
+
+      // Update existing characters, insert new ones
+      for (final character in account.characters) {
+        if (character.id != null) {
+          await (_db.update(_db.charactersTable)
+                ..where((tbl) => tbl.id.equals(character.id!)))
+              .write(CharactersTableCompanion(
+            name: Value(character.name),
+            banned: Value(character.banned),
+            defaultScriptName: Value(character.defaultScriptName),
+            actualSkillsJson:
+                Value(jsonEncode(character.actualSkills.toJson())),
+            targetSkillsJson:
+                Value(jsonEncode(character.targetSkills.toJson())),
+            lastUpdated: Value(DateTime.now()),
+          ));
+        } else {
+          await _insertCharacter(
+              character.copyWith(accountId: account.id));
+        }
+      }
+    });
   }
 
   @override

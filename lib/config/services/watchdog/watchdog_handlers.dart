@@ -205,6 +205,10 @@ class WatchdogHandlers {
           launchedAt: DateTime.now(),
         );
         recapturedCharacterIds.add(characterId);
+        _botEngine.registerRecapturedPid(
+          pid: process.processId,
+          characterId: characterId,
+        );
         recaptured++;
       }
 

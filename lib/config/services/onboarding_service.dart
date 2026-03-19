@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -158,7 +159,23 @@ class OnboardingService extends GetxService {
     await prefs.remove(_webshareConfiguredKey);
     await prefs.remove(_ipqsConfiguredKey);
     await prefs.remove(_initialSyncCompleteKey);
-    await prefs.remove('webshare_api_key');
+
+    // Clear the actual API keys from their source-of-truth storage
+    // Webshare key lives in SQLite via AppConfigService
+    try {
+      final appConfig = Get.find<AppConfigService>();
+      await appConfig.clearWebshareApiKey();
+    } catch (_) {
+      // AppConfigService may not be registered in test/debug scenarios
+    }
+
+    // IPQS key lives in SQLite via IpqsService
+    try {
+      final ipqs = Get.find<IpqsService>();
+      await ipqs.clearApiKey();
+    } catch (_) {
+      // IpqsService may not be registered in test/debug scenarios
+    }
 
     isWebshareConfigured.value = false;
     isIpqsConfigured.value = false;
