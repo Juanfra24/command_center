@@ -9,7 +9,6 @@ import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/account.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:get/get.dart';
 
 /// Orchestrates browser automation by delegating process management to
@@ -79,8 +78,17 @@ class AutomationService extends GetxService {
   }
 
   /// Resolve proxy URL + expected IP. Sets [lastResult] on failure.
-  ({String expectedIp, String proxyUrl})? _resolveProxy(ProxySlotEntity slot) {
-    final currentIp = Get.find<ProxyController>().getCurrentIpForSlot(slot);
+  Future<({String expectedIp, String proxyUrl})?> _resolveProxy(
+      ProxySlotEntity slot) async {
+    if (slot.id == null) {
+      lastResult.value = AutomationResult.error(
+        'Slot #${slot.slotNumber} has no database ID',
+      );
+      return null;
+    }
+    final db = Get.find<DatabaseService>();
+    final currentIp =
+        await db.proxyRepository.getActiveIpForSlot(slot.id!);
     if (currentIp == null) {
       lastResult.value = AutomationResult.error(
         'No IP assigned to slot #${slot.slotNumber}',
@@ -115,7 +123,7 @@ class AutomationService extends GetxService {
     currentTask.value = taskName;
     _log('Starting $taskName for slot #${slot.slotNumber}');
     try {
-      final p = _resolveProxy(slot);
+      final p = await _resolveProxy(slot);
       if (p == null) return lastResult.value!;
       return await body(p.expectedIp, p.proxyUrl);
     } on TimeoutException {

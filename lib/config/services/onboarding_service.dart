@@ -3,8 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
-import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
-import 'package:command_center/feature/Status/controller/status_controller.dart';
 
 /// Service to manage app onboarding state and requirements
 class OnboardingService extends GetxService {
@@ -109,49 +107,9 @@ class OnboardingService extends GetxService {
     isInitialSyncComplete.value = true;
   }
 
-  /// Perform initial sync after webshare is configured
-  Future<bool> performInitialSync() async {
-    if (!isWebshareConfigured.value) {
-      return false;
-    }
-
-    try {
-      // Sync proxies
-      final proxyController = Get.find<ProxyController>();
-      await proxyController.syncWithWebshare();
-
-      // Check if sync was successful
-      if (proxyController.lastSyncError.value == null &&
-          proxyController.proxySlots.isNotEmpty) {
-        await markInitialSyncComplete();
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Get available proxy slots count for character creation
-  int get availableProxySlots {
-    try {
-      final proxyController = Get.find<ProxyController>();
-      final statusController = Get.find<StatusController>();
-
-      // Total slots - assigned characters
-      final totalSlots = proxyController.proxySlots.length;
-      final assignedCount = statusController.accountList.length;
-
-      return totalSlots - assignedCount;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  /// Check if we can create a new character
-  bool get canCreateCharacter =>
-      isOnboardingComplete && availableProxySlots > 0;
+  /// Check if we can create a new character (onboarding complete guard only;
+  /// slot availability is checked separately in the dialog).
+  bool get canCreateCharacter => isOnboardingComplete;
 
   /// Reset onboarding (for debugging or re-setup)
   Future<void> resetOnboarding() async {
