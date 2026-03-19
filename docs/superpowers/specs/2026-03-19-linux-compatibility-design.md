@@ -1,8 +1,8 @@
 # Linux Compatibility — Design Spec
 
-**Goal:** Make Command Center build and run on Linux alongside Windows, with identical UI (Fluent UI) and functionality.
+**Goal:** Make Command Center build and run on Linux alongside Windows, with near-identical UI (Fluent UI) and functionality.
 
-**Approach:** Platform abstraction layer for the 4 Windows-specific code points. No UI changes — Fluent UI and window_manager already support Linux. Pure Dart for Linux process management (no native C++ needed — `/proc` and `ps` expose full command lines natively).
+**Approach:** Platform abstraction layer for the Windows-specific code points. No UI framework changes — Fluent UI and window_manager already support Linux. Pure Dart for Linux process management (no native C++ needed — `/proc` exposes full command lines natively).
 
 **Distribution:** AppImage (portable, single file, works on all distros).
 
@@ -33,14 +33,16 @@ abstract class NativeCommandsService {
 
 Extracted from current `NativeCommandsService`. Keeps the `MethodChannel('com.onemanco/commands')` bridge to the existing C++ WMI code. No changes to the C++ side.
 
+**Note:** The C++ handler in `windows/runner/main.cpp` also registers a `runGameClient` method (legacy DreamBot launcher). This method is dead code — never called from Dart since the Microbot integration. It will NOT be ported to Linux and can be removed from `main.cpp` as cleanup.
+
 ### NativeCommandsLinux
 
 Pure Dart:
 
-- `listJavaProcesses()`: Runs `ps aux`, filters lines containing `java`, parses PID + full command line. Returns `List<ProcessClient>` matching the Windows format.
+- `listJavaProcesses()`: Runs `ps -eo pid,comm,args --no-headers`, filters where `comm` column is exactly `java` (avoids false matches from args containing "java"). Parses PID (column 1) + full command line (column 3+). Returns `List<ProcessClient>` matching the Windows format.
 - `killProcess(pid)`: Runs `kill -9 $pid` via `Process.run`.
 
-No native code, no platform channel, no FFI. Linux exposes `/proc/{pid}/cmdline` and `ps` includes full command lines natively — the WMI complexity that forced C++ on Windows doesn't exist on Linux.
+No native code, no platform channel, no FFI. Linux exposes `/proc/{pid}/cmdline` natively — the WMI complexity that forced C++ on Windows doesn't exist on Linux.
 
 ---
 
@@ -91,6 +93,28 @@ Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? ''
 ```
 
 Two files, ~2 lines changed each.
+
+**Note:** `scripts_path.dart` also has a hardcoded workspace fallback path (`projects/command_center/scripts`) that assumes Windows directory conventions. This path is development-only (only used when the bundled scripts path doesn't exist). Guard the entire block with `Platform.isWindows` — the AppImage uses the bundled path, so this dev-only fallback is Windows-specific.
+
+### Python executable resolution
+
+**Problem:** The codebase calls `python` (bare) in `python_dependency_checker.dart`, `python_setup_service.dart`, and `python_runner.dart`. On most Linux distros, only `python3` is available — `python` doesn't exist unless `python-is-python3` is installed.
+
+**Solution:** Add a helper that resolves the correct Python executable:
+
+```dart
+Future<String> resolvePythonExecutable() async {
+  for (final candidate in ['python3', 'python']) {
+    try {
+      final result = await Process.run(candidate, ['--version']);
+      if (result.exitCode == 0) return candidate;
+    } catch (_) {}
+  }
+  throw Exception('Python not found');
+}
+```
+
+Call once at startup (in `PythonSetupService.onInit`), cache the result, and use it everywhere instead of hardcoded `'python'`. On Windows, `python` is found first (it ships with the launcher). On Linux, `python3` is found first.
 
 ### File opener
 
@@ -165,6 +189,13 @@ Linux steps:
 3. Package as AppImage using `appimagetool`
 4. Upload `.AppImage` to GitHub Release alongside Windows `.zip`
 
+### Release job update
+
+The existing `release` job must be updated to handle dual artifacts:
+- `needs:` depends on the matrix `build` job (waits for both Windows and Linux)
+- `download-artifact` called twice: `windows-build` and `linux-build`
+- `softprops/action-gh-release` `files:` list includes both the Windows `.zip` and Linux `.AppImage`
+
 ### AppImage packaging
 
 Bundle the Flutter build output (`build/linux/x64/release/bundle/`) into an AppImage:
@@ -175,9 +206,14 @@ Bundle the Flutter build output (`build/linux/x64/release/bundle/`) into an AppI
 
 ---
 
+## Accepted Visual Differences on Linux
+
+- **System accent color:** `system_theme` reads the Windows registry accent color. On Linux it returns a fallback (blue). `FluentAppTheme` already has a try/catch that falls back to `Colors.blue` — no crash, just always-blue accent. Accepted.
+- **Typography:** `FluentAppTheme` hardcodes `'Segoe UI Variable Display/Text/Small'` — Windows 11 system fonts. On Linux, Flutter falls back to platform default (Noto Sans/Roboto). Text will render slightly different. Accepted — bundling Segoe UI would be a licensing issue.
+
 ## What Does NOT Change
 
-- **UI:** Fluent UI renders on both platforms (Windows 11 look on Linux — accepted)
+- **UI framework:** Fluent UI renders on both platforms (Windows 11 look on Linux)
 - **Database:** Drift + SQLite works cross-platform via `sqlite3_flutter_libs`
 - **Python scripts:** Patchright is cross-platform. `scripts/` directory unchanged.
 - **Bot engine logic:** MicrobotEngine, WatchdogService, WatchdogHandlers — all unchanged (they depend on the abstract NativeCommandsService interface)
@@ -190,8 +226,9 @@ Bundle the Flutter build output (`build/linux/x64/release/bundle/`) into an AppI
 | NativeCommands abstraction | 3 (1 abstract, 2 impls) | ~80 lines |
 | JavaInstaller branching | 1 edit | ~15 lines |
 | Path resolution | 2 edits | ~4 lines |
+| Python executable resolver | 1 new + 3 edits | ~25 lines |
 | Platform file opener | 1 new + 1 edit | ~15 lines |
 | DI wiring | 1 edit | ~3 lines |
 | Linux scaffold | generated | `flutter create` |
-| CI + AppImage | 1 edit + 2 new | ~40 lines |
-| **Total** | **~10 files** | **~155 lines hand-written** |
+| CI + AppImage | 1 edit + 2 new | ~50 lines |
+| **Total** | **~14 files** | **~195 lines hand-written** |
