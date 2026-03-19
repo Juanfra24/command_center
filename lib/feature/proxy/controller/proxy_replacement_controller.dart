@@ -9,6 +9,8 @@ import 'package:get/get.dart';
 /// Handles proxy IP replacement and rotation UI state.
 /// Delegates actual API calls to [ProxyReplacementService].
 class ProxyReplacementController extends GetxController {
+  final List<Worker> _workers = [];
+
   final ProxyController _proxyController;
   ProxyReplacementService? _replacementService;
 
@@ -37,9 +39,9 @@ class ProxyReplacementController extends GetxController {
         fetchPlanInfo();
       }
 
-      ever(webshareService.isConfigured, (configured) {
+      _workers.add(ever(webshareService.isConfigured, (configured) {
         if (configured) fetchPlanInfo();
-      });
+      }));
     } catch (e) {
       logger.w('Replacement service not available yet: $e');
     }
@@ -139,5 +141,13 @@ class ProxyReplacementController extends GetxController {
     } catch (e) {
       logger.w('Error fetching plan info: $e');
     }
+  }
+
+  @override
+  void onClose() {
+    for (final w in _workers) {
+      w.dispose();
+    }
+    super.onClose();
   }
 }
