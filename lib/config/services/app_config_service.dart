@@ -34,7 +34,14 @@ class AppConfigService extends GetxService {
   bool isLoading = true;
   final autoRotationEnabled = true.obs;
   final autoRotationThreshold = 60.obs;
-  final scriptRegistry = <String>['Tutorial Journey'].obs;
+  final scriptRegistry = <String>[
+    'Tutorial Journey',
+    'CC Woodcutter',
+    'CC Miner',
+    'CC Fisher',
+    'CC Cooker',
+    'CC Combat Trainer',
+  ].obs;
 
   Future<AppConfigService> init() async {
     try {

@@ -2,16 +2,17 @@
 
 ## Project Overview
 
-RuneScape Bot Command Center - A Windows desktop app (Flutter + Fluent UI) for managing bot accounts, proxies, and browser automation for Jagex account creation.
+RuneScape Bot Command Center - A Windows desktop app (Flutter + Fluent UI) for managing a bot farm: accounts, proxies, bot engine orchestration (Microbot/RuneLite), and browser-based Jagex account creation.
 
 ## Tech Stack
 
-- **Framework:** Flutter (Windows desktop only)
-- **UI:** Fluent UI (`fluent_ui` ^4.13.0) - Windows 11 Fluent Design
+- **Framework:** Flutter (Windows desktop only), SDK >=3.3.4
+- **UI:** Fluent UI (`fluent_ui` 4.13.0 pinned) - Windows 11 Fluent Design
 - **State Management:** GetX (`get` ^4.6.5) - controllers, services, DI, reactivity
 - **Database:** Drift ORM (`drift` ^2.22.1) - SQLite with code generation
+- **Bot Engine:** Microbot (private RuneLite fork) via Java 17 (Eclipse Temurin)
 - **Automation:** Python + Patchright (patched Playwright) via `scripts/account_automation.py`
-- **APIs:** Webshare (proxy management), IPQualityScore (IP scoring)
+- **APIs:** Webshare (proxy management), IPQualityScore (IP scoring), GitHub Releases (JAR downloads)
 
 ## Architecture
 
@@ -21,7 +22,7 @@ Clean Architecture with 4 layers:
 lib/
 ├── domain/          # Entities + abstract repository interfaces (pure Dart)
 ├── data/            # Drift tables, DB config, concrete repository implementations
-├── feature/         # UI screens + GetX controllers (Status, Proxy, MainMenu, Music, Notification, DevTools)
+├── feature/         # UI screens + GetX controllers (Status, Proxy, MainMenu, Music, Notification, DevTools, App)
 ├── config/          # Services, routes, theme
 └── core/            # Constants, helpers, DI bindings, shared widgets
 ```
@@ -60,8 +61,9 @@ feature/<name>/
 │   ├── sections/                    # Screen chunks
 │   ├── components/                  # Reusable widgets
 │   └── dialogs/                     # Modal dialogs
-└── controller/
-    └── <name>_controller.dart       # Presentation state
+├── controller/
+│   └── <name>_controller.dart       # Presentation state
+└── data/                            # Feature-local models (optional)
 ```
 
 ### Service Directory Structure
@@ -69,19 +71,19 @@ feature/<name>/
 ```
 config/services/<domain>/
 ├── <domain>_api_client.dart         # HTTP transport only
-└── <domain>_service.dart            # Business logic + orchestration
+├── <domain>_service.dart            # Business logic + orchestration
+└── <domain>_models.dart             # Service-local DTOs (optional)
 ```
-
-See `docs/plans/2026-03-08-layered-atomic-architecture-design.md` for full decomposition plan.
 
 ## Key Conventions
 
 - **State management:** Use GetX (`GetxController`, `.obs`, `Obx()`)
 - **Database:** Drift ORM with code generation (`dart run build_runner build --delete-conflicting-outputs`)
-- **DI:** Services registered in `core/resource/dependency_injection.dart` (`AppBindings`)
+- **DI:** Services registered in `core/resource/dependency_injection.dart` (`AppBindings`) — 3-phase init (see below)
 - **Navigation:** Fluent UI `NavigationView` + `NavigationPane` (not GetX routes)
 - **Entities:** Use `Equatable` for domain entities
 - **Naming:** Feature folders use PascalCase for screens (e.g., `Status/`), camelCase for files
+- **Security:** Credentials via env vars (never argv), log sanitization via `PythonRunner.redact()`, IPQS key out of URL path
 
 ## Build & Run
 
@@ -107,10 +109,9 @@ Automated semantic releases via GitHub Actions (`.github/workflows/release.yml`)
 ```
 Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `build`, `revert`
 
-
 ## Database Schema (v4)
 
-- **AppConfigTable** - Key-value config store (webshare_api_key, ipqs_api_key, theme_mode, auto_rotation_*)
+- **AppConfigTable** - Key-value config store (API keys, theme, auto-rotation settings, Java/JAR paths, GitHub PAT)
 - **ProxySlotsTable** - Webshare proxy slots with soft delete, IP rotation tracking
 - **ProxyIpAddressesTable** - IP history per slot with IPQS scoring, geo-location, fraud indicators
 - **AccountsTable** - Jagex accounts (email, password, birthday, proxy_slot_id)
@@ -119,7 +120,48 @@ Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`
 
 Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notifications table
 
+## Dependency Injection (3-Phase)
+
+Registered in `core/resource/dependency_injection.dart` (`AppBindings`):
+
+### Phase 1: `dependencies()` (synchronous)
+- `AppDataPath`, `MusicController`, `NativeCommandsService` (permanent)
+- Feature controllers (lazy, fenix=true): MainMenu, Status, StatusSelection, Proxy, ProxyScoring, ProxyReplacement, Notification
+- Proxy services (lazy): ProxyReplacementService, ProxySyncService, ProxyAutoRotationService
+- DevToolsController (debug only)
+
+### Phase 2: `initializeAsyncServices()`
+1. DatabaseService (no deps)
+2. AppConfigService (depends: DB)
+3. WebshareService (depends: AppConfig)
+4. IpqsService (depends: DB)
+5. PythonSetupService (background init)
+6. AutomationService (depends: Python)
+7. OnboardingService (depends: Webshare, IPQS)
+8. NotificationService (depends: DB)
+9. MicrobotSetupService (depends: PythonSetup, AppConfig → JavaInstaller + JarDownloader)
+
+### Phase 3: `initializePostSetup()` (after splash screen dependencies install)
+1. BotEngine/MicrobotEngine (depends: AppConfig for Java/JAR paths, NativeCommands)
+2. WatchdogService (depends: BotEngine, Notification, ProxyAutoRotation, DB repos)
+
+Skips BotEngine if Java path is unavailable (app still works without bot engine).
+
 ## Services
+
+### Bot Engine Services (`config/services/bot_engine/`)
+- **BotEngine** (abstract) - Interface for launching/stopping bot instances
+- **MicrobotEngine** - Concrete: Process.start() with env vars, profile management
+- **MicrobotSetupService** - Orchestrates dependency installation (Python + Java + JAR)
+- **JavaInstaller** - Downloads Eclipse Temurin JRE 17 to `%APPDATA%/CommandCenter/java/`
+- **MicrobotJarDownloader** - Downloads latest JAR from GitHub Releases (PAT auth for private repo)
+- **MicrobotProfileWriter** - Writes `credentials.properties` + `commandcenter.properties` per account
+
+### Watchdog Services (`config/services/watchdog/`)
+- **WatchdogService** - Process monitoring with adaptive polling (5s/30s), startup recapture, status API polling
+- **WatchdogHandlers** - Death classification, exponential backoff restart, ban detection, proxy rotation
+- **TrackedClient** - In-memory model per running bot (status, statusPort, lastStatus, deathCount)
+- **LaunchConfig** - Presentation model for launch parameters (script, world, covert, render, params)
 
 ### Core Services
 - **DatabaseService** - Aggregates DB + all repositories
@@ -129,7 +171,7 @@ Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notificat
 - **AutomationService** - Orchestrates Python browser automation (validate IP, create account)
 - **PythonSetupService** - Python + Patchright dependency installer
 - **PythonDependencyChecker** - Chromium installation verification
-- **NativeCommandsService** - Windows platform channel (list/kill processes, run game client)
+- **NativeCommandsService** - Windows platform channel (WMI COM API: list/kill processes, CreateProcess)
 - **OnboardingService** - Tracks setup completion (Webshare + IPQS configured) (extends GetxService)
 - **NotificationService** - Notification persistence & UI dispatch (extends GetxService)
 
@@ -160,10 +202,10 @@ Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notificat
 
 | Feature | Path | Controllers | Key Functionality |
 |---------|------|-------------|-------------------|
-| **Status** | `feature/Status/` | StatusController | Account list, character creation, process management |
-| **Proxy** | `feature/proxy/` | ProxyController, ProxyScoringController, ProxyReplacementController | Proxy slots, IP scoring, auto-rotation, replacement |
-| **App Shell** | `feature/app/` | — | Navigation, settings, onboarding, about |
-| **MainMenu** | `feature/main_menu/` | MainMenuController | Dashboard: system overview, character status, recent activity |
+| **Status** | `feature/Status/` | StatusController, StatusSelectionController | Account table, character creation, launch dialog, bot status badges, farm summary bar |
+| **Proxy** | `feature/proxy/` | ProxyController, ProxyScoringController, ProxyReplacementController | Proxy slots, IP scoring, auto-rotation, replacement, linked characters |
+| **App Shell** | `feature/app/` | — | Navigation, settings, onboarding, splash screen (dependency setup progress) |
+| **MainMenu** | `feature/main_menu/` | MainMenuController | Dashboard: bot status grid, proxy health overview, quick actions |
 | **Music** | `feature/music/` | MusicController | Background audio player |
 | **Notification** | `feature/notification/` | NotificationController | Bell + flyout in title bar, persistent notifications |
 | **DevTools** | `feature/dev_tools/` | DevToolsController | Database viewer, SQL runner (debug only) |
@@ -171,8 +213,10 @@ Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notificat
 ## Current State
 
 - **Version:** 0.7.0 (pubspec.yaml and CHANGELOG in sync)
-- **Test suite:** 18 test files covering services, repositories, controllers, UI components, and helpers
+- **Test suite:** 31 test files covering bot engine, services, repositories, controllers, UI components, and helpers
+- **Feature files:** 92 Dart files across 7 features
 - Layered atomic architecture enforced across all features
 - Performance optimized: cached IP lookups, batched DB queries, scoped Obx rebuilds
 - Rx lifecycle clean: no leaked workers, no dead observables, proper disposal throughout
 - AutomationService decomposed: PythonRunner (process management) + ResultParser (output parsing)
+- Security hardened: credentials via env vars, log sanitization, IPQS key out of URL, proxy password obscured in UI
