@@ -117,18 +117,21 @@ public final class CCScriptTestUtils {
         }
     }
 
-    /** Inject a config value into a script's @Inject config field via reflection. */
+    /** Inject a config value into a script's @Inject config field via reflection.
+     *  Walks the class hierarchy so inherited config fields are found too. */
     public static <C extends Config> void injectConfig(CCScript<?> script, C config) {
-        for (Field f : script.getClass().getDeclaredFields()) {
-            if (f.isAnnotationPresent(javax.inject.Inject.class)
-                    && Config.class.isAssignableFrom(f.getType())) {
-                try {
-                    f.setAccessible(true);
-                    f.set(script, config);
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to inject config", e);
+        for (Class<?> c = script.getClass(); c != null; c = c.getSuperclass()) {
+            for (Field f : c.getDeclaredFields()) {
+                if (f.isAnnotationPresent(javax.inject.Inject.class)
+                        && Config.class.isAssignableFrom(f.getType())) {
+                    try {
+                        f.setAccessible(true);
+                        f.set(script, config);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to inject config", e);
+                    }
+                    return;
                 }
-                return;
             }
         }
         throw new IllegalStateException(
@@ -168,6 +171,10 @@ package net.runelite.client.plugins.microbot.commandcenter.scripts.core;
 public class StubCCScript extends CCScript<StubCCScript.State> {
 
     public enum State { ACTIVE }
+
+    // Override the inherited 10-thread pool with a zero-core pool to avoid
+    // spawning idle threads in tests (Script base class creates it at init time).
+    { scheduledExecutorService = java.util.concurrent.Executors.newScheduledThreadPool(0); }
 
     private long stubbedMillisSinceLastStateChange = 0;
 
