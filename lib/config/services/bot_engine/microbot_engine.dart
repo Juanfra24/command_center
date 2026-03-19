@@ -44,6 +44,7 @@ class MicrobotEngine implements BotEngine {
       password: password,
       world: config.world,
       scriptName: config.scriptName,
+      scriptParams: config.scriptParams,
     );
 
     final args = buildLaunchArgs(characterId: characterId, proxyUrl: proxyUrl, config: config);
@@ -129,6 +130,9 @@ class MicrobotEngine implements BotEngine {
       args.add('--proxy=$proxyUrl');
     }
     args.add('--safe-mode');
+    if (config.scriptParams.isNotEmpty) {
+      args.add('--script-params=${config.scriptParams}');
+    }
     if (config.advancedFlags.isNotEmpty) {
       args.addAll(config.advancedFlags.split(' ').where((s) => s.isNotEmpty));
     }

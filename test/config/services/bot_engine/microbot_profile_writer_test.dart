@@ -71,6 +71,21 @@ void main() {
       expect(Directory(p.join(tempDir.path, 'bot-2')).existsSync(), isFalse);
     });
 
+    test('writeProfile writes scriptParams to commandcenter.properties', () async {
+      await writer.writeProfile(
+        characterId: 10,
+        email: 'sp@test.com',
+        password: 'pass',
+        world: 'auto',
+        scriptName: 'Fisher',
+        scriptParams: '1,2,3',
+      );
+
+      final settings = File(p.join(tempDir.path, 'bot-10', 'commandcenter.properties'));
+      final content = settings.readAsStringSync();
+      expect(content, contains('scriptParams=1,2,3'));
+    });
+
     test('profilePath returns correct directory path', () {
       expect(writer.profilePath(characterId: 42), p.join(tempDir.path, 'bot-42'));
     });
