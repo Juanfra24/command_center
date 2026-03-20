@@ -33,7 +33,9 @@ class PythonRunner {
 
     // Try relative to workspace (development only — USERPROFILE is user-controlled)
     if (kDebugMode) {
-      final userProfile = Platform.environment['USERPROFILE'] ?? '';
+      final userProfile = Platform.environment['USERPROFILE']
+          ?? Platform.environment['HOME']
+          ?? '';
       if (userProfile.isNotEmpty) {
         final workspacePath = path.join(
           userProfile,
