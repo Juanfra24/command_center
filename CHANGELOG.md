@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-03-20
+
+### Bug Fixes
+
+- resolve 7 critical bugs — path on 2nd launch, pip timeout, retry stuck, PAT recovery, error boundary, dep check (setup)
+- add detailed substep progress + fix retry stuck on isChecking guard (setup)
+- prompt for GitHub PAT during Microbot step when not configured (setup)
 ## [0.9.0] - 2026-03-20
 
 ### Features
