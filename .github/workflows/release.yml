@@ -32,8 +32,8 @@ jobs:
           INVALID=0
           while IFS= read -r msg; do
             if [[ -z "$msg" ]]; then continue; fi
-            # Allow merge commits
-            if echo "$msg" | grep -qE "^Merge "; then continue; fi
+            # Allow merge commits (GitHub auto-merge and manual merge resolutions)
+            if echo "$msg" | grep -qiE "^[Mm]erge "; then continue; fi
             if ! echo "$msg" | grep -qE "^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert)(\(.+\))?(!)?: .+"; then
               echo "Invalid commit message: $msg"
               INVALID=$((INVALID + 1))
