@@ -88,10 +88,20 @@ jobs:
         include:
           - os: windows-latest
             platform: Windows
-            artifact: windows-build
+            arch: x64
+            artifact: windows-x64-build
+          - os: windows-11-arm
+            platform: Windows
+            arch: arm64
+            artifact: windows-arm64-build
           - os: ubuntu-latest
             platform: Linux
-            artifact: linux-build
+            arch: x64
+            artifact: linux-x64-build
+          - os: ubuntu-24.04-arm
+            platform: Linux
+            arch: arm64
+            artifact: linux-arm64-build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -118,38 +128,47 @@ jobs:
         if: matrix.platform == 'Linux'
         run: flutter build linux --release
 
+      - name: Determine Windows build path
+        if: matrix.platform == 'Windows'
+        id: winpath
+        shell: bash
+        run: |
+          # Flutter outputs to x64 on both x64 and arm64 Windows runners
+          echo "path=build/windows/x64/runner/Release" >> "$GITHUB_OUTPUT"
+
       - name: Package AppImage
         if: matrix.platform == 'Linux'
         run: |
           # Prepare AppImage directory
           mkdir -p AppDir
-          cp -r build/linux/x64/release/bundle/* AppDir/
+          cp -r build/linux/${{ matrix.arch }}/release/bundle/* AppDir/
           cp packaging/linux/AppRun AppDir/
           cp packaging/linux/command_center.desktop AppDir/
           cp assets/images/runescape_icon.png AppDir/command_center.png
           chmod +x AppDir/AppRun
 
-          # Download appimagetool
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool-x86_64.AppImage
+          # Download appimagetool for the build host architecture
+          ARCH=$(uname -m)
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage"
+          chmod +x "appimagetool-${ARCH}.AppImage"
 
           # Build AppImage (--appimage-extract-and-run avoids FUSE requirement in CI)
-          ./appimagetool-x86_64.AppImage AppDir --appimage-extract-and-run
-          mv Command_Center-x86_64.AppImage command-center.AppImage
+          "./appimagetool-${ARCH}.AppImage" AppDir --appimage-extract-and-run
+          mv Command_Center-*.AppImage "command-center-${{ matrix.arch }}.AppImage"
 
       - name: Upload Windows artifact
         if: matrix.platform == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: build/windows/x64/runner/Release/**/*
+          path: ${{ steps.winpath.outputs.path }}/**/*
 
       - name: Upload Linux artifact
         if: matrix.platform == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: command-center.AppImage
+          path: command-center-${{ matrix.arch }}.AppImage
 
   release:
     name: Create Release
@@ -195,30 +214,30 @@ jobs:
           git tag -a "v${{ steps.version.outputs.new_version }}" -m "v${{ steps.version.outputs.new_version }}"
           git push origin main --follow-tags
 
-      - name: Download Windows build
+      - name: Download all build artifacts
         if: steps.version.outputs.skip == 'false'
         uses: actions/download-artifact@v4
         with:
-          name: windows-build
-          path: release-windows/
+          path: release-artifacts/
 
-      - name: Download Linux build
-        if: steps.version.outputs.skip == 'false'
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-          path: release-linux/
-
-      - name: Zip Windows artifact
+      - name: Package release files
         if: steps.version.outputs.skip == 'false'
         run: |
-          cd release-windows
-          zip -r "../command-center-v${{ steps.version.outputs.new_version }}-windows.zip" .
+          VERSION="${{ steps.version.outputs.new_version }}"
 
-      - name: Rename Linux artifact
-        if: steps.version.outputs.skip == 'false'
-        run: |
-          mv release-linux/command-center.AppImage "command-center-v${{ steps.version.outputs.new_version }}-linux.AppImage"
+          # Zip Windows x64
+          cd release-artifacts/windows-x64-build
+          zip -r "../../command-center-v${VERSION}-windows-x64.zip" .
+          cd ../..
+
+          # Zip Windows arm64
+          cd release-artifacts/windows-arm64-build
+          zip -r "../../command-center-v${VERSION}-windows-arm64.zip" .
+          cd ../..
+
+          # Rename Linux AppImages
+          mv release-artifacts/linux-x64-build/command-center-x64.AppImage "command-center-v${VERSION}-linux-x64.AppImage"
+          mv release-artifacts/linux-arm64-build/command-center-arm64.AppImage "command-center-v${VERSION}-linux-arm64.AppImage"
 
       - name: Create GitHub Release
         if: steps.version.outputs.skip == 'false'
@@ -228,7 +247,9 @@ jobs:
           name: "v${{ steps.version.outputs.new_version }}"
           body_path: /tmp/release_body.md
           files: |
-            command-center-v${{ steps.version.outputs.new_version }}-windows.zip
-            command-center-v${{ steps.version.outputs.new_version }}-linux.AppImage
+            command-center-v${{ steps.version.outputs.new_version }}-windows-x64.zip
+            command-center-v${{ steps.version.outputs.new_version }}-windows-arm64.zip
+            command-center-v${{ steps.version.outputs.new_version }}-linux-x64.AppImage
+            command-center-v${{ steps.version.outputs.new_version }}-linux-arm64.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
