@@ -36,7 +36,17 @@ class _AppState extends State<App> with WindowListener {
 
   Future<void> _initializeApp() async {
     try {
-      await AppLifecycle.initialize();
+      // Phase 1: Register all services (including SetupOrchestrator)
+      await AppLifecycle.initializeServices();
+
+      // Trigger rebuild so splash screen can observe the orchestrator
+      if (mounted) setState(() {});
+
+      // Phase 2: Run setup (blocks until all 4 steps complete)
+      await AppLifecycle.runSetup();
+
+      // Phase 3: BotEngine + WatchdogService
+      await AppLifecycle.finalizeSetup();
 
       _services = AppLifecycle.resolveServices();
       _onboardingWorkers.addAll(

@@ -48,6 +48,13 @@ class MicrobotJarDownloader {
       final assets = (release['assets'] as List?)?.cast<Map<String, dynamic>>();
       downloadUrl = assets != null ? findShadedJarUrl(assets) : null;
     } catch (e) {
+      // Let auth errors propagate so the orchestrator can prompt for a new PAT
+      final msg = e.toString();
+      if (msg.contains('invalid') ||
+          msg.contains('expired') ||
+          msg.contains('401')) {
+        rethrow;
+      }
       logger.w('GitHub API check failed (rate limited?): $e');
       // Fall back to cached JAR if available
       if (existingPath != null && File(existingPath).existsSync()) {
