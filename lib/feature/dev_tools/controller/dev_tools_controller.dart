@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/helper/platform_open.dart';
 import 'package:command_center/data/database/app_database.dart';
