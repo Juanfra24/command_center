@@ -6,14 +6,28 @@ import 'package:get/get.dart';
 
 /// Setup wizard splash screen shown during app initialization.
 /// Displays all 4 setup steps as a vertical list with real-time progress.
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   final SetupOrchestrator? orchestrator;
 
   const SplashScreen({super.key, this.orchestrator});
 
   @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  final _inputController = TextEditingController();
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final orchestrator = widget.orchestrator;
 
     return Container(
       decoration: BoxDecoration(
@@ -49,7 +63,7 @@ class SplashScreen extends StatelessWidget {
               const SizedBox(height: 32),
               if (orchestrator != null) ...[
                 Obx(() {
-                  final stepList = orchestrator!.steps;
+                  final stepList = orchestrator.steps;
                   return Column(
                     children: [
                       for (var i = 0; i < stepList.length; i++)
@@ -57,26 +71,73 @@ class SplashScreen extends StatelessWidget {
                     ],
                   );
                 }),
-                const SizedBox(height: 16),
+                // Input field (shown when a step needs user input, e.g. GitHub PAT)
                 Obx(() {
-                  final total = orchestrator!.steps.length;
+                  final currentIdx = orchestrator.currentStepIndex.value;
+                  final currentStep = orchestrator.steps[currentIdx];
+                  if (!currentStep.needsInput) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (currentStep.inputLabel != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              currentStep.inputLabel!,
+                              style: theme.typography.caption,
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PasswordBox(
+                                controller: _inputController,
+                                placeholder: 'ghp_...',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              onPressed: () {
+                                final value = _inputController.text.trim();
+                                if (value.isNotEmpty) {
+                                  orchestrator.submitInput(value);
+                                  _inputController.clear();
+                                }
+                              },
+                              child: const Text('Submit'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+                // Step counter
+                Obx(() {
+                  final total = orchestrator.steps.length;
                   return Text(
-                    'Step ${orchestrator!.currentStepIndex.value + 1} of $total',
+                    'Step ${orchestrator.currentStepIndex.value + 1} of $total',
                     style: theme.typography.caption?.copyWith(
                       color: theme.inactiveColor,
                     ),
                   );
                 }),
+                // Retry button (visible when a step fails)
                 Obx(() {
-                  final currentIdx = orchestrator!.currentStepIndex.value;
-                  final currentStep = orchestrator!.steps[currentIdx];
+                  final currentIdx = orchestrator.currentStepIndex.value;
+                  final currentStep = orchestrator.steps[currentIdx];
                   if (currentStep.status != StepStatus.failed) {
                     return const SizedBox.shrink();
                   }
                   return Padding(
                     padding: const EdgeInsets.only(top: 16),
                     child: FilledButton(
-                      onPressed: () => orchestrator!.retryCurrentStep(),
+                      onPressed: () => orchestrator.retryCurrentStep(),
                       child: const Text('Retry'),
                     ),
                   );

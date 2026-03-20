@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/bot_engine/java_installer.dart';
 import 'package:command_center/config/services/bot_engine/microbot_jar_downloader.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
@@ -17,16 +18,19 @@ class SetupOrchestrator extends GetxService {
   final PythonSetupService _pythonSetup;
   final JavaInstaller _javaInstaller;
   final MicrobotJarDownloader _jarDownloader;
+  final AppConfigService _appConfig;
 
   SetupOrchestrator({
     required ScriptsExtractor scriptsExtractor,
     required PythonSetupService pythonSetup,
     required JavaInstaller javaInstaller,
     required MicrobotJarDownloader jarDownloader,
+    required AppConfigService appConfig,
   })  : _scriptsExtractor = scriptsExtractor,
         _pythonSetup = pythonSetup,
         _javaInstaller = javaInstaller,
-        _jarDownloader = jarDownloader;
+        _jarDownloader = jarDownloader,
+        _appConfig = appConfig;
 
   /// Observable list of step states — splash screen renders this.
   final steps = <SetupStepState>[
@@ -43,6 +47,13 @@ class SetupOrchestrator extends GetxService {
   final isComplete = false.obs;
 
   Completer<void>? _retryCompleter;
+  Completer<String>? _inputCompleter;
+
+  /// Called by the UI when the user submits a text input (e.g. GitHub PAT).
+  void submitInput(String value) {
+    _inputCompleter?.complete(value);
+    _inputCompleter = null;
+  }
 
   /// Run all 4 steps sequentially. Blocks until all complete.
   Future<void> run() async {
@@ -100,6 +111,8 @@ class SetupOrchestrator extends GetxService {
     String? errorMessage,
     String? fixHint,
     bool clearError = false,
+    bool? needsInput,
+    String? inputLabel,
   }) {
     steps[index] = steps[index].copyWith(
       status: status,
@@ -108,6 +121,8 @@ class SetupOrchestrator extends GetxService {
       errorMessage: errorMessage,
       fixHint: fixHint,
       clearError: clearError,
+      needsInput: needsInput,
+      inputLabel: inputLabel,
     );
   }
 
@@ -156,6 +171,26 @@ class SetupOrchestrator extends GetxService {
   }
 
   Future<void> _runMicrobotSetup(int i) async {
+    _updateStep(i, detail: 'Checking configuration...');
+
+    // Check if GitHub PAT is configured — prompt if missing
+    var token = await _appConfig.getGithubPat();
+    if (token == null || token.isEmpty) {
+      _updateStep(
+        i,
+        status: StepStatus.running,
+        detail:
+            'A GitHub Personal Access Token is required to download Microbot from the private repository.',
+        needsInput: true,
+        inputLabel: 'GitHub Personal Access Token',
+      );
+      // Block until user submits the PAT
+      _inputCompleter = Completer<String>();
+      token = await _inputCompleter!.future;
+      await _appConfig.saveGithubPat(token);
+      _updateStep(i, detail: 'Checking Microbot...', needsInput: false);
+    }
+
     _updateStep(i, detail: 'Checking Microbot...');
     final jarPath = await _jarDownloader.ensureJar(
       onProgress: (downloaded, total) {

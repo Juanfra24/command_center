@@ -163,6 +163,7 @@ class AppBindings extends Bindings {
       pythonSetup: pythonSetupService,
       javaInstaller: javaInstaller,
       jarDownloader: jarDownloader,
+      appConfig: appConfigService,
     );
     Get.put<SetupOrchestrator>(setupOrchestrator, permanent: true);
 
