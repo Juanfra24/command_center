@@ -82,8 +82,7 @@ class DetectionFlagChips extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(FluentIcons.completed,
-              size: 12, color: Color(0xFF4ade80)),
+          const Icon(FluentIcons.completed, size: 12, color: Color(0xFF4ade80)),
           const SizedBox(width: 6),
           Text(
             'Not ${flag.name}',

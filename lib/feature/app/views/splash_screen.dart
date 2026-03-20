@@ -39,7 +39,8 @@ class SplashScreen extends StatelessWidget {
             SizedBox(
               width: 300,
               child: setupService != null
-                  ? Obx(() => ProgressBar(value: setupService!.progressPercent.value * 100))
+                  ? Obx(() => ProgressBar(
+                      value: setupService!.progressPercent.value * 100))
                   : const ProgressBar(),
             ),
             const SizedBox(height: 12),

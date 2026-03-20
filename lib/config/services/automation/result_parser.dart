@@ -56,7 +56,8 @@ class ResultParser {
 
     if (stderr.isNotEmpty) {
       // Log only a summary — raw stderr may contain credentials from tracebacks
-      onLog('Script reported ${stderr.split('\n').length} error line(s). See log file for details.');
+      onLog(
+          'Script reported ${stderr.split('\n').length} error line(s). See log file for details.');
       logger.e('Python stderr: $stderr');
 
       // Module import errors are fatal — no JSON result will exist

@@ -34,9 +34,9 @@ class PythonRunner {
 
     // Try relative to workspace (development only — USERPROFILE is user-controlled)
     if (kDebugMode) {
-      final userProfile = Platform.environment['USERPROFILE']
-          ?? Platform.environment['HOME']
-          ?? '';
+      final userProfile = Platform.environment['USERPROFILE'] ??
+          Platform.environment['HOME'] ??
+          '';
       if (userProfile.isNotEmpty) {
         final workspacePath = path.join(
           userProfile,
@@ -114,13 +114,13 @@ class PythonRunner {
     // -u flag disables Python's stdout/stderr buffering so we get logs in real-time
     final python = await PythonResolver.executable;
     _currentProcess = await Process.start(python, ['-u', ...args],
-        workingDirectory: workingDirectory,
-        environment: environment);
+        workingDirectory: workingDirectory, environment: environment);
 
     // Listen to stdout/stderr and forward to logs in real-time.
     // Suppress all lines after the === RESULT === marker (contains credentials in JSON).
     var seenResultMarker = false;
-    final stdoutDone = _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
+    final stdoutDone =
+        _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
       stdout.write(data);
       for (final line in data.split('\n')) {
         final trimmed = line.trim();
@@ -135,7 +135,8 @@ class PythonRunner {
     }).asFuture<void>();
 
     // Redact stderr to prevent credential leakage from Python tracebacks
-    final stderrDone = _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
+    final stderrDone =
+        _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
       stderr.write(data);
       for (final line in data.split('\n')) {
         final trimmed = line.trim();
@@ -185,8 +186,7 @@ class PythonRunner {
 
     final python = await PythonResolver.executable;
     _currentProcess = await Process.start(python, ['-u', ...args],
-        workingDirectory: workingDirectory,
-        environment: environment);
+        workingDirectory: workingDirectory, environment: environment);
 
     _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
       outputBuffer.write(data);

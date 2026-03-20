@@ -86,7 +86,7 @@ class AccountListSection extends StatelessWidget {
     final selectionCtrl = Get.find<StatusSelectionController>();
 
     const columns = [
-      '',            // Checkbox
+      '', // Checkbox
       'Account',
       'Credentials',
       'Character',
@@ -131,9 +131,7 @@ class AccountListSection extends StatelessWidget {
                 final isBanned = row.character?.banned == true;
                 return Container(
                   decoration: BoxDecoration(
-                    color: isBanned
-                        ? Colors.red.withValues(alpha: 0.06)
-                        : null,
+                    color: isBanned ? Colors.red.withValues(alpha: 0.06) : null,
                     border: Border(
                       bottom: BorderSide(
                         color: theme.resources.dividerStrokeColorDefault,
@@ -146,14 +144,15 @@ class AccountListSection extends StatelessWidget {
                       // Checkbox
                       Expanded(
                         flex: flexes[0],
-                        child: row.character != null && row.character!.id != null
-                            ? Obx(() => Checkbox(
-                                  checked: selectionCtrl
-                                      .isSelected(row.character!.id!),
-                                  onChanged: (_) => selectionCtrl
-                                      .toggleSelection(row.character!.id!),
-                                ))
-                            : const SizedBox.shrink(),
+                        child:
+                            row.character != null && row.character!.id != null
+                                ? Obx(() => Checkbox(
+                                      checked: selectionCtrl
+                                          .isSelected(row.character!.id!),
+                                      onChanged: (_) => selectionCtrl
+                                          .toggleSelection(row.character!.id!),
+                                    ))
+                                : const SizedBox.shrink(),
                       ),
                       // Account
                       Expanded(
@@ -171,8 +170,7 @@ class AccountListSection extends StatelessWidget {
                       // Character
                       Expanded(
                         flex: flexes[3],
-                        child: _buildTableCell(
-                            row.character?.name ?? '\u2014'),
+                        child: _buildTableCell(row.character?.name ?? '\u2014'),
                       ),
                       // Script
                       Expanded(
@@ -182,8 +180,8 @@ class AccountListSection extends StatelessWidget {
                       // Proxy
                       Expanded(
                         flex: flexes[5],
-                        child: ProxyCell(
-                            proxyAddress: row.account.proxyAddress),
+                        child:
+                            ProxyCell(proxyAddress: row.account.proxyAddress),
                       ),
                       // Status
                       Expanded(
@@ -239,14 +237,17 @@ class AccountListSection extends StatelessWidget {
   Widget _buildTableHeader(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+      child: Text(text,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
     );
   }
 
   Widget _buildTableCell(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Text(text, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+      child: Text(text,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12)),
     );
   }
 }

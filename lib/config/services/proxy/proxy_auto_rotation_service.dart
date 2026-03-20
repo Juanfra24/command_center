@@ -85,7 +85,8 @@ class ProxyAutoRotationService {
           type: NotificationType.quotaExhausted,
           severity: NotificationSeverity.error,
           title: 'Replacement Quota Exhausted',
-          message: '$remaining proxies still above fraud threshold. Webshare quota: '
+          message:
+              '$remaining proxies still above fraud threshold. Webshare quota: '
               '${planInfo?.proxyReplacementsAvailable ?? 0}/'
               '${planInfo?.proxyReplacementsTotal ?? 0} remaining.',
         );

@@ -48,6 +48,14 @@ class JagexAccount extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, accountName, birthday, email, password, proxyAddress, proxySlotId, characters];
+  List<Object?> get props => [
+        id,
+        accountName,
+        birthday,
+        email,
+        password,
+        proxyAddress,
+        proxySlotId,
+        characters
+      ];
 }

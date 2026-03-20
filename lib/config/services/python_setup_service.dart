@@ -71,8 +71,7 @@ class PythonSetupService extends GetxService {
       setupProgress = 'Checking Python installation...';
 
       if (!await checkPythonAvailable()) {
-        setupError =
-            'Python not found. Please install Python 3.8 or higher.';
+        setupError = 'Python not found. Please install Python 3.8 or higher.';
         currentStep = SetupStep.failed;
         return false;
       }
@@ -130,8 +129,7 @@ class PythonSetupService extends GetxService {
       final exitCode = await process.exitCode;
 
       if (exitCode != 0) {
-        setupError =
-            'Failed to install dependencies: ${output.toString()}';
+        setupError = 'Failed to install dependencies: ${output.toString()}';
         logger.e('Dependency installation failed with exit code: $exitCode');
         currentStep = SetupStep.failed;
         return false;

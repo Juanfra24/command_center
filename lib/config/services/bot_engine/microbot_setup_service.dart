@@ -50,7 +50,8 @@ class MicrobotSetupService extends GetxService {
       var javaPath = await _javaInstaller.findJavaPath();
       if (javaPath == null) {
         progress.value = 'Downloading Java 17 Runtime...';
-        javaPath = await _javaInstaller.install(onProgress: (downloaded, total) {
+        javaPath =
+            await _javaInstaller.install(onProgress: (downloaded, total) {
           if (total > 0) {
             final pct = downloaded / total;
             progressPercent.value = 0.33 + (pct * 0.33);
@@ -63,14 +64,16 @@ class MicrobotSetupService extends GetxService {
       // Verify Java is actually usable after install
       final verifiedJava = await _javaInstaller.findJavaPath();
       if (verifiedJava == null) {
-        throw Exception('Java 17 installation failed — java not found after install');
+        throw Exception(
+            'Java 17 installation failed — java not found after install');
       }
       progressPercent.value = 0.66;
 
       // Step 3: Microbot JAR
       currentStep.value = MicrobotSetupStep.microbot;
       progress.value = 'Checking Microbot...';
-      final jarPath = await _jarDownloader.ensureJar(onProgress: (downloaded, total) {
+      final jarPath =
+          await _jarDownloader.ensureJar(onProgress: (downloaded, total) {
         if (total > 0) {
           final pct = downloaded / total;
           progressPercent.value = 0.66 + (pct * 0.34);

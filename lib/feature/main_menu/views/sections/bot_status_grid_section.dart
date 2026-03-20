@@ -60,27 +60,21 @@ class BotStatusGridSection extends StatelessWidget {
         _buildCountBadge(
           theme,
           label: 'Running',
-          count: controller.botTiles
-              .where((t) => t.status == 'running')
-              .length,
+          count: controller.botTiles.where((t) => t.status == 'running').length,
           color: Colors.green,
         ),
         const SizedBox(width: 6),
         _buildCountBadge(
           theme,
           label: 'Stopped',
-          count: controller.botTiles
-              .where((t) => t.status == 'stopped')
-              .length,
+          count: controller.botTiles.where((t) => t.status == 'stopped').length,
           color: const Color(0xFF888888),
         ),
         const SizedBox(width: 6),
         _buildCountBadge(
           theme,
           label: 'Banned',
-          count: controller.botTiles
-              .where((t) => t.status == 'banned')
-              .length,
+          count: controller.botTiles.where((t) => t.status == 'banned').length,
           color: Colors.red,
         ),
         const Spacer(),

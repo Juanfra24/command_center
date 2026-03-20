@@ -12,7 +12,6 @@ import 'package:command_center/core/helper/proxy_url_builder.dart';
 
 class _MockNativeCommands extends Mock implements NativeCommandsService {}
 
-
 void main() {
   group('Bot Engine Integration', () {
     late Directory tempDir;
@@ -39,14 +38,16 @@ void main() {
       );
 
       // Verify credentials file
-      final creds = File(p.join(tempDir.path, 'bot-42', 'credentials.properties'));
+      final creds =
+          File(p.join(tempDir.path, 'bot-42', 'credentials.properties'));
       expect(creds.existsSync(), isTrue);
       final credsContent = creds.readAsStringSync();
       expect(credsContent, contains('email=player@test.com'));
       expect(credsContent, contains('password=secret'));
 
       // Verify settings file
-      final settings = File(p.join(tempDir.path, 'bot-42', 'commandcenter.properties'));
+      final settings =
+          File(p.join(tempDir.path, 'bot-42', 'commandcenter.properties'));
       expect(settings.existsSync(), isTrue);
       final settingsContent = settings.readAsStringSync();
       expect(settingsContent, contains('world=301'));
@@ -78,7 +79,8 @@ void main() {
       expect(client.password, 'pass');
     });
 
-    test('MicrobotEngine buildLaunchArgs produces correct command structure', () {
+    test('MicrobotEngine buildLaunchArgs produces correct command structure',
+        () {
       final engine = MicrobotEngine(
         javaPath: '/java/bin/java.exe',
         jarPath: '/app/microbot-shaded.jar',
@@ -108,7 +110,10 @@ void main() {
       final appFlags = args.sublist(jarIndex + 2);
       final expectedProfileDir = p.join(tempDir.path, 'bot-42');
       expect(appFlags, contains('--cc-profile-dir=$expectedProfileDir'));
-      expect(appFlags, contains('--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
+      expect(
+          appFlags,
+          contains(
+              '--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
       expect(appFlags, contains('--proxy=socks5://user:pass@1.2.3.4:1080'));
       expect(appFlags, contains('--safe-mode'));
       expect(appFlags, contains('-fps'));

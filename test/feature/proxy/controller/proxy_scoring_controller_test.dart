@@ -202,15 +202,9 @@ void main() {
       ]);
       proxyController.ipAddresses.addAll([
         makeIp(
-            id: 10,
-            slotId: 1,
-            fraudScore: 20,
-            lastScoreCheck: DateTime.now()),
+            id: 10, slotId: 1, fraudScore: 20, lastScoreCheck: DateTime.now()),
         makeIp(
-            id: 20,
-            slotId: 2,
-            fraudScore: 40,
-            lastScoreCheck: DateTime.now()),
+            id: 20, slotId: 2, fraudScore: 40, lastScoreCheck: DateTime.now()),
       ]);
       proxyController.rebuildIpLookup();
       scoringController.recalculateStatsForTest();
@@ -230,20 +224,11 @@ void main() {
       ]);
       proxyController.ipAddresses.addAll([
         makeIp(
-            id: 10,
-            slotId: 1,
-            fraudScore: 70,
-            lastScoreCheck: DateTime.now()),
+            id: 10, slotId: 1, fraudScore: 70, lastScoreCheck: DateTime.now()),
         makeIp(
-            id: 20,
-            slotId: 2,
-            fraudScore: 20,
-            lastScoreCheck: DateTime.now()),
+            id: 20, slotId: 2, fraudScore: 20, lastScoreCheck: DateTime.now()),
         makeIp(
-            id: 30,
-            slotId: 3,
-            fraudScore: 80,
-            lastScoreCheck: DateTime.now()),
+            id: 30, slotId: 3, fraudScore: 80, lastScoreCheck: DateTime.now()),
       ]);
       proxyController.rebuildIpLookup();
       scoringController.recalculateStatsForTest();

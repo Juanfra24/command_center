@@ -16,10 +16,14 @@ void main() {
     test('MicrobotSetupStep enum has correct ordering', () {
       expect(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.python),
           lessThan(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.java)));
-      expect(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.java),
-          lessThan(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.microbot)));
-      expect(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.microbot),
-          lessThan(MicrobotSetupStep.values.indexOf(MicrobotSetupStep.complete)));
+      expect(
+          MicrobotSetupStep.values.indexOf(MicrobotSetupStep.java),
+          lessThan(
+              MicrobotSetupStep.values.indexOf(MicrobotSetupStep.microbot)));
+      expect(
+          MicrobotSetupStep.values.indexOf(MicrobotSetupStep.microbot),
+          lessThan(
+              MicrobotSetupStep.values.indexOf(MicrobotSetupStep.complete)));
     });
   });
 }

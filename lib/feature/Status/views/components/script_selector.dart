@@ -53,8 +53,8 @@ class ScriptSelector extends StatelessWidget {
               if (current != null && scripts.length > 1)
                 IconButton(
                   icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
-                  onPressed: () => _confirmRemove(
-                      context, configService, current, scripts),
+                  onPressed: () =>
+                      _confirmRemove(context, configService, current, scripts),
                 ),
             ],
           ),
@@ -63,8 +63,11 @@ class ScriptSelector extends StatelessWidget {
     });
   }
 
-  Future<void> _confirmRemove(BuildContext context,
-      AppConfigService configService, String script, List<String> scripts) async {
+  Future<void> _confirmRemove(
+      BuildContext context,
+      AppConfigService configService,
+      String script,
+      List<String> scripts) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => ContentDialog(

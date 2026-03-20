@@ -60,9 +60,8 @@ class AutoRotationSettings extends StatelessWidget {
                   max: 100,
                   divisions: 20,
                   onChanged: enabled
-                      ? (value) =>
-                          resolvedService.autoRotationThreshold.value =
-                              value.round()
+                      ? (value) => resolvedService.autoRotationThreshold.value =
+                          value.round()
                       : null,
                   onChangeEnd: enabled
                       ? (value) => resolvedService

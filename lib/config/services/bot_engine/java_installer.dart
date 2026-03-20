@@ -31,7 +31,8 @@ class JavaInstaller {
 
   /// Download and install Eclipse Temurin JRE 17.
   /// [onProgress] called with (bytesDownloaded, totalBytes) for UI updates.
-  Future<String> install({void Function(int downloaded, int total)? onProgress}) async {
+  Future<String> install(
+      {void Function(int downloaded, int total)? onProgress}) async {
     final javaDir = p.join(_basePath, 'java');
     await Directory(javaDir).create(recursive: true);
 
@@ -41,7 +42,8 @@ class JavaInstaller {
     logger.i('Downloading Java 17 JRE from Adoptium...');
 
     // Download
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(adoptiumDownloadUrl));
       final response = await request.close();
@@ -79,7 +81,10 @@ class JavaInstaller {
       ]);
     } else {
       extractResult = await Process.run('tar', [
-        '-xzf', zipPath, '-C', javaDir,
+        '-xzf',
+        zipPath,
+        '-C',
+        javaDir,
       ]);
     }
 
@@ -99,13 +104,15 @@ class JavaInstaller {
         .toList();
 
     if (jreDirs.isEmpty) {
-      throw Exception('Java JRE extraction failed: no jdk-* directory found in $javaDir');
+      throw Exception(
+          'Java JRE extraction failed: no jdk-* directory found in $javaDir');
     }
 
     final javaExeName = Platform.isWindows ? 'java.exe' : 'java';
     final javaExePath = p.join(jreDirs.first.path, 'bin', javaExeName);
     if (!await File(javaExePath).exists()) {
-      throw Exception('Java JRE extraction incomplete: $javaExeName not found at $javaExePath');
+      throw Exception(
+          'Java JRE extraction incomplete: $javaExeName not found at $javaExePath');
     }
 
     // Store path in config
@@ -139,5 +146,6 @@ class JavaInstaller {
     return null;
   }
 
-  static bool isJava17OrHigher(int? version) => version != null && version >= 17;
+  static bool isJava17OrHigher(int? version) =>
+      version != null && version >= 17;
 }

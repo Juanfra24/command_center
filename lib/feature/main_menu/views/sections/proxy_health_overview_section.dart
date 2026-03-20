@@ -17,8 +17,9 @@ class ProxyHealthOverviewSection extends StatelessWidget {
 
       // Hidden when all proxies are healthy (no poor/bad/unscored)
       if (health.totalCount == 0) return const SizedBox.shrink();
-      final hasIssues =
-          health.poorCount > 0 || health.badCount > 0 || health.unscoredCount > 0;
+      final hasIssues = health.poorCount > 0 ||
+          health.badCount > 0 ||
+          health.unscoredCount > 0;
       if (!hasIssues) return const SizedBox.shrink();
 
       return _buildContent(context, health);
@@ -208,9 +209,7 @@ class ProxyHealthOverviewSection extends StatelessWidget {
         Text(
           scoreText,
           style: theme.typography.caption?.copyWith(
-            color: item.isUnscored
-                ? const Color(0xFF888888)
-                : Colors.red,
+            color: item.isUnscored ? const Color(0xFF888888) : Colors.red,
             fontWeight: FontWeight.w600,
           ),
         ),

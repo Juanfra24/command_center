@@ -116,8 +116,7 @@ class StatusController extends GetxController {
     // Build SOCKS5 proxy URL if a proxy slot is assigned
     String? proxyUrl;
     if (account.proxySlotId != null && _proxyRepository != null) {
-      final slot =
-          await _proxyRepository!.getSlotById(account.proxySlotId!);
+      final slot = await _proxyRepository!.getSlotById(account.proxySlotId!);
       if (slot != null && slot.socksPort != null) {
         final ip =
             await _proxyRepository!.getActiveIpForSlot(account.proxySlotId!);
@@ -250,7 +249,8 @@ class StatusController extends GetxController {
   }
 
   Future<void> updateDefaultScript(int characterId, String scriptName) async {
-    await _accountRepository?.updateCharacterDefaultScript(characterId, scriptName);
+    await _accountRepository?.updateCharacterDefaultScript(
+        characterId, scriptName);
     await getAccountsData();
   }
 

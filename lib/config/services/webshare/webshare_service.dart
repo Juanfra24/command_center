@@ -7,10 +7,7 @@ import 'package:command_center/config/services/webshare/webshare_replacement_han
 
 // Re-export models so existing imports still work
 export 'package:command_center/config/services/webshare/webshare_api_client.dart'
-    show
-        WebshareProxySlot,
-        WebsharePlanInfo,
-        WebshareApiException;
+    show WebshareProxySlot, WebsharePlanInfo, WebshareApiException;
 
 /// Service for interacting with Webshare API.
 /// Handles API key management, config sync, error handling, and orchestration.

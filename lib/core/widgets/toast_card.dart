@@ -69,27 +69,35 @@ class ToastCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     return switch (toast.severity) {
       ToastSeverity.success => _SeverityColors(
-          background: isDark ? const Color(0xFF1e3a1e) : const Color(0xFFe8f5e9),
+          background:
+              isDark ? const Color(0xFF1e3a1e) : const Color(0xFFe8f5e9),
           border: isDark ? const Color(0xFF2d5a2d) : const Color(0xFF81c784),
-          foreground: isDark ? const Color(0xFF4ade80) : const Color(0xFF2e7d32),
+          foreground:
+              isDark ? const Color(0xFF4ade80) : const Color(0xFF2e7d32),
           icon: FluentIcons.completed,
         ),
       ToastSeverity.error => _SeverityColors(
-          background: isDark ? const Color(0xFF3a1e1e) : const Color(0xFFffebee),
+          background:
+              isDark ? const Color(0xFF3a1e1e) : const Color(0xFFffebee),
           border: isDark ? const Color(0xFF5a2d2d) : const Color(0xFFe57373),
-          foreground: isDark ? const Color(0xFFf87171) : const Color(0xFFc62828),
+          foreground:
+              isDark ? const Color(0xFFf87171) : const Color(0xFFc62828),
           icon: FluentIcons.error_badge,
         ),
       ToastSeverity.warning => _SeverityColors(
-          background: isDark ? const Color(0xFF3a2d1e) : const Color(0xFFFFF8E1),
+          background:
+              isDark ? const Color(0xFF3a2d1e) : const Color(0xFFFFF8E1),
           border: isDark ? const Color(0xFF5a4a2d) : const Color(0xFFFFD54F),
-          foreground: isDark ? const Color(0xFFfbbf24) : const Color(0xFFf57f17),
+          foreground:
+              isDark ? const Color(0xFFfbbf24) : const Color(0xFFf57f17),
           icon: FluentIcons.warning,
         ),
       ToastSeverity.info => _SeverityColors(
-          background: isDark ? const Color(0xFF1e2d3a) : const Color(0xFFE3F2FD),
+          background:
+              isDark ? const Color(0xFF1e2d3a) : const Color(0xFFE3F2FD),
           border: isDark ? const Color(0xFF2d4a5a) : const Color(0xFF64B5F6),
-          foreground: isDark ? const Color(0xFF60a5fa) : const Color(0xFF1565C0),
+          foreground:
+              isDark ? const Color(0xFF60a5fa) : const Color(0xFF1565C0),
           icon: FluentIcons.info,
         ),
     };

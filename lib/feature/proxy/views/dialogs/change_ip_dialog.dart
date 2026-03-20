@@ -68,9 +68,8 @@ class ChangeIpDialog extends StatelessWidget {
                         : Get.find<ProxyController>().lastSyncError.value ??
                             'Failed to rotate IP',
                   ),
-                  severity: success
-                      ? InfoBarSeverity.success
-                      : InfoBarSeverity.error,
+                  severity:
+                      success ? InfoBarSeverity.success : InfoBarSeverity.error,
                   action: IconButton(
                     icon: const Icon(FluentIcons.clear),
                     onPressed: close,

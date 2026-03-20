@@ -106,7 +106,8 @@ class IpqsApiClient {
       }
     } catch (e) {
       // Scrub API key from exception messages (URL may contain key= param)
-      final sanitized = e.toString().replaceAll(RegExp(r'key=[^&\s]+'), 'key=***');
+      final sanitized =
+          e.toString().replaceAll(RegExp(r'key=[^&\s]+'), 'key=***');
       logger.e('IPQS API request failed: $sanitized');
       return IpqsResult.error('IPQS request failed. Check logs for details.');
     }

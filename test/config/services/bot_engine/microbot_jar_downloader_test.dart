@@ -6,9 +6,18 @@ void main() {
   group('MicrobotJarDownloader', () {
     test('findShadedJarUrl finds correct asset from release JSON', () {
       final assets = [
-        {'name': 'microbot-1.0.0.jar', 'url': 'https://api.github.com/repos/test/releases/assets/1'},
-        {'name': 'microbot-1.0.0-shaded.jar', 'url': 'https://api.github.com/repos/test/releases/assets/2'},
-        {'name': 'source.zip', 'url': 'https://api.github.com/repos/test/releases/assets/3'},
+        {
+          'name': 'microbot-1.0.0.jar',
+          'url': 'https://api.github.com/repos/test/releases/assets/1'
+        },
+        {
+          'name': 'microbot-1.0.0-shaded.jar',
+          'url': 'https://api.github.com/repos/test/releases/assets/2'
+        },
+        {
+          'name': 'source.zip',
+          'url': 'https://api.github.com/repos/test/releases/assets/3'
+        },
       ];
 
       final result = MicrobotJarDownloader.findShadedJarUrl(assets);
@@ -17,7 +26,10 @@ void main() {
 
     test('findShadedJarUrl returns null when no shaded JAR', () {
       final assets = [
-        {'name': 'source.zip', 'url': 'https://api.github.com/repos/test/releases/assets/3'},
+        {
+          'name': 'source.zip',
+          'url': 'https://api.github.com/repos/test/releases/assets/3'
+        },
       ];
 
       final result = MicrobotJarDownloader.findShadedJarUrl(assets);
@@ -25,10 +37,22 @@ void main() {
     });
 
     test('isUpdateAvailable compares versions', () {
-      expect(MicrobotJarDownloader.isUpdateAvailable(local: 'v1.0.0', remote: 'v1.1.0'), isTrue);
-      expect(MicrobotJarDownloader.isUpdateAvailable(local: 'v1.1.0', remote: 'v1.1.0'), isFalse);
-      expect(MicrobotJarDownloader.isUpdateAvailable(local: null, remote: 'v1.0.0'), isTrue);
-      expect(MicrobotJarDownloader.isUpdateAvailable(local: 'v1.0.0', remote: null), isFalse);
+      expect(
+          MicrobotJarDownloader.isUpdateAvailable(
+              local: 'v1.0.0', remote: 'v1.1.0'),
+          isTrue);
+      expect(
+          MicrobotJarDownloader.isUpdateAvailable(
+              local: 'v1.1.0', remote: 'v1.1.0'),
+          isFalse);
+      expect(
+          MicrobotJarDownloader.isUpdateAvailable(
+              local: null, remote: 'v1.0.0'),
+          isTrue);
+      expect(
+          MicrobotJarDownloader.isUpdateAvailable(
+              local: 'v1.0.0', remote: null),
+          isFalse);
     });
   });
 }

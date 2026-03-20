@@ -9,7 +9,11 @@ void main() {
         'characterId': 42,
         'characterName': 'BotAccount1',
         'status': 'running',
-        'script': {'name': 'Auto Woodcutting', 'running': true, 'runtime': 3600},
+        'script': {
+          'name': 'Auto Woodcutting',
+          'running': true,
+          'runtime': 3600
+        },
         'player': {
           'world': 301,
           'location': {'x': 3222, 'y': 3218},

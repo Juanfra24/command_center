@@ -38,7 +38,8 @@ class StatusScreen extends GetView<StatusController> {
         ),
       ),
       content: Obx(() {
-        if (controller.isLoading.value) return const Center(child: ProgressRing());
+        if (controller.isLoading.value)
+          return const Center(child: ProgressRing());
         if (controller.accountList.isEmpty) return _buildEmptyState(context);
         return _buildAccountsContent(context);
       }),
@@ -53,7 +54,8 @@ class StatusScreen extends GetView<StatusController> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: theme.accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(40),
@@ -63,22 +65,29 @@ class StatusScreen extends GetView<StatusController> {
           const SizedBox(height: 24),
           Text('No Accounts Yet', style: theme.typography.subtitle),
           const SizedBox(height: 8),
-          Text('Create your first character to get started.', style: theme.typography.body),
+          Text('Create your first character to get started.',
+              style: theme.typography.body),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: canCreate ? () => CreateCharacterDialog.show(context) : null,
+            onPressed:
+                canCreate ? () => CreateCharacterDialog.show(context) : null,
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [Icon(FluentIcons.add, size: 16), SizedBox(width: 8), Text('New Character')],
+                children: [
+                  Icon(FluentIcons.add, size: 16),
+                  SizedBox(width: 8),
+                  Text('New Character')
+                ],
               ),
             ),
           ),
           if (!canCreate) ...[
             const SizedBox(height: 12),
             Text('Connect Webshare first to sync proxy slots',
-                style: theme.typography.caption?.copyWith(color: Colors.orange)),
+                style:
+                    theme.typography.caption?.copyWith(color: Colors.orange)),
           ],
         ],
       ),
@@ -95,7 +104,8 @@ class StatusScreen extends GetView<StatusController> {
           Obx(() {
             final w = Get.find<WatchdogService>();
             w.trackedClients.length;
-            final chars = controller.accountList.fold<int>(0, (s, a) => s + a.characters.length);
+            final chars = controller.accountList
+                .fold<int>(0, (s, a) => s + a.characters.length);
             return SummaryCards(
               totalAccounts: controller.accountList.length,
               totalCharacters: chars,
@@ -104,7 +114,8 @@ class StatusScreen extends GetView<StatusController> {
           }),
           const SizedBox(height: 16),
           Obx(() {
-            final total = controller.accountList.fold<int>(0, (s, a) => s + a.characters.length);
+            final total = controller.accountList
+                .fold<int>(0, (s, a) => s + a.characters.length);
             return SearchFilterBar(
               showingCount: sel.filteredCount.value,
               totalCount: total,
@@ -112,7 +123,8 @@ class StatusScreen extends GetView<StatusController> {
           }),
           const SizedBox(height: 8),
           Obx(() => sel.hasSelection
-              ? StatusSelectionBar(controller: controller, selectionController: sel)
+              ? StatusSelectionBar(
+                  controller: controller, selectionController: sel)
               : BotFarmSummaryBar(
                   onStartAll: () async {
                     final c = await LaunchDialog.show(context);

@@ -16,20 +16,21 @@ class PythonResolver {
 
   /// Resolve which Python command is available.
   static Future<String> resolve() async {
-    final candidates = Platform.isWindows
-        ? ['python', 'python3']
-        : ['python3', 'python'];
+    final candidates =
+        Platform.isWindows ? ['python', 'python3'] : ['python3', 'python'];
 
     for (final candidate in candidates) {
       try {
         final result = await Process.run(candidate, ['--version']);
         if (result.exitCode == 0) {
-          logger.i('Python resolved to: $candidate (${(result.stdout as String).trim()})');
+          logger.i(
+              'Python resolved to: $candidate (${(result.stdout as String).trim()})');
           return candidate;
         }
       } catch (_) {}
     }
-    throw Exception('Python not found. Install Python 3.8+ and ensure it is in PATH.');
+    throw Exception(
+        'Python not found. Install Python 3.8+ and ensure it is in PATH.');
   }
 
   /// Reset the cache (for testing).

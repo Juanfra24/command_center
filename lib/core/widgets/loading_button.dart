@@ -75,8 +75,7 @@ class _LoadingButtonState extends State<LoadingButton> {
       ],
     );
 
-    final onPressed =
-        _state == _ButtonState.idle ? _handlePress : null;
+    final onPressed = _state == _ButtonState.idle ? _handlePress : null;
 
     return widget.style == LoadingButtonStyle.filled
         ? FilledButton(onPressed: onPressed, child: child)
@@ -84,10 +83,8 @@ class _LoadingButtonState extends State<LoadingButton> {
   }
 
   String get _currentLabel => switch (_state) {
-        _ButtonState.loading =>
-          widget.loadingLabel ?? widget.label,
-        _ButtonState.success =>
-          widget.successLabel ?? 'Done',
+        _ButtonState.loading => widget.loadingLabel ?? widget.label,
+        _ButtonState.success => widget.successLabel ?? 'Done',
         _ButtonState.error => 'Failed',
         _ => widget.label,
       };

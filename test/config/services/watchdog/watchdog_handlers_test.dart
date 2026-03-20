@@ -17,8 +17,7 @@ import 'package:command_center/feature/Status/data/process_model.dart';
 
 class MockBotEngine extends Mock implements BotEngine {}
 
-class MockNativeCommandsService extends Mock
-    implements NativeCommandsService {}
+class MockNativeCommandsService extends Mock implements NativeCommandsService {}
 
 class MockNotificationService extends Mock implements NotificationService {}
 
@@ -192,8 +191,7 @@ void main() {
       // consecutiveQuickDeaths is 2, threshold is 3 — after increment it hits 3
       final client = makeClient(
         launchedAt: DateTime.now().subtract(const Duration(seconds: 5)),
-        consecutiveQuickDeaths:
-            WatchdogService.banEscalationThreshold - 1, // 2
+        consecutiveQuickDeaths: WatchdogService.banEscalationThreshold - 1, // 2
       );
 
       handlers.classifyDeath(client);
@@ -291,15 +289,13 @@ void main() {
       expect(client.retryCount, retryCountBefore);
     });
 
-    test('successful relaunch updates status, PID, and returns true',
-        () async {
+    test('successful relaunch updates status, PID, and returns true', () async {
       final client = makeClient(
         status: ClientStatus.restarting,
         retryCount: 0,
         pid: null,
         // lastDeathAt long ago so cooldown has passed
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(minutes: 10)),
+        lastDeathAt: DateTime.now().subtract(const Duration(minutes: 10)),
       );
 
       when(() => mockBotEngine.launch(
@@ -321,13 +317,11 @@ void main() {
       expect(client.launchedAt, isNotNull);
     });
 
-    test('successful relaunch creates clientRelaunched notification',
-        () async {
+    test('successful relaunch creates clientRelaunched notification', () async {
       final client = makeClient(
         status: ClientStatus.restarting,
         retryCount: 0,
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(minutes: 10)),
+        lastDeathAt: DateTime.now().subtract(const Duration(minutes: 10)),
       );
 
       when(() => mockBotEngine.launch(
@@ -354,8 +348,7 @@ void main() {
       final client = makeClient(
         status: ClientStatus.restarting,
         retryCount: 0,
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(minutes: 10)),
+        lastDeathAt: DateTime.now().subtract(const Duration(minutes: 10)),
       );
 
       when(() => mockBotEngine.launch(
@@ -388,8 +381,7 @@ void main() {
       final client = makeClient(
         status: ClientStatus.restarting,
         retryCount: 2,
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(seconds: 60)),
+        lastDeathAt: DateTime.now().subtract(const Duration(seconds: 60)),
       );
 
       final result = await handlers.handleRestart(client);
@@ -404,8 +396,7 @@ void main() {
       final client = makeClient(
         status: ClientStatus.restarting,
         retryCount: 1,
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(seconds: 61)),
+        lastDeathAt: DateTime.now().subtract(const Duration(seconds: 61)),
       );
 
       when(() => mockBotEngine.launch(
@@ -430,8 +421,7 @@ void main() {
       final client = makeClient(
         status: ClientStatus.restarting,
         retryCount: 4,
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(seconds: 301)),
+        lastDeathAt: DateTime.now().subtract(const Duration(seconds: 301)),
       );
 
       when(() => mockBotEngine.launch(
@@ -484,8 +474,7 @@ void main() {
         ),
         status: ClientStatus.restarting,
         retryCount: 0,
-        lastDeathAt:
-            DateTime.now().subtract(const Duration(minutes: 10)),
+        lastDeathAt: DateTime.now().subtract(const Duration(minutes: 10)),
       );
 
       when(() => mockBotEngine.launch(
@@ -666,27 +655,26 @@ void main() {
 
       when(() => mockAccountRepo.updateCharacterBanned(any(), any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoRotation.rotateSlot(5))
-          .thenAnswer((_) async => true);
+      when(() => mockAutoRotation.rotateSlot(5)).thenAnswer((_) async => true);
 
       // Mock _buildProxyUrl dependencies
       final now = DateTime.now();
-      when(() => mockProxyRepo.getSlotById(5)).thenAnswer((_) async =>
-          ProxySlotEntity(
-            id: 5,
-            slotName: 'Slot 5',
-            slotNumber: 5,
-            username: 'user5',
-            password: 'pass5',
-            port: 80,
-            socksPort: 1080,
-            createdAt: now,
-            lastUpdated: now,
-            totalIpChanges: 0,
-            isActive: true,
-          ));
-      when(() => mockProxyRepo.getActiveIpForSlot(5)).thenAnswer(
-          (_) async => ProxyIpAddressEntity(
+      when(() => mockProxyRepo.getSlotById(5))
+          .thenAnswer((_) async => ProxySlotEntity(
+                id: 5,
+                slotName: 'Slot 5',
+                slotNumber: 5,
+                username: 'user5',
+                password: 'pass5',
+                port: 80,
+                socksPort: 1080,
+                createdAt: now,
+                lastUpdated: now,
+                totalIpChanges: 0,
+                isActive: true,
+              ));
+      when(() => mockProxyRepo.getActiveIpForSlot(5))
+          .thenAnswer((_) async => ProxyIpAddressEntity(
                 id: 50,
                 ipAddress: '9.8.7.6',
                 hostname: '9.8.7.6',
@@ -744,8 +732,7 @@ void main() {
 
       when(() => mockAccountRepo.updateCharacterBanned(any(), any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoRotation.rotateSlot(5))
-          .thenAnswer((_) async => false);
+      when(() => mockAutoRotation.rotateSlot(5)).thenAnswer((_) async => false);
 
       await handlers.handleBan(client);
 
@@ -764,25 +751,24 @@ void main() {
 
       when(() => mockAccountRepo.updateCharacterBanned(any(), any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoRotation.rotateSlot(5))
-          .thenAnswer((_) async => true);
+      when(() => mockAutoRotation.rotateSlot(5)).thenAnswer((_) async => true);
 
       // Slot has no socksPort => _buildProxyUrl returns null
       final now = DateTime.now();
-      when(() => mockProxyRepo.getSlotById(5)).thenAnswer((_) async =>
-          ProxySlotEntity(
-            id: 5,
-            slotName: 'Slot 5',
-            slotNumber: 5,
-            username: 'user5',
-            password: 'pass5',
-            port: 80,
-            socksPort: null,
-            createdAt: now,
-            lastUpdated: now,
-            totalIpChanges: 0,
-            isActive: true,
-          ));
+      when(() => mockProxyRepo.getSlotById(5))
+          .thenAnswer((_) async => ProxySlotEntity(
+                id: 5,
+                slotName: 'Slot 5',
+                slotNumber: 5,
+                username: 'user5',
+                password: 'pass5',
+                port: 80,
+                socksPort: null,
+                createdAt: now,
+                lastUpdated: now,
+                totalIpChanges: 0,
+                isActive: true,
+              ));
 
       await handlers.handleBan(client);
 

@@ -39,35 +39,48 @@ void main() {
       expect(args[1], '-jar');
       expect(args[2], '/app/microbot-shaded.jar');
       expect(args, contains('--cc-profile-dir=$expectedProfileDir'));
-      expect(args, contains('--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
+      expect(
+          args,
+          contains(
+              '--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
       expect(args, contains('--proxy=socks5://user:pass@1.2.3.4:1080'));
       expect(args, contains('--safe-mode'));
     });
 
     test('buildLaunchArgs omits --proxy when proxyUrl is null', () {
       final engine = _makeEngine();
-      final args = engine.buildLaunchArgs(characterId: 7, proxyUrl: null, config: const LaunchConfig(scriptName: 'Test'));
+      final args = engine.buildLaunchArgs(
+          characterId: 7,
+          proxyUrl: null,
+          config: const LaunchConfig(scriptName: 'Test'));
       expect(args.any((a) => a.startsWith('--proxy')), isFalse);
     });
 
     test('buildLaunchArgs uses default -Xmx512m when jvmArgs is null', () {
       final engine = _makeEngine();
-      final args = engine.buildLaunchArgs(characterId: 1, proxyUrl: null, config: const LaunchConfig(scriptName: 'Test'));
+      final args = engine.buildLaunchArgs(
+          characterId: 1,
+          proxyUrl: null,
+          config: const LaunchConfig(scriptName: 'Test'));
       expect(args[0], '-Xmx512m');
     });
 
     test('buildLaunchArgs includes advancedFlags', () {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
-        characterId: 1, proxyUrl: null,
-        config: const LaunchConfig(scriptName: 'Test', advancedFlags: '-fps 15 --low-detail'),
+        characterId: 1,
+        proxyUrl: null,
+        config: const LaunchConfig(
+            scriptName: 'Test', advancedFlags: '-fps 15 --low-detail'),
       );
       expect(args, contains('-fps'));
       expect(args, contains('15'));
       expect(args, contains('--low-detail'));
     });
 
-    test('buildLaunchArgs includes --script-params when scriptParams is non-empty', () {
+    test(
+        'buildLaunchArgs includes --script-params when scriptParams is non-empty',
+        () {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 1,
@@ -77,7 +90,8 @@ void main() {
       expect(args, contains('--script-params=1,2,3'));
     });
 
-    test('buildLaunchArgs omits --script-params when scriptParams is empty', () {
+    test('buildLaunchArgs omits --script-params when scriptParams is empty',
+        () {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 1,

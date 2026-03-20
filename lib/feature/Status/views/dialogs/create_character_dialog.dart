@@ -35,7 +35,8 @@ class CreateCharacterDialog {
           .toSet();
 
       availableSlots = proxyController.proxySlots
-          .where((slot) => slot.id != null && !assignedSlotIds.contains(slot.id))
+          .where(
+              (slot) => slot.id != null && !assignedSlotIds.contains(slot.id))
           .map((slot) => slot.id)
           .toList();
 

@@ -87,8 +87,7 @@ class AutomationService extends GetxService {
       return null;
     }
     final db = Get.find<DatabaseService>();
-    final currentIp =
-        await db.proxyRepository.getActiveIpForSlot(slot.id!);
+    final currentIp = await db.proxyRepository.getActiveIpForSlot(slot.id!);
     if (currentIp == null) {
       lastResult.value = AutomationResult.error(
         'No IP assigned to slot #${slot.slotNumber}',

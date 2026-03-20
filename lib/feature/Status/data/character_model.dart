@@ -41,5 +41,6 @@ class Character extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, banned, name, actualSkills, targetSkills, defaultScriptName];
+  List<Object?> get props =>
+      [id, banned, name, actualSkills, targetSkills, defaultScriptName];
 }

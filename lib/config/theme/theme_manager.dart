@@ -34,5 +34,4 @@ class ThemeManage {
     _themeMode.value = newMode;
     _saveThemeMode(!isDarkModeActive());
   }
-
 }
