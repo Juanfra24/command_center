@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-03-20
+
+### Bug Fixes
+
+- set explicit ContentDialog background for Linux (acrylic renders as grey box) (theme)
 ## [0.9.3] - 2026-03-20
 
 ### Bug Fixes
