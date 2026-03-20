@@ -2,6 +2,8 @@ import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/bot_engine/java_installer.dart';
 import 'package:command_center/config/services/bot_engine/microbot_jar_downloader.dart';
 import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/config/services/setup/scripts_extractor.dart';
+import 'package:command_center/config/services/setup/setup_orchestrator.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
@@ -152,12 +154,21 @@ class AppBindings extends Bindings {
       permanent: true,
     );
 
+    // Setup Orchestrator (depends on all setup services)
+    final setupOrchestrator = SetupOrchestrator(
+      scriptsExtractor: ScriptsExtractor(appDataDir: basePath),
+      pythonSetup: pythonSetupService,
+      javaInstaller: javaInstaller,
+      jarDownloader: jarDownloader,
+    );
+    Get.put<SetupOrchestrator>(setupOrchestrator, permanent: true);
+
     // NOTE: WatchdogService moved to initializePostSetup() — it depends on
-    // BotEngine which requires MicrobotSetupService to download dependencies first.
+    // BotEngine which requires SetupOrchestrator.run() to download dependencies first.
   }
 
   /// Phase 2b: Register BotEngine + WatchdogService.
-  /// Called AFTER MicrobotSetupService.ensureDependencies() downloads Java/JAR.
+  /// Called AFTER SetupOrchestrator.run() downloads Java/JAR.
   /// Skips BotEngine registration if setup failed (no Java/JAR paths).
   static Future<void> initializePostSetup() async {
     final appDataPath = Get.find<AppDataPath>();
