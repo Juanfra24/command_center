@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Command Center
+Comment=RuneScape Bot Command Center
+Exec=command_center
+Icon=command_center
+Type=Application
+Categories=Utility;
