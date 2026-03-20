@@ -140,34 +140,73 @@ class SetupOrchestrator extends GetxService {
   }
 
   Future<void> _runPythonSetup(int i) async {
-    _updateStep(i, detail: 'Checking Python...');
-    await _pythonSetup.initializeSetup();
+    // Reset PythonSetupService state to avoid stuck isChecking guard on retry
+    _pythonSetup.isChecking = false;
+    _pythonSetup.isSetupComplete = false;
+
+    _updateStep(i, detail: 'Checking Python availability...');
+    if (!await _pythonSetup.checkPythonAvailable()) {
+      throw SetupFailedException(
+          'Python not found. Please install Python 3.8 or higher.');
+    }
+
+    _updateStep(i, detail: 'Checking pip...');
+    if (!await _pythonSetup.checkPipAvailable()) {
+      throw SetupFailedException(
+          'pip not found. Please reinstall Python with pip.');
+    }
+
+    _updateStep(i, detail: 'Checking installed dependencies...', progress: 0.1);
+    if (await _pythonSetup.checkDependenciesInstalled()) {
+      _updateStep(i, detail: 'Verifying browser driver...', progress: 0.7);
+      final browserWorks = await _pythonSetup.installChromiumDriver();
+      if (browserWorks) {
+        _updateStep(i, detail: 'Python environment ready', progress: 1.0);
+        return;
+      }
+      logger.w('Browser verification failed, re-running full setup...');
+    }
+
+    _updateStep(i, detail: 'Installing Python dependencies...', progress: 0.2);
+    final success = await _pythonSetup.installDependencies();
+    if (!success) {
+      throw SetupFailedException(
+          _pythonSetup.setupError ?? 'Python setup failed');
+    }
+    _updateStep(i, detail: 'Python environment ready', progress: 1.0);
   }
 
   Future<void> _runJavaSetup(int i) async {
-    _updateStep(i, detail: 'Checking Java 17...');
+    _updateStep(i, detail: 'Checking for saved Java path...');
     var javaPath = await _javaInstaller.findJavaPath();
-    if (javaPath == null) {
-      _updateStep(i, detail: 'Downloading Java 17 Runtime...');
-      javaPath = await _javaInstaller.install(
-        onProgress: (downloaded, total) {
-          if (total > 0) {
-            final pct = downloaded / total;
-            final mb = (downloaded / 1024 / 1024).toStringAsFixed(1);
-            final totalMb = (total / 1024 / 1024).toStringAsFixed(1);
-            _updateStep(i,
-                detail: 'Downloading Java 17... $mb MB / $totalMb MB',
-                progress: pct);
-          }
-        },
-      );
+
+    if (javaPath != null) {
+      _updateStep(i, detail: 'Java 17 found at: $javaPath', progress: 1.0);
+      return;
     }
-    // Verify
+
+    _updateStep(i,
+        detail: 'Java 17 not found — downloading Eclipse Temurin JRE...',
+        progress: 0.05);
+    javaPath = await _javaInstaller.install(
+      onProgress: (downloaded, total) {
+        if (total > 0) {
+          final pct = downloaded / total;
+          final mb = (downloaded / 1024 / 1024).toStringAsFixed(1);
+          final totalMb = (total / 1024 / 1024).toStringAsFixed(1);
+          _updateStep(i,
+              detail: 'Downloading Java 17 JRE... $mb MB / $totalMb MB',
+              progress: 0.05 + (pct * 0.85));
+        }
+      },
+    );
+
+    _updateStep(i, detail: 'Verifying Java installation...', progress: 0.95);
     final verified = await _javaInstaller.findJavaPath();
     if (verified == null) {
       throw Exception('Java 17 not found after install');
     }
-    _updateStep(i, detail: 'Java 17 ready');
+    _updateStep(i, detail: 'Java 17 installed at: $verified', progress: 1.0);
   }
 
   Future<void> _runMicrobotSetup(int i) async {
@@ -191,7 +230,7 @@ class SetupOrchestrator extends GetxService {
       _updateStep(i, detail: 'Checking Microbot...', needsInput: false);
     }
 
-    _updateStep(i, detail: 'Checking Microbot...');
+    _updateStep(i, detail: 'Checking for cached Microbot JAR...');
     final jarPath = await _jarDownloader.ensureJar(
       onProgress: (downloaded, total) {
         if (total > 0) {
@@ -199,7 +238,7 @@ class SetupOrchestrator extends GetxService {
           final mb = (downloaded / 1024 / 1024).toStringAsFixed(1);
           final totalMb = (total / 1024 / 1024).toStringAsFixed(1);
           _updateStep(i,
-              detail: 'Downloading Microbot... $mb MB / $totalMb MB',
+              detail: 'Downloading Microbot JAR... $mb MB / $totalMb MB',
               progress: pct);
         }
       },
@@ -207,7 +246,7 @@ class SetupOrchestrator extends GetxService {
     if (jarPath == null) {
       throw Exception('Microbot JAR not available');
     }
-    _updateStep(i, detail: 'Microbot ready');
+    _updateStep(i, detail: 'Microbot JAR ready at: $jarPath');
   }
 
   // -- Error Mapping ---------------------------------------------------------
