@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:command_center/config/services/app_config_service.dart';
-import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/config/services/setup/setup_orchestrator.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
@@ -40,12 +40,8 @@ class AppLifecycle {
     AppBindings().dependencies();
     await AppBindings.initializeAsyncServices();
 
-    if (Get.isRegistered<MicrobotSetupService>()) {
-      final setupService = Get.find<MicrobotSetupService>();
-      await setupService.ensureDependencies();
-      while (!setupService.canProceed) {
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
+    if (Get.isRegistered<SetupOrchestrator>()) {
+      await Get.find<SetupOrchestrator>().run();
     }
 
     await AppBindings.initializePostSetup();

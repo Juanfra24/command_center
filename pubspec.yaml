@@ -49,4 +49,8 @@ flutter:
   assets:
     - assets/images/
     - assets/music/
+    - scripts/account_automation.py
+    - scripts/requirements.txt
+    - scripts/automation/
+    - scripts/automation/commands/
 
