@@ -7,7 +7,10 @@ import 'package:command_center/config/services/automation/automation_service.dar
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
+import 'dart:io' show Platform;
+import 'package:command_center/config/services/native_commands_linux.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:command_center/config/services/native_commands_windows.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
@@ -41,7 +44,10 @@ class AppBindings extends Bindings {
     // Synchronous services first
     Get.put<AppDataPath>(AppDataPath(), permanent: true);
     Get.put<MusicController>(MusicController(), permanent: true);
-    Get.put<NativeCommandsService>(NativeCommandsService(), permanent: true);
+    Get.put<NativeCommandsService>(
+      Platform.isWindows ? NativeCommandsWindows() : NativeCommandsLinux(),
+      permanent: true,
+    );
 
     // Feature controllers (lazy - created when needed)
     Get.lazyPut<MainMenuController>(() => MainMenuController(), fenix: true);

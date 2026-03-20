@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
-import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:path/path.dart' as p;
+import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:mocktail/mocktail.dart';
+
+class _MockNativeCommands extends Mock implements NativeCommandsService {}
 
 MicrobotEngine _makeEngine({
   String jarPath = '/app/microbot-shaded.jar',
@@ -12,7 +15,7 @@ MicrobotEngine _makeEngine({
     javaPath: '/java/bin/java.exe',
     jarPath: jarPath,
     profilesBasePath: profilesBasePath,
-    nativeCommands: NativeCommandsService(),
+    nativeCommands: _MockNativeCommands(),
     onLog: (_) {},
   );
 }

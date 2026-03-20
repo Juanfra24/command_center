@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:command_center/config/services/python_dependency_checker.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/python_resolver.dart';
 import 'package:command_center/core/helper/scripts_path.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
@@ -98,8 +99,9 @@ class PythonSetupService extends GetxService {
 
       logger.i('Installing from: $requirementsPath');
 
+      final python = await PythonResolver.executable;
       final process = await Process.start(
-        'python',
+        python,
         [
           '-m',
           'pip',
@@ -177,8 +179,9 @@ class PythonSetupService extends GetxService {
     try {
       logger.i('Installing Chromium via patchright...');
 
+      final python = await PythonResolver.executable;
       final result = await Process.run(
-        'python',
+        python,
         ['-m', 'patchright', 'install', 'chromium'],
         workingDirectory: _scriptsPath,
       );
