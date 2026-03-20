@@ -23,7 +23,7 @@ void main() {
       final url = JavaInstaller.adoptiumDownloadUrl;
       expect(url, contains('api.adoptium.net'));
       expect(url, contains('/17/'));
-      expect(url, contains('windows'));
+      expect(url, anyOf(contains('windows'), contains('linux')));
       expect(url, contains('jre'));
     });
   });

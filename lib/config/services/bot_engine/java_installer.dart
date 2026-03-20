@@ -13,8 +13,9 @@ class JavaInstaller {
       : _appConfig = appConfig,
         _basePath = basePath;
 
-  static const adoptiumDownloadUrl =
-      'https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse';
+  static String get adoptiumDownloadUrl => Platform.isWindows
+      ? 'https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse'
+      : 'https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jre/hotspot/normal/eclipse';
 
   /// Check if Java 17+ is available (either configured path or system).
   Future<String?> findJavaPath() async {
@@ -34,7 +35,8 @@ class JavaInstaller {
     final javaDir = p.join(_basePath, 'java');
     await Directory(javaDir).create(recursive: true);
 
-    final zipPath = p.join(javaDir, 'temurin-jre-17.zip');
+    final archiveExt = Platform.isWindows ? 'zip' : 'tar.gz';
+    final zipPath = p.join(javaDir, 'temurin-jre-17.$archiveExt');
 
     logger.i('Downloading Java 17 JRE from Adoptium...');
 
@@ -68,11 +70,18 @@ class JavaInstaller {
 
     logger.i('Extracting Java JRE...');
 
-    // Extract zip using PowerShell (Windows)
-    final extractResult = await Process.run('powershell', [
-      '-Command',
-      'Expand-Archive -Path "$zipPath" -DestinationPath "$javaDir" -Force',
-    ]);
+    // Extract archive (platform-specific)
+    final ProcessResult extractResult;
+    if (Platform.isWindows) {
+      extractResult = await Process.run('powershell', [
+        '-Command',
+        'Expand-Archive -Path "$zipPath" -DestinationPath "$javaDir" -Force',
+      ]);
+    } else {
+      extractResult = await Process.run('tar', [
+        '-xzf', zipPath, '-C', javaDir,
+      ]);
+    }
 
     // Clean up zip regardless of extraction result
     try {
@@ -93,9 +102,10 @@ class JavaInstaller {
       throw Exception('Java JRE extraction failed: no jdk-* directory found in $javaDir');
     }
 
-    final javaExePath = p.join(jreDirs.first.path, 'bin', 'java.exe');
+    final javaExeName = Platform.isWindows ? 'java.exe' : 'java';
+    final javaExePath = p.join(jreDirs.first.path, 'bin', javaExeName);
     if (!await File(javaExePath).exists()) {
-      throw Exception('Java JRE extraction incomplete: java.exe not found at $javaExePath');
+      throw Exception('Java JRE extraction incomplete: $javaExeName not found at $javaExePath');
     }
 
     // Store path in config
