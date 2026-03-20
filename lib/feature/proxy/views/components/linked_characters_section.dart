@@ -60,13 +60,9 @@ class LinkedCharactersSection extends StatelessWidget {
             ),
             child: Center(
               child: Icon(
-                character.banned
-                    ? FluentIcons.blocked
-                    : FluentIcons.people,
+                character.banned ? FluentIcons.blocked : FluentIcons.people,
                 size: 16,
-                color: character.banned
-                    ? Colors.red
-                    : theme.accentColor,
+                color: character.banned ? Colors.red : theme.accentColor,
               ),
             ),
           ),
@@ -89,8 +85,7 @@ class LinkedCharactersSection extends StatelessWidget {
           ),
           if (character.banned)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.red.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),

@@ -28,8 +28,8 @@ class StatusSelectionBar extends StatelessWidget {
     return SelectionToolbar(
       selectedCount: selectionController.selectedCount,
       totalCount: allIds.length,
-      allSelected:
-          selectionController.selectedCount == allIds.length && allIds.isNotEmpty,
+      allSelected: selectionController.selectedCount == allIds.length &&
+          allIds.isNotEmpty,
       onSelectAll: () => selectionController.selectAll(allIds),
       onClearSelection: selectionController.clearSelection,
       actions: [

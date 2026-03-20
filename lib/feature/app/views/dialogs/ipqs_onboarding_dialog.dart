@@ -80,8 +80,7 @@ class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
                       _statusMessage.value = 'Cancelling...';
                     }
                   : () => Navigator.of(context).pop(),
-              child:
-                  Text(_isProcessing.value ? 'Cancel Scoring' : 'Cancel'),
+              child: Text(_isProcessing.value ? 'Cancel Scoring' : 'Cancel'),
             )),
         _buildConnectButton(context),
       ],
@@ -90,9 +89,8 @@ class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
 
   Widget _buildConnectButton(BuildContext outerContext) {
     return Obx(() => FilledButton(
-          onPressed: _isProcessing.value
-              ? null
-              : () => _handleConnect(outerContext),
+          onPressed:
+              _isProcessing.value ? null : () => _handleConnect(outerContext),
           child: _isProcessing.value
               ? const Row(
                   mainAxisSize: MainAxisSize.min,

@@ -51,7 +51,8 @@ class WatchdogHandlers {
 
     if (alive < WatchdogService.quickDeathThreshold) {
       client.consecutiveQuickDeaths++;
-      if (client.consecutiveQuickDeaths >= WatchdogService.banEscalationThreshold) {
+      if (client.consecutiveQuickDeaths >=
+          WatchdogService.banEscalationThreshold) {
         client.status = ClientStatus.banned;
         logger.e('Ban detected for ${client.characterName} '
             '(${client.consecutiveQuickDeaths} consecutive quick deaths)');
@@ -154,7 +155,13 @@ class WatchdogHandlers {
 
       // Build lookup: characterId -> (name, accountId, email, password, proxySlotId)
       final characterLookup = <int,
-          ({String name, int accountId, String email, String password, int? proxySlotId})>{};
+          ({
+        String name,
+        int accountId,
+        String email,
+        String password,
+        int? proxySlotId
+      })>{};
       for (final account in accounts) {
         for (final character in account.characters) {
           if (character.id != null) {

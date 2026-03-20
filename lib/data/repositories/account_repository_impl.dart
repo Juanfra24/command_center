@@ -135,8 +135,7 @@ class AccountRepositoryImpl implements AccountRepository {
             lastUpdated: Value(DateTime.now()),
           ));
         } else {
-          await _insertCharacter(
-              character.copyWith(accountId: account.id));
+          await _insertCharacter(character.copyWith(accountId: account.id));
         }
       }
     });

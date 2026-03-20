@@ -57,9 +57,8 @@ class ScriptChip extends StatelessWidget {
             Icon(
               FluentIcons.settings,
               size: 12,
-              color: banned
-                  ? theme.resources.textFillColorDisabled
-                  : Colors.blue,
+              color:
+                  banned ? theme.resources.textFillColorDisabled : Colors.blue,
             ),
             const SizedBox(width: 4),
             Text(scriptName!, style: textStyle),

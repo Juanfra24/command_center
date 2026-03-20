@@ -50,8 +50,10 @@ class BotStatusBadge extends StatelessWidget {
       case ClientStatus.running:
         return ('Running', Colors.green);
       case ClientStatus.restarting:
-        return ('Restarting $retryCount/${WatchdogService.maxRetries}',
-            Colors.orange);
+        return (
+          'Restarting $retryCount/${WatchdogService.maxRetries}',
+          Colors.orange
+        );
       case ClientStatus.failed:
         return (
           'Failed $retryCount/${WatchdogService.maxRetries}',

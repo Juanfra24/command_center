@@ -87,9 +87,8 @@ class ProxySlotEntity extends Equatable {
       username: username ?? this.username,
       password: password ?? this.password,
       port: port ?? this.port,
-      socksPort: identical(socksPort, _absent)
-          ? this.socksPort
-          : socksPort as int?,
+      socksPort:
+          identical(socksPort, _absent) ? this.socksPort : socksPort as int?,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       totalIpChanges: totalIpChanges ?? this.totalIpChanges,

@@ -184,8 +184,8 @@ class WatchdogService extends GetxService {
           if (client.statusPort != null) {
             try {
               final request = await _statusHttpClient
-                  .getUrl(Uri.parse(
-                      'http://127.0.0.1:${client.statusPort}/status'))
+                  .getUrl(
+                      Uri.parse('http://127.0.0.1:${client.statusPort}/status'))
                   .timeout(const Duration(seconds: 2));
               final response =
                   await request.close().timeout(const Duration(seconds: 2));
@@ -194,7 +194,8 @@ class WatchdogService extends GetxService {
                 final newStatus = BotStatus.fromJson(
                     jsonDecode(body) as Map<String, dynamic>);
                 if (client.lastStatus?.status != newStatus.status ||
-                    client.lastStatus?.scriptRunning != newStatus.scriptRunning) {
+                    client.lastStatus?.scriptRunning !=
+                        newStatus.scriptRunning) {
                   changed = true;
                 }
                 client.lastStatus = newStatus;
@@ -233,5 +234,4 @@ class WatchdogService extends GetxService {
       _tickInProgress = false;
     }
   }
-
 }

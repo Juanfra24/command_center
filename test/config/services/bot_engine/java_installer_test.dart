@@ -6,9 +6,12 @@ void main() {
   group('JavaInstaller', () {
     test('parseJavaMajorVersion parses modern and legacy version strings', () {
       // Java 17 version output: 'openjdk 17.0.9 2023-10-17'
-      expect(JavaInstaller.parseJavaMajorVersion('openjdk 17.0.9 2023-10-17'), 17);
-      expect(JavaInstaller.parseJavaMajorVersion('openjdk 21.0.1 2023-10-17'), 21);
-      expect(JavaInstaller.parseJavaMajorVersion('java version "1.8.0_301"'), 8);
+      expect(
+          JavaInstaller.parseJavaMajorVersion('openjdk 17.0.9 2023-10-17'), 17);
+      expect(
+          JavaInstaller.parseJavaMajorVersion('openjdk 21.0.1 2023-10-17'), 21);
+      expect(
+          JavaInstaller.parseJavaMajorVersion('java version "1.8.0_301"'), 8);
       expect(JavaInstaller.parseJavaMajorVersion('not java output'), null);
     });
 

@@ -80,7 +80,8 @@ class ProxyListSection extends StatelessWidget {
             _buildStatChip(
               context,
               label: 'Avg Score',
-              value: scoringController.averageFraudScore.value.toStringAsFixed(1),
+              value:
+                  scoringController.averageFraudScore.value.toStringAsFixed(1),
               color: getScoreColor(scoringController.averageFraudScore.value,
                   hasBeenScored: scoringController.hasScoredIps.value),
             ),

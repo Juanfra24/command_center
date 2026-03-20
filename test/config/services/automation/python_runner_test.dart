@@ -9,11 +9,13 @@ void main() {
     group('proxy credentials', () {
       test('redacts password in user:pass@host:port format', () {
         const input = 'user123:s3cr3tPass@p.webshare.io:80';
-        expect(PythonRunner.redact(input), equals('user123:***@p.webshare.io:80'));
+        expect(
+            PythonRunner.redact(input), equals('user123:***@p.webshare.io:80'));
       });
 
       test('redacts password when embedded in a longer string', () {
-        const input = 'Connecting with proxy user123:hunter2@p.webshare.io:80 ...';
+        const input =
+            'Connecting with proxy user123:hunter2@p.webshare.io:80 ...';
         expect(
           PythonRunner.redact(input),
           equals('Connecting with proxy user123:***@p.webshare.io:80 ...'),
@@ -70,7 +72,8 @@ void main() {
         expect(result, contains('--other-flag value'));
       });
 
-      test('redacts --imap-pass with a single-token value (no spaces in value)', () {
+      test('redacts --imap-pass with a single-token value (no spaces in value)',
+          () {
         const input = '--imap-pass abc123!';
         expect(PythonRunner.redact(input), equals('--imap-pass ***'));
       });
@@ -118,8 +121,7 @@ void main() {
       });
 
       test('preserves non-sensitive parts of a mixed string', () {
-        const input =
-            'user:s3cr3t@host:80 Log: account created with world=301';
+        const input = 'user:s3cr3t@host:80 Log: account created with world=301';
         final result = PythonRunner.redact(input);
         expect(result, contains('Log: account created with world=301'));
       });

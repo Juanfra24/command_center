@@ -5,7 +5,8 @@ void main() {
   group('NativeCommandsLinux', () {
     group('parsePsOutput', () {
       test('parses java process from ps output', () {
-        const output = '  1234 java            java -jar /app/bot.jar --cc-profile-dir=/profiles/bot-42\n';
+        const output =
+            '  1234 java            java -jar /app/bot.jar --cc-profile-dir=/profiles/bot-42\n';
         final result = NativeCommandsLinux.parsePsOutput(output);
         expect(result.length, 1);
         expect(result.first.processId, 1234);
@@ -28,7 +29,8 @@ void main() {
       });
 
       test('handles multiple java processes', () {
-        const output = '  1001 java            java -jar bot.jar --cc-profile-dir=/p/bot-1\n'
+        const output =
+            '  1001 java            java -jar bot.jar --cc-profile-dir=/p/bot-1\n'
             '  1002 java            java -jar bot.jar --cc-profile-dir=/p/bot-2\n';
         final result = NativeCommandsLinux.parsePsOutput(output);
         expect(result.length, 2);

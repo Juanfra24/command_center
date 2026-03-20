@@ -118,7 +118,8 @@ class AppConfigService extends GetxService {
       return Result.success(null);
     } catch (e) {
       logger.e('Error saving Webshare API key: $e');
-      return Result.failure('Failed to save Webshare API key. Check logs for details.');
+      return Result.failure(
+          'Failed to save Webshare API key. Check logs for details.');
     }
   }
 
@@ -137,7 +138,8 @@ class AppConfigService extends GetxService {
       return Result.success(null);
     } catch (e) {
       logger.e('Error clearing Webshare API key: $e');
-      return Result.failure('Failed to clear Webshare API key. Check logs for details.');
+      return Result.failure(
+          'Failed to clear Webshare API key. Check logs for details.');
     }
   }
 

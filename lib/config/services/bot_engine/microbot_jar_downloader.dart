@@ -73,7 +73,8 @@ class MicrobotJarDownloader {
     // Download to .tmp first for atomic rename — never corrupt the existing JAR
     final jarPath = p.join(microbotDir, 'microbot-shaded.jar');
     final tmpPath = '$jarPath.tmp';
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(downloadUrl));
       // Private repo assets require Bearer token + octet-stream accept
@@ -82,8 +83,7 @@ class MicrobotJarDownloader {
       final response = await request.close();
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-            'JAR download failed with HTTP ${response.statusCode}');
+        throw Exception('JAR download failed with HTTP ${response.statusCode}');
       }
 
       final totalBytes = response.contentLength;
@@ -127,7 +127,8 @@ class MicrobotJarDownloader {
   }
 
   Future<Map<String, dynamic>> _fetchLatestRelease(String token) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(_releasesUrl));
       request.headers.set('Accept', 'application/vnd.github+json');
@@ -141,7 +142,8 @@ class MicrobotJarDownloader {
         throw Exception('GitHub API rate limited');
       }
       if (response.statusCode == 404) {
-        throw Exception('Release not found — check repo URL and PAT permissions');
+        throw Exception(
+            'Release not found — check repo URL and PAT permissions');
       }
 
       final body = await response.transform(utf8.decoder).join();

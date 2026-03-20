@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-RuneScape Bot Command Center - A Windows desktop app (Flutter + Fluent UI) for managing a bot farm: accounts, proxies, bot engine orchestration (Microbot/RuneLite), and browser-based Jagex account creation.
+RuneScape Bot Command Center - A cross-platform desktop app (Flutter + Fluent UI, Windows + Linux) for managing a bot farm: accounts, proxies, bot engine orchestration (Microbot/RuneLite), and browser-based Jagex account creation.
 
 ## Tech Stack
 
-- **Framework:** Flutter (Windows desktop only), SDK >=3.3.4
-- **UI:** Fluent UI (`fluent_ui` 4.13.0 pinned) - Windows 11 Fluent Design
+- **Framework:** Flutter (Windows + Linux desktop), SDK >=3.3.4
+- **UI:** Fluent UI (`fluent_ui` 4.13.0 pinned) - Windows 11 Fluent Design (renders on both platforms)
 - **State Management:** GetX (`get` ^4.6.5) - controllers, services, DI, reactivity
 - **Database:** Drift ORM (`drift` ^2.22.1) - SQLite with code generation
 - **Bot Engine:** Microbot (private RuneLite fork) via Java 17 (Eclipse Temurin)
@@ -90,18 +90,25 @@ config/services/<domain>/
 ```bash
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs   # Generate Drift code
+
+# Windows
 flutter run -d windows
 flutter build windows --release
+
+# Linux (requires: clang cmake ninja-build pkg-config libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev)
+flutter run -d linux
+flutter build linux --release
 ```
 
 ## Release Flow
 
 Automated semantic releases via GitHub Actions (`.github/workflows/release.yml`):
 
-1. Push to `main` triggers: commit lint → build → release
+1. Push to `main` triggers: commit lint → lint & test (Linux) → build (Windows x64 + Linux x64) → release
 2. Commits are analyzed for `feat:` (minor), `fix:`/`perf:` (patch), `BREAKING CHANGE` (major)
-3. If releasable commits exist: bumps `pubspec.yaml`, updates `CHANGELOG.md`, tags, creates GitHub Release with Windows zip
+3. If releasable commits exist: bumps `pubspec.yaml`, updates `CHANGELOG.md`, tags, creates GitHub Release with Windows zip + Linux AppImage
 4. Non-releasable commits (`chore:`, `docs:`, `style:`, `refactor:`, `test:`) only build — no release
+5. ARM64 builds (Windows/Linux) not in CI — Flutter SDK lacks ARM64 CI binaries. Build from source locally.
 
 **Commit message format (enforced):**
 ```
@@ -109,16 +116,16 @@ Automated semantic releases via GitHub Actions (`.github/workflows/release.yml`)
 ```
 Types: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `build`, `revert`
 
-## Database Schema (v4)
+## Database Schema (v7)
 
 - **AppConfigTable** - Key-value config store (API keys, theme, auto-rotation settings, Java/JAR paths, GitHub PAT)
 - **ProxySlotsTable** - Webshare proxy slots with soft delete, IP rotation tracking
-- **ProxyIpAddressesTable** - IP history per slot with IPQS scoring, geo-location, fraud indicators
+- **ProxyIpAddressesTable** - IP history per slot with IPQS scoring, geo-location, fraud indicators (indexed: slot_id+is_active)
 - **AccountsTable** - Jagex accounts (email, password, birthday, proxy_slot_id)
-- **CharactersTable** - Game characters linked to accounts (skills JSON, banned flag, CASCADE delete on account)
-- **NotificationsTable** - Persistent notifications (type, severity, read status, timestamps)
+- **CharactersTable** - Game characters linked to accounts (skills JSON, banned flag, CASCADE delete on account, indexed: account_id)
+- **NotificationsTable** - Persistent notifications (type, severity, read status, timestamps, indexed: is_read)
 
-Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notifications table
+Migrations: v1 initial → v2 soft delete → v3 cascade delete → v4 notifications → v5 IPQS columns + defaultScriptName → v6 socksPort → v7 performance indices
 
 ## Dependency Injection (3-Phase)
 
@@ -153,7 +160,7 @@ Skips BotEngine if Java path is unavailable (app still works without bot engine)
 - **BotEngine** (abstract) - Interface for launching/stopping bot instances
 - **MicrobotEngine** - Concrete: Process.start() with env vars, profile management
 - **MicrobotSetupService** - Orchestrates dependency installation (Python + Java + JAR)
-- **JavaInstaller** - Downloads Eclipse Temurin JRE 17 to `%APPDATA%/CommandCenter/java/`
+- **JavaInstaller** - Downloads Eclipse Temurin JRE 17 (platform-aware: .zip/PowerShell on Windows, .tar.gz/tar on Linux)
 - **MicrobotJarDownloader** - Downloads latest JAR from GitHub Releases (PAT auth for private repo)
 - **MicrobotProfileWriter** - Writes `credentials.properties` + `commandcenter.properties` per account
 
@@ -171,7 +178,9 @@ Skips BotEngine if Java path is unavailable (app still works without bot engine)
 - **AutomationService** - Orchestrates Python browser automation (validate IP, create account)
 - **PythonSetupService** - Python + Patchright dependency installer
 - **PythonDependencyChecker** - Chromium installation verification
-- **NativeCommandsService** - Windows platform channel (WMI COM API: list/kill processes, CreateProcess)
+- **NativeCommandsService** - Abstract interface for OS process operations (list/kill Java processes)
+  - **NativeCommandsWindows** - Windows: WMI COM API via platform channel
+  - **NativeCommandsLinux** - Linux: pure Dart using `ps`/`kill`
 - **OnboardingService** - Tracks setup completion (Webshare + IPQS configured) (extends GetxService)
 - **NotificationService** - Notification persistence & UI dispatch (extends GetxService)
 
@@ -210,13 +219,25 @@ Skips BotEngine if Java path is unavailable (app still works without bot engine)
 | **Notification** | `feature/notification/` | NotificationController | Bell + flyout in title bar, persistent notifications |
 | **DevTools** | `feature/dev_tools/` | DevToolsController | Database viewer, SQL runner (debug only) |
 
+## Platform Abstraction
+
+Process management, Java installation, Python resolution, and file opening are abstracted behind platform-aware helpers:
+
+- **NativeCommandsService** - abstract → Windows (WMI C++) / Linux (Dart ps/kill)
+- **JavaInstaller** - `Platform.isWindows` branching for download URL, extraction, executable name
+- **PythonResolver** - `python3` (Linux) / `python` (Windows) with caching (`core/helper/python_resolver.dart`)
+- **`openInFileManager()`** - `explorer.exe` (Windows) / `xdg-open` (Linux) (`core/helper/platform_open.dart`)
+- **DI wiring** - `Platform.isWindows ? NativeCommandsWindows() : NativeCommandsLinux()`
+
 ## Current State
 
 - **Version:** 0.7.0 (pubspec.yaml and CHANGELOG in sync)
-- **Test suite:** 31 test files covering bot engine, services, repositories, controllers, UI components, and helpers
-- **Feature files:** 92 Dart files across 7 features
+- **Platforms:** Windows x64, Linux x64 (ARM64 build-from-source only)
+- **Test suite:** 35 test files, 311 tests covering bot engine, watchdog handlers, services, repositories, controllers, UI components, and helpers
+- **Feature files:** 93 Dart files across 7 features
 - Layered atomic architecture enforced across all features
-- Performance optimized: cached IP lookups, batched DB queries, scoped Obx rebuilds
+- Performance optimized: cached IP lookups, batched DB queries, scoped Obx rebuilds, DB indices on FK columns
 - Rx lifecycle clean: no leaked workers, no dead observables, proper disposal throughout
 - AutomationService decomposed: PythonRunner (process management) + ResultParser (output parsing)
 - Security hardened: credentials via env vars, log sanitization, IPQS key out of URL, proxy password obscured in UI
+- App shell decomposed: app.dart (139 lines) + extracted title bar, navigation, lifecycle components

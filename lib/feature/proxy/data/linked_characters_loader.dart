@@ -13,10 +13,8 @@ class LinkedCharactersLoader {
   Future<void> loadForSlot(int slotId) async {
     if (_accountRepository == null) return;
     try {
-      final accounts =
-          await _accountRepository.getAccountsByProxySlot(slotId);
-      linkedCharacters.value =
-          accounts.expand((a) => a.characters).toList();
+      final accounts = await _accountRepository.getAccountsByProxySlot(slotId);
+      linkedCharacters.value = accounts.expand((a) => a.characters).toList();
     } catch (e) {
       logger.e('Error loading linked characters for slot $slotId: $e');
       linkedCharacters.clear();

@@ -19,7 +19,8 @@ void main() {
   });
 
   group('MicrobotProfileWriter', () {
-    test('writeProfile creates profile directory with settings and credentials', () async {
+    test('writeProfile creates profile directory with settings and credentials',
+        () async {
       await writer.writeProfile(
         characterId: 42,
         email: 'test@example.com',
@@ -31,12 +32,14 @@ void main() {
       final profileDir = Directory(p.join(tempDir.path, 'bot-42'));
       expect(profileDir.existsSync(), isTrue);
 
-      final settings = File(p.join(profileDir.path, 'commandcenter.properties'));
+      final settings =
+          File(p.join(profileDir.path, 'commandcenter.properties'));
       expect(settings.existsSync(), isTrue);
       final settingsContent = settings.readAsStringSync();
       expect(settingsContent, contains('world=301'));
 
-      final credentials = File(p.join(profileDir.path, 'credentials.properties'));
+      final credentials =
+          File(p.join(profileDir.path, 'credentials.properties'));
       expect(credentials.existsSync(), isTrue);
       final credentialsContent = credentials.readAsStringSync();
       expect(credentialsContent, contains('email=test@example.com'));
@@ -44,15 +47,26 @@ void main() {
     });
 
     test('writeProfile handles auto world', () async {
-      await writer.writeProfile(characterId: 7, email: 'auto@test.com', password: 'pass', world: 'auto', scriptName: 'Woodcutter');
+      await writer.writeProfile(
+          characterId: 7,
+          email: 'auto@test.com',
+          password: 'pass',
+          world: 'auto',
+          scriptName: 'Woodcutter');
 
-      final settings = File(p.join(tempDir.path, 'bot-7', 'commandcenter.properties'));
+      final settings =
+          File(p.join(tempDir.path, 'bot-7', 'commandcenter.properties'));
       final content = settings.readAsStringSync();
       expect(content, isNot(contains('world=auto')));
     });
 
     test('deleteProfile removes the entire profile directory', () async {
-      await writer.writeProfile(characterId: 42, email: 'test@example.com', password: 'pass', world: '301', scriptName: 'Test');
+      await writer.writeProfile(
+          characterId: 42,
+          email: 'test@example.com',
+          password: 'pass',
+          world: '301',
+          scriptName: 'Test');
       final profileDir = Directory(p.join(tempDir.path, 'bot-42'));
       expect(profileDir.existsSync(), isTrue);
       await writer.deleteProfile(characterId: 42);
@@ -64,14 +78,25 @@ void main() {
     });
 
     test('cleanStaleProfiles removes directories not in livePids', () async {
-      await writer.writeProfile(characterId: 1, email: 'a@b.com', password: 'p', world: 'auto', scriptName: 'S');
-      await writer.writeProfile(characterId: 2, email: 'c@d.com', password: 'p', world: 'auto', scriptName: 'S');
+      await writer.writeProfile(
+          characterId: 1,
+          email: 'a@b.com',
+          password: 'p',
+          world: 'auto',
+          scriptName: 'S');
+      await writer.writeProfile(
+          characterId: 2,
+          email: 'c@d.com',
+          password: 'p',
+          world: 'auto',
+          scriptName: 'S');
       await writer.cleanStaleProfiles(liveCharacterIds: {1});
       expect(Directory(p.join(tempDir.path, 'bot-1')).existsSync(), isTrue);
       expect(Directory(p.join(tempDir.path, 'bot-2')).existsSync(), isFalse);
     });
 
-    test('writeProfile writes scriptParams to commandcenter.properties', () async {
+    test('writeProfile writes scriptParams to commandcenter.properties',
+        () async {
       await writer.writeProfile(
         characterId: 10,
         email: 'sp@test.com',
@@ -81,13 +106,15 @@ void main() {
         scriptParams: '1,2,3',
       );
 
-      final settings = File(p.join(tempDir.path, 'bot-10', 'commandcenter.properties'));
+      final settings =
+          File(p.join(tempDir.path, 'bot-10', 'commandcenter.properties'));
       final content = settings.readAsStringSync();
       expect(content, contains('scriptParams=1,2,3'));
     });
 
     test('profilePath returns correct directory path', () {
-      expect(writer.profilePath(characterId: 42), p.join(tempDir.path, 'bot-42'));
+      expect(
+          writer.profilePath(characterId: 42), p.join(tempDir.path, 'bot-42'));
     });
   });
 }

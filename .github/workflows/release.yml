@@ -32,8 +32,8 @@ jobs:
           INVALID=0
           while IFS= read -r msg; do
             if [[ -z "$msg" ]]; then continue; fi
-            # Allow merge commits
-            if echo "$msg" | grep -qE "^Merge "; then continue; fi
+            # Allow merge commits (GitHub auto-merge and manual merge resolutions)
+            if echo "$msg" | grep -qiE "^[Mm]erge "; then continue; fi
             if ! echo "$msg" | grep -qE "^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert)(\(.+\))?(!)?: .+"; then
               echo "Invalid commit message: $msg"
               INVALID=$((INVALID + 1))
@@ -60,7 +60,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -90,18 +90,13 @@ jobs:
             platform: Windows
             arch: x64
             artifact: windows-x64-build
-          - os: windows-11-arm
-            platform: Windows
-            arch: arm64
-            artifact: windows-arm64-build
           - os: ubuntu-latest
             platform: Linux
             arch: x64
             artifact: linux-x64-build
-          - os: ubuntu-24.04-arm
-            platform: Linux
-            arch: arm64
-            artifact: linux-arm64-build
+          # NOTE: Windows arm64 (windows-11-arm) and Linux arm64 (ubuntu-24.04-arm)
+          # are excluded — Flutter SDK doesn't publish arm64 CI binaries yet.
+          # ARM64 users can build from source: flutter build linux/windows --release
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -110,7 +105,7 @@ jobs:
         if: matrix.platform == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -128,13 +123,6 @@ jobs:
         if: matrix.platform == 'Linux'
         run: flutter build linux --release
 
-      - name: Determine Windows build path
-        if: matrix.platform == 'Windows'
-        id: winpath
-        shell: bash
-        run: |
-          # Flutter outputs to x64 on both x64 and arm64 Windows runners
-          echo "path=build/windows/x64/runner/Release" >> "$GITHUB_OUTPUT"
 
       - name: Package AppImage
         if: matrix.platform == 'Linux'
@@ -161,7 +149,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ steps.winpath.outputs.path }}/**/*
+          path: build/windows/x64/runner/Release/**/*
 
       - name: Upload Linux artifact
         if: matrix.platform == 'Linux'
@@ -211,8 +199,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pubspec.yaml CHANGELOG.md
           git commit -m "chore(release): v${{ steps.version.outputs.new_version }}"
-          git tag -a "v${{ steps.version.outputs.new_version }}" -m "v${{ steps.version.outputs.new_version }}"
-          git push origin main --follow-tags
+          # Force-create tag (handles re-runs where tag exists from a previous failed attempt)
+          git tag -fa "v${{ steps.version.outputs.new_version }}" -m "v${{ steps.version.outputs.new_version }}"
+          git push origin main
+          git push origin "v${{ steps.version.outputs.new_version }}" --force
 
       - name: Download all build artifacts
         if: steps.version.outputs.skip == 'false'
@@ -227,17 +217,11 @@ jobs:
 
           # Zip Windows x64
           cd release-artifacts/windows-x64-build
-          zip -r "../../command-center-v${VERSION}-windows-x64.zip" .
+          zip -r "../../command-center-v${VERSION}-windows.zip" .
           cd ../..
 
-          # Zip Windows arm64
-          cd release-artifacts/windows-arm64-build
-          zip -r "../../command-center-v${VERSION}-windows-arm64.zip" .
-          cd ../..
-
-          # Rename Linux AppImages
-          mv release-artifacts/linux-x64-build/command-center-x64.AppImage "command-center-v${VERSION}-linux-x64.AppImage"
-          mv release-artifacts/linux-arm64-build/command-center-arm64.AppImage "command-center-v${VERSION}-linux-arm64.AppImage"
+          # Rename Linux AppImage
+          mv release-artifacts/linux-x64-build/command-center-x64.AppImage "command-center-v${VERSION}-linux.AppImage"
 
       - name: Create GitHub Release
         if: steps.version.outputs.skip == 'false'
@@ -247,9 +231,7 @@ jobs:
           name: "v${{ steps.version.outputs.new_version }}"
           body_path: /tmp/release_body.md
           files: |
-            command-center-v${{ steps.version.outputs.new_version }}-windows-x64.zip
-            command-center-v${{ steps.version.outputs.new_version }}-windows-arm64.zip
-            command-center-v${{ steps.version.outputs.new_version }}-linux-x64.AppImage
-            command-center-v${{ steps.version.outputs.new_version }}-linux-arm64.AppImage
+            command-center-v${{ steps.version.outputs.new_version }}-windows.zip
+            command-center-v${{ steps.version.outputs.new_version }}-linux.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

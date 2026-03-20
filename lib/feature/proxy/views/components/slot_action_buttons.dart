@@ -102,9 +102,7 @@ class SlotActionButtons extends StatelessWidget {
           children: [
             if (isRunning)
               const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: ProgressRing(strokeWidth: 2))
+                  width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
             else
               const Icon(FluentIcons.globe, size: 16),
             const SizedBox(width: 8),

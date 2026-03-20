@@ -23,7 +23,8 @@ class MicrobotEngine implements BotEngine {
     required String profilesBasePath,
     required NativeCommandsService nativeCommands,
     required this.onLog,
-  })  : _profileWriter = MicrobotProfileWriter(profilesBasePath: profilesBasePath),
+  })  : _profileWriter =
+            MicrobotProfileWriter(profilesBasePath: profilesBasePath),
         _nativeCommands = nativeCommands;
 
   @override
@@ -47,7 +48,8 @@ class MicrobotEngine implements BotEngine {
       scriptParams: config.scriptParams,
     );
 
-    final args = buildLaunchArgs(characterId: characterId, proxyUrl: proxyUrl, config: config);
+    final args = buildLaunchArgs(
+        characterId: characterId, proxyUrl: proxyUrl, config: config);
 
     logger.i('Launching Microbot for $characterName (id=$characterId)');
 

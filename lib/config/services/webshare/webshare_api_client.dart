@@ -20,10 +20,12 @@ class WebshareApiClient {
 
   /// GET /profile/ — returns status code (used by service to test connection).
   Future<int> getProfile(String apiKey) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrlV2/profile/'),
-      headers: _headers(apiKey),
-    ).timeout(_requestTimeout);
+    final response = await http
+        .get(
+          Uri.parse('$_baseUrlV2/profile/'),
+          headers: _headers(apiKey),
+        )
+        .timeout(_requestTimeout);
     return response.statusCode;
   }
 
@@ -34,11 +36,13 @@ class WebshareApiClient {
     bool hasMore = true;
 
     while (hasMore) {
-      final response = await http.get(
-        Uri.parse(
-            '$_baseUrlV2/proxy/list/?mode=backbone&page=$page&page_size=100'),
-        headers: _headers(apiKey),
-      ).timeout(_requestTimeout);
+      final response = await http
+          .get(
+            Uri.parse(
+                '$_baseUrlV2/proxy/list/?mode=backbone&page=$page&page_size=100'),
+            headers: _headers(apiKey),
+          )
+          .timeout(_requestTimeout);
 
       if (response.statusCode != 200) {
         throw WebshareApiException(
@@ -89,11 +93,13 @@ class WebshareApiClient {
       'dry_run': false,
     };
 
-    final response = await http.post(
-      Uri.parse('$_baseUrlV3/proxy/replace/'),
-      headers: _headers(apiKey),
-      body: jsonEncode(body),
-    ).timeout(_requestTimeout);
+    final response = await http
+        .post(
+          Uri.parse('$_baseUrlV3/proxy/replace/'),
+          headers: _headers(apiKey),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -106,10 +112,12 @@ class WebshareApiClient {
   /// GET /v3/proxy/replace/:id/ — polls replacement status.
   Future<Map<String, dynamic>> getReplacementStatus(
       String apiKey, dynamic replacementId) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrlV3/proxy/replace/$replacementId/'),
-      headers: _headers(apiKey),
-    ).timeout(_requestTimeout);
+    final response = await http
+        .get(
+          Uri.parse('$_baseUrlV3/proxy/replace/$replacementId/'),
+          headers: _headers(apiKey),
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -121,10 +129,12 @@ class WebshareApiClient {
 
   /// POST /proxy/list/:id/replace/ — legacy v2 proxy replacement.
   Future<WebshareProxySlot> replaceProxy(String apiKey, String proxyId) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrlV2/proxy/list/$proxyId/replace/'),
-      headers: _headers(apiKey),
-    ).timeout(_requestTimeout);
+    final response = await http
+        .post(
+          Uri.parse('$_baseUrlV2/proxy/list/$proxyId/replace/'),
+          headers: _headers(apiKey),
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode == 200) {
       return WebshareProxySlot.fromJson(jsonDecode(response.body));
@@ -136,10 +146,12 @@ class WebshareApiClient {
 
   /// GET /subscription/plan/ — fetch subscription plans.
   Future<List<Map<String, dynamic>>> getSubscriptionPlans(String apiKey) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrlV2/subscription/plan/'),
-      headers: _headers(apiKey),
-    ).timeout(_requestTimeout);
+    final response = await http
+        .get(
+          Uri.parse('$_baseUrlV2/subscription/plan/'),
+          headers: _headers(apiKey),
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

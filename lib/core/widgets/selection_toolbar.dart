@@ -43,8 +43,7 @@ class SelectionToolbar extends StatelessWidget {
         children: [
           Checkbox(
             checked: allSelected,
-            onChanged: (_) =>
-                allSelected ? onClearSelection() : onSelectAll(),
+            onChanged: (_) => allSelected ? onClearSelection() : onSelectAll(),
           ),
           const SizedBox(width: 8),
           Text(
@@ -56,7 +55,8 @@ class SelectionToolbar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          Container(width: 1, height: 20, color: Colors.white.withValues(alpha: 0.2)),
+          Container(
+              width: 1, height: 20, color: Colors.white.withValues(alpha: 0.2)),
           const SizedBox(width: 16),
           ...actions.map((action) => Padding(
                 padding: const EdgeInsets.only(right: 8),

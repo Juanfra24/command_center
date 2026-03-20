@@ -116,8 +116,8 @@ class ActionsCell extends StatelessWidget {
       return _buildEmptyAccountActions(context);
     }
     return Obx(() {
-      final tracked = Get.find<WatchdogService>()
-          .trackedClients[character?.name];
+      final tracked =
+          Get.find<WatchdogService>().trackedClients[character?.name];
       final isRunning =
           tracked != null && tracked.status == ClientStatus.running;
       return _buildCharacterActions(context, isRunning);
@@ -142,7 +142,8 @@ class ActionsCell extends StatelessWidget {
                 onPressed: () async {
                   final config = await LaunchDialog.show(context);
                   if (config != null) {
-                    await controller.launchCharacter(account, character!, config);
+                    await controller.launchCharacter(
+                        account, character!, config);
                   }
                 },
               ),
@@ -183,8 +184,12 @@ class ActionsCell extends StatelessWidget {
         title: const Text('Delete Account'),
         content: Text('Delete "${account.email}"? This cannot be undone.'),
         actions: [
-          Button(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          Button(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete')),
         ],
       ),
     );

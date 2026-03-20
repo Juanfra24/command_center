@@ -46,8 +46,7 @@ class ConnectionInfoBadges extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon,
-              size: 11, color: theme.resources.textFillColorSecondary),
+          Icon(icon, size: 11, color: theme.resources.textFillColorSecondary),
           const SizedBox(width: 4),
           Text(
             label,

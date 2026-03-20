@@ -92,8 +92,7 @@ class NotificationService extends GetxService {
     ));
 
     // Persist error/warning toasts as notifications
-    if (severity == ToastSeverity.error ||
-        severity == ToastSeverity.warning) {
+    if (severity == ToastSeverity.error || severity == ToastSeverity.warning) {
       await createNotification(
         type: NotificationType.toast,
         severity: severity == ToastSeverity.error

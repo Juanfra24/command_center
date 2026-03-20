@@ -1,8 +1,8 @@
 class ProxyHealthData {
   final int excellentCount; // fraudScore 0-30
-  final int fairCount;      // fraudScore 31-60
-  final int poorCount;      // fraudScore 61-80
-  final int badCount;       // fraudScore 81-100
+  final int fairCount; // fraudScore 31-60
+  final int poorCount; // fraudScore 61-80
+  final int badCount; // fraudScore 81-100
   final int unscoredCount;
   final List<ProxyAttentionItem> attentionItems;
 

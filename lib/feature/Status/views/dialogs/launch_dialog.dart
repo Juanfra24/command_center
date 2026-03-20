@@ -8,7 +8,8 @@ class LaunchDialog extends StatefulWidget {
   const LaunchDialog({super.key});
 
   static Future<LaunchConfig?> show(BuildContext context) =>
-      showDialog<LaunchConfig>(context: context, builder: (_) => const LaunchDialog());
+      showDialog<LaunchConfig>(
+          context: context, builder: (_) => const LaunchDialog());
 
   static LaunchConfig? _lastConfig;
 
@@ -34,7 +35,8 @@ class _LaunchDialogState extends State<LaunchDialog> {
             ? configService.scriptRegistry.first
             : '');
     final w = last?.world ?? 'auto';
-    _selectedWorld = const {'auto', 'f2p', 'members'}.contains(w) ? w : 'specific';
+    _selectedWorld =
+        const {'auto', 'f2p', 'members'}.contains(w) ? w : 'specific';
     _scriptParamsController.text = last?.scriptParams ?? '';
     _advancedFlagsController.text = last?.advancedFlags ?? '';
     _jvmArgsController.text = last?.jvmArgs ?? '';

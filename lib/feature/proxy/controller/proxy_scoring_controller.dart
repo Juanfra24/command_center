@@ -74,7 +74,8 @@ class ProxyScoringController extends GetxController {
     }));
 
     // Recalculate stats whenever IP addresses change
-    _workers.add(ever(_proxyController.ipAddresses, (_) => _recalculateStats()));
+    _workers
+        .add(ever(_proxyController.ipAddresses, (_) => _recalculateStats()));
   }
 
   // --- Cached score statistics ---

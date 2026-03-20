@@ -62,7 +62,8 @@ class IpqsService extends GetxService {
       return Result.success(null);
     } catch (e) {
       logger.e('Error saving IPQS API key: $e');
-      return Result.failure('Failed to save IPQS API key. Check logs for details.');
+      return Result.failure(
+          'Failed to save IPQS API key. Check logs for details.');
     }
   }
 
@@ -81,7 +82,8 @@ class IpqsService extends GetxService {
       return Result.success(null);
     } catch (e) {
       logger.e('Error clearing IPQS API key: $e');
-      return Result.failure('Failed to clear IPQS API key. Check logs for details.');
+      return Result.failure(
+          'Failed to clear IPQS API key. Check logs for details.');
     }
   }
 

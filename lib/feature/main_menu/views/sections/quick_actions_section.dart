@@ -110,9 +110,7 @@ class _ActionCard extends StatelessWidget {
           Text(
             title,
             style: theme.typography.bodyStrong?.copyWith(
-              color: isDisabled
-                  ? theme.resources.textFillColorSecondary
-                  : null,
+              color: isDisabled ? theme.resources.textFillColorSecondary : null,
             ),
           ),
           const SizedBox(height: 4),
