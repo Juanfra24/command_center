@@ -199,8 +199,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pubspec.yaml CHANGELOG.md
           git commit -m "chore(release): v${{ steps.version.outputs.new_version }}"
-          git tag -a "v${{ steps.version.outputs.new_version }}" -m "v${{ steps.version.outputs.new_version }}"
-          git push origin main --follow-tags
+          # Force-create tag (handles re-runs where tag exists from a previous failed attempt)
+          git tag -fa "v${{ steps.version.outputs.new_version }}" -m "v${{ steps.version.outputs.new_version }}"
+          git push origin main
+          git push origin "v${{ steps.version.outputs.new_version }}" --force
 
       - name: Download all build artifacts
         if: steps.version.outputs.skip == 'false'
