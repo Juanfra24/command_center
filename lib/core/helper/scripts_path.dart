@@ -2,10 +2,22 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 /// Resolves the scripts directory path once and caches it.
-/// Used by AutomationService and PythonSetupService.
-String get scriptsPath => _cached ??= _resolve();
+/// After ScriptsExtractor runs, call [setScriptsPath] to override.
+String get scriptsPath => _override ?? (_cached ??= _resolve());
 
+String? _override;
 String? _cached;
+
+/// Set the scripts path explicitly (called by ScriptsExtractor after extraction).
+void setScriptsPath(String p) {
+  _override = p;
+}
+
+/// Reset for testing.
+void resetScriptsPath() {
+  _override = null;
+  _cached = null;
+}
 
 String _resolve() {
   final execDir = path.dirname(Platform.resolvedExecutable);
