@@ -10,6 +10,12 @@ class SetupStepState {
   final String? errorMessage;
   final String? fixHint;
 
+  /// When true, the UI should show an input field (e.g. GitHub PAT prompt).
+  final bool needsInput;
+
+  /// Label for the input field (e.g. "GitHub Personal Access Token").
+  final String? inputLabel;
+
   const SetupStepState({
     required this.label,
     this.detail = '',
@@ -17,6 +23,8 @@ class SetupStepState {
     this.progress = 0.0,
     this.errorMessage,
     this.fixHint,
+    this.needsInput = false,
+    this.inputLabel,
   });
 
   /// Create a copy with updated fields.
@@ -29,6 +37,8 @@ class SetupStepState {
     String? errorMessage,
     String? fixHint,
     bool clearError = false,
+    bool? needsInput,
+    String? inputLabel,
   }) {
     return SetupStepState(
       label: label ?? this.label,
@@ -37,6 +47,8 @@ class SetupStepState {
       progress: progress ?? this.progress,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       fixHint: clearError ? null : (fixHint ?? this.fixHint),
+      needsInput: needsInput ?? (clearError ? false : this.needsInput),
+      inputLabel: clearError ? null : (inputLabel ?? this.inputLabel),
     );
   }
 }
