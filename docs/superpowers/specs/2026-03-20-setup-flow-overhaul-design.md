@@ -25,24 +25,41 @@ At runtime, `scriptsPath` resolves to `<execDir>/data/scripts/` which doesn't ex
 
 ### Solution
 
-**Bundle:** Add `scripts/` contents to `pubspec.yaml` assets. Flutter copies them to `data/flutter_assets/` at build time.
+**Bundle:** Add runtime scripts to `pubspec.yaml` assets. Flutter requires each directory level listed explicitly (no recursive includes):
+
+```yaml
+assets:
+  - scripts/
+  - scripts/automation/
+  - scripts/automation/commands/
+```
+
+Only runtime files are bundled. Dev-only files (`scripts/hooks/`, `scripts/release/`, `scripts/openChrome.py`, `scripts/test_captcha.py`) are excluded by not listing their directories. `__pycache__/` directories must be cleaned before release builds (add to `.gitignore` if not already).
+
+Flutter copies bundled assets to `data/flutter_assets/` at build time.
 
 **Extract:** New `ScriptsExtractor` service extracts bundled scripts from Flutter assets to the app data directory on first launch:
 - Windows: `%APPDATA%/CommandCenter/scripts/`
 - Linux: `~/.local/share/command_center/scripts/`
 
-**Version check:** Write a `.scripts_version` marker file after extraction. On subsequent launches, compare the marker against the app version (from `package_info_plus` or baked-in constant). Re-extract only when the app version changes — ensures updated scripts ship with app updates.
+The extractor only copies `.py` and `.txt` files (skips any stray `.pyc` or metadata files). Directory structure is recreated from the asset manifest.
 
-**Path resolution change:** `scripts_path.dart` resolution order becomes:
-1. App data dir (extracted scripts) — primary for both dev and release
+**Version check:** Write a `.scripts_version` marker file after extraction containing the app version (baked-in constant in `lib/core/constants/app_version.dart`, kept in sync with `pubspec.yaml`). On subsequent launches, compare the marker against the constant. Re-extract only when versions differ.
+
+**Path resolution change:** `scripts_path.dart` gains a `setScriptsPath(String path)` function that overrides the cached value. `ScriptsExtractor` calls this after extraction so all subsequent consumers get the correct path. Resolution order becomes:
+1. Override path (set by `ScriptsExtractor` after extraction)
 2. Dev path (`../../scripts` relative to executable) — development fallback
 3. Bundled fallback (`<execDir>/data/scripts`) — last resort
 
+**PythonRunner.scriptsPath deduplication:** `PythonRunner` currently has its own hardcoded copy of the path resolution logic (lines 24-50). This must be changed to delegate to `scripts_path.dart` instead of re-implementing the resolution. This ensures all consumers use the same extracted path.
+
 ### Files
 
-- **Modify:** `pubspec.yaml` — add scripts to assets
+- **Modify:** `pubspec.yaml` — add scripts asset directories
 - **Create:** `lib/config/services/setup/scripts_extractor.dart`
-- **Modify:** `lib/core/helper/scripts_path.dart` — new resolution order
+- **Create:** `lib/core/constants/app_version.dart` — baked-in version constant
+- **Modify:** `lib/core/helper/scripts_path.dart` — add `setScriptsPath()`, new resolution order
+- **Modify:** `lib/config/services/automation/python_runner.dart` — delegate `scriptsPath` to `scripts_path.dart`
 
 ---
 
@@ -82,8 +99,10 @@ class SetupStepState {
 
 ### Flow
 
+`SetupOrchestrator.run()` is a **blocking async call** — it only returns when all 4 steps complete successfully. The caller (`app_lifecycle.dart`) simply `await`s it; no polling loop needed.
+
 ```
-SetupOrchestrator.run()
+Future<void> run() async {
   for each step in [extractScripts, pythonSetup, javaSetup, microbotSetup]:
     update step → status: running
     try:
@@ -91,11 +110,19 @@ SetupOrchestrator.run()
       update step → status: completed
     catch:
       update step → status: failed, errorMessage, fixHint
-      STOP — wait for user to press Retry
-      on retry: re-run this step (not the whole sequence)
+      STOP — await _retryCompleter.future  // blocks until user presses Retry
+      reset step → status: pending
+      re-run this step (loop back, not the whole sequence)
+}
 ```
 
-All steps are mandatory. If any step fails, the orchestrator stops. The user sees the error, the fix hint, and a Retry button. The app main UI never loads until all 4 steps are completed.
+The `_retryCompleter` is a `Completer<void>` that `retryCurrentStep()` completes. This means `run()` stays blocked on the failed step until the user retries, then continues from where it left off.
+
+**Retry safety:** Before re-running a step, the orchestrator ensures the previous attempt's resources are cleaned up. For `PythonSetupService`, this means checking `isChecking` is false before calling `installDependencies()` again. If it's still true (e.g. a pip process is being killed), the orchestrator waits briefly before retrying.
+
+All steps are mandatory. The app main UI never loads until `run()` returns (all 4 steps completed).
+
+**Behavioral change from current:** The current splash screen has a "Skip" button. This is **removed**. The app requires all dependencies to function. Users who previously skipped setup will now need to complete it.
 
 ### Integration
 
@@ -205,9 +232,13 @@ lib/feature/app/views/
 └── components/
     └── setup_step_tile.dart         # NEW: single step row widget
 
+New files:
+├── lib/core/constants/app_version.dart  # Baked-in version constant
+
 Existing files modified:
-├── pubspec.yaml                     # Add scripts/ to assets
-├── lib/core/helper/scripts_path.dart                    # New resolution order
+├── pubspec.yaml                     # Add scripts asset directories
+├── lib/core/helper/scripts_path.dart                    # Add setScriptsPath(), new resolution
+├── lib/config/services/automation/python_runner.dart     # Delegate scriptsPath to scripts_path.dart
 ├── lib/feature/app/views/components/app_lifecycle.dart   # Use SetupOrchestrator
 ├── lib/core/resource/dependency_injection.dart           # Register SetupOrchestrator
 └── lib/config/services/bot_engine/microbot_setup_service.dart  # Simplified
