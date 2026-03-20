@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-03-20
+
+### Features
+
+- rewrite splash screen as 4-step setup wizard with progress tiles (setup)
+- wire SetupOrchestrator into DI and app lifecycle (setup)
+- add SetupOrchestrator with 4-step reactive flow (setup)
+- add ScriptsExtractor + bundle scripts in pubspec.yaml assets (setup)
+- add platform-specific setup error messages (setup)
+- add SetupStepState model and StepStatus enum (setup)
 ## [0.8.0] - 2026-03-20
 
 ### Features
