@@ -1,11 +1,12 @@
 #!/bin/sh
-# Pre-commit hook: check Dart formatting
+# Pre-commit hook: auto-format staged Dart files.
 # Install: cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-echo "Running dart format check..."
-dart format --set-exit-if-changed . 2>/dev/null
-if [ $? -ne 0 ]; then
-  echo ""
-  echo "Formatting issues found. Run 'dart format .' to fix."
-  exit 1
+STAGED_DART=$(git diff --cached --name-only --diff-filter=ACM | grep '\.dart$')
+if [ -z "$STAGED_DART" ]; then
+  exit 0
 fi
+
+echo "Auto-formatting staged Dart files..."
+echo "$STAGED_DART" | xargs dart format
+echo "$STAGED_DART" | xargs git add

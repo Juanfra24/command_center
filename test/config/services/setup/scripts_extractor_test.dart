@@ -23,8 +23,7 @@ void main() {
       expect(await extractor.needsExtraction(), isTrue);
     });
 
-    test('needsExtraction returns false when marker matches version',
-        () async {
+    test('needsExtraction returns false when marker matches version', () async {
       final scriptsDir = Directory(p.join(tempDir.path, 'scripts'));
       await scriptsDir.create(recursive: true);
       await File(p.join(scriptsDir.path, '.scripts_version'))
@@ -45,8 +44,8 @@ void main() {
       expect(ScriptsExtractor.assetPaths, contains('scripts/requirements.txt'));
       expect(ScriptsExtractor.assetPaths,
           contains('scripts/account_automation.py'));
-      expect(
-          ScriptsExtractor.assetPaths, contains('scripts/automation/browser.py'));
+      expect(ScriptsExtractor.assetPaths,
+          contains('scripts/automation/browser.py'));
       expect(ScriptsExtractor.assetPaths,
           contains('scripts/automation/commands/create_account.py'));
       // Ensure dev-only files are NOT included
@@ -56,8 +55,7 @@ void main() {
           isFalse);
       expect(ScriptsExtractor.assetPaths.any((p) => p.contains('openChrome')),
           isFalse);
-      expect(
-          ScriptsExtractor.assetPaths.any((p) => p.contains('test_captcha')),
+      expect(ScriptsExtractor.assetPaths.any((p) => p.contains('test_captcha')),
           isFalse);
     });
   });
