@@ -80,11 +80,9 @@ class SetupStepTile extends StatelessWidget {
         return const SizedBox(
             width: 20, height: 20, child: ProgressRing(strokeWidth: 2));
       case StepStatus.completed:
-        return Icon(FluentIcons.check_mark,
-            size: 20, color: Colors.green);
+        return Icon(FluentIcons.check_mark, size: 20, color: Colors.green);
       case StepStatus.failed:
-        return Icon(FluentIcons.error_badge,
-            size: 20, color: Colors.red);
+        return Icon(FluentIcons.error_badge, size: 20, color: Colors.red);
     }
   }
 

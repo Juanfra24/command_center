@@ -54,7 +54,8 @@ class AppBindings extends Bindings {
     // Feature controllers (lazy - created when needed)
     Get.lazyPut<MainMenuController>(() => MainMenuController(), fenix: true);
     Get.lazyPut<StatusController>(() => StatusController(), fenix: true);
-    Get.lazyPut<StatusSelectionController>(() => StatusSelectionController(), fenix: true);
+    Get.lazyPut<StatusSelectionController>(() => StatusSelectionController(),
+        fenix: true);
     Get.lazyPut<ProxyController>(() => ProxyController(), fenix: true);
     Get.lazyPut<ProxyScoringController>(
       () => ProxyScoringController(
@@ -143,8 +144,10 @@ class AppBindings extends Bindings {
     // 9. MicrobotSetupService (orchestrates dependency downloads)
     final appDataPath = Get.find<AppDataPath>();
     final basePath = await appDataPath.basePath;
-    final javaInstaller = JavaInstaller(appConfig: appConfigService, basePath: basePath);
-    final jarDownloader = MicrobotJarDownloader(appConfig: appConfigService, basePath: basePath);
+    final javaInstaller =
+        JavaInstaller(appConfig: appConfigService, basePath: basePath);
+    final jarDownloader =
+        MicrobotJarDownloader(appConfig: appConfigService, basePath: basePath);
     Get.put<MicrobotSetupService>(
       MicrobotSetupService(
         pythonSetup: pythonSetupService,
