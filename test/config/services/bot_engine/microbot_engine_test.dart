@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
-import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:path/path.dart' as p;
+import 'package:command_center/config/services/native_commands_service.dart';
+import 'package:mocktail/mocktail.dart';
+
+class _MockNativeCommands extends Mock implements NativeCommandsService {}
 
 MicrobotEngine _makeEngine({
   String jarPath = '/app/microbot-shaded.jar',
@@ -12,7 +15,7 @@ MicrobotEngine _makeEngine({
     javaPath: '/java/bin/java.exe',
     jarPath: jarPath,
     profilesBasePath: profilesBasePath,
-    nativeCommands: NativeCommandsService(),
+    nativeCommands: _MockNativeCommands(),
     onLog: (_) {},
   );
 }
@@ -62,6 +65,32 @@ void main() {
       expect(args, contains('-fps'));
       expect(args, contains('15'));
       expect(args, contains('--low-detail'));
+    });
+
+    test('buildLaunchArgs includes --script-params when scriptParams is non-empty', () {
+      final engine = _makeEngine();
+      final args = engine.buildLaunchArgs(
+        characterId: 1,
+        proxyUrl: null,
+        config: const LaunchConfig(scriptName: 'Test', scriptParams: '1,2,3'),
+      );
+      expect(args, contains('--script-params=1,2,3'));
+    });
+
+    test('buildLaunchArgs omits --script-params when scriptParams is empty', () {
+      final engine = _makeEngine();
+      final args = engine.buildLaunchArgs(
+        characterId: 1,
+        proxyUrl: null,
+        config: const LaunchConfig(scriptName: 'Test', scriptParams: ''),
+      );
+      expect(args.any((a) => a.startsWith('--script-params')), isFalse);
+    });
+
+    test('registerRecapturedPid adds PID to activePids', () {
+      final engine = _makeEngine();
+      engine.registerRecapturedPid(pid: 1234, characterId: 42);
+      expect(engine.activePids, contains(1234));
     });
   });
 }

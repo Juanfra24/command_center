@@ -17,16 +17,18 @@ String _resolve() {
   );
   if (Directory(devScriptsPath).existsSync()) return devScriptsPath;
 
-  // Try relative to workspace
-  final userProfile = Platform.environment['USERPROFILE'] ?? '';
-  if (userProfile.isNotEmpty) {
-    final workspacePath = path.join(
-      userProfile,
-      'projects',
-      'command_center',
-      'scripts',
-    );
-    if (Directory(workspacePath).existsSync()) return workspacePath;
+  // Windows dev workspace fallback (USERPROFILE-based path structure)
+  if (Platform.isWindows) {
+    final userProfile = Platform.environment['USERPROFILE'] ?? '';
+    if (userProfile.isNotEmpty) {
+      final workspacePath = path.join(
+        userProfile,
+        'projects',
+        'command_center',
+        'scripts',
+      );
+      if (Directory(workspacePath).existsSync()) return workspacePath;
+    }
   }
 
   // Fallback to bundled scripts

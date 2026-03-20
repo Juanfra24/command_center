@@ -1,4 +1,5 @@
 # scripts/automation/commands/create_account.py
+import asyncio
 import sys
 from typing import Optional, Callable
 
@@ -262,7 +263,8 @@ async def create_account(
         # Step 10: Email verification
         log_fn("[STEP 10/13] Email verification...")
         if imap_host and imap_user and imap_pass:
-            code = fetch_verification_code(
+            code = await asyncio.to_thread(
+                fetch_verification_code,
                 imap_host, imap_user, imap_pass,
                 generated_email, timeout=120, log_fn=log_fn,
             )

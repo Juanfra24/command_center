@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:command_center/core/constants/app_values.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/python_resolver.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -33,7 +34,9 @@ class PythonRunner {
 
     // Try relative to workspace (development only — USERPROFILE is user-controlled)
     if (kDebugMode) {
-      final userProfile = Platform.environment['USERPROFILE'] ?? '';
+      final userProfile = Platform.environment['USERPROFILE']
+          ?? Platform.environment['HOME']
+          ?? '';
       if (userProfile.isNotEmpty) {
         final workspacePath = path.join(
           userProfile,
@@ -109,7 +112,8 @@ class PythonRunner {
     final stderr = StringBuffer();
 
     // -u flag disables Python's stdout/stderr buffering so we get logs in real-time
-    _currentProcess = await Process.start('python', ['-u', ...args],
+    final python = await PythonResolver.executable;
+    _currentProcess = await Process.start(python, ['-u', ...args],
         workingDirectory: workingDirectory,
         environment: environment);
 
@@ -179,7 +183,8 @@ class PythonRunner {
   }) async {
     final outputBuffer = StringBuffer();
 
-    _currentProcess = await Process.start('python', ['-u', ...args],
+    final python = await PythonResolver.executable;
+    _currentProcess = await Process.start(python, ['-u', ...args],
         workingDirectory: workingDirectory,
         environment: environment);
 

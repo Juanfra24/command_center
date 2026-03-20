@@ -41,7 +41,7 @@ class _ProxyScreenState extends State<ProxyScreen>
   @override
   void initState() {
     super.initState();
-    _controller = Get.put(ProxyController());
+    _controller = Get.find<ProxyController>();
     _scoringController = Get.find<ProxyScoringController>();
     _replacementController = Get.find<ProxyReplacementController>();
     _automationService = Get.find<AutomationService>();

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/python_resolver.dart';
 import 'package:command_center/core/helper/scripts_path.dart';
 import 'package:get/get.dart';
 
@@ -12,7 +13,8 @@ class PythonDependencyChecker extends GetxService {
   /// Check if Python is available.
   Future<bool> checkPythonAvailable() async {
     try {
-      final result = await Process.run('python', ['--version']);
+      final python = await PythonResolver.executable;
+      final result = await Process.run(python, ['--version']);
       if (result.exitCode == 0) {
         final version = result.stdout.toString().trim();
         logger.i('Python found: $version');
@@ -27,7 +29,8 @@ class PythonDependencyChecker extends GetxService {
   /// Check if pip is available.
   Future<bool> checkPipAvailable() async {
     try {
-      final result = await Process.run('python', ['-m', 'pip', '--version']);
+      final python = await PythonResolver.executable;
+      final result = await Process.run(python, ['-m', 'pip', '--version']);
       if (result.exitCode == 0) {
         logger.i('pip is available');
         return true;
@@ -41,8 +44,9 @@ class PythonDependencyChecker extends GetxService {
   /// Check if Patchright (and dependencies) are already installed.
   Future<bool> checkDependenciesInstalled() async {
     try {
+      final python = await PythonResolver.executable;
       final result = await Process.run(
-        'python',
+        python,
         ['-c', 'import patchright; print("OK")'],
       );
 
@@ -61,8 +65,9 @@ class PythonDependencyChecker extends GetxService {
   Future<bool> verifyChromiumWorks() async {
     try {
       logger.i('Opening browser to verify Patchright installation...');
+      final python = await PythonResolver.executable;
       final result = await Process.run(
-        'python',
+        python,
         [
           '-c',
           '''

@@ -21,4 +21,8 @@ abstract class BotEngine {
 
   /// Human-readable engine name (for logs/notifications).
   String get engineName;
+
+  /// Register an externally-discovered PID (e.g. recaptured on startup).
+  /// Enables stop() to clean up profiles for processes the engine didn't launch.
+  void registerRecapturedPid({required int pid, required int characterId});
 }
