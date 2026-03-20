@@ -8,6 +8,7 @@ import 'package:command_center/config/services/setup/scripts_extractor.dart';
 import 'package:command_center/config/services/setup/setup_messages.dart';
 import 'package:command_center/config/services/setup/setup_step_state.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/python_resolver.dart';
 import 'package:get/get.dart';
 
 /// Orchestrates the 4-step mandatory setup flow.
@@ -97,9 +98,11 @@ class SetupOrchestrator extends GetxService {
     isComplete.value = true;
   }
 
-  /// Called by the UI Retry button.
+  /// Called by the UI Retry button. Safe against double-tap.
   void retryCurrentStep() {
-    _retryCompleter?.complete();
+    if (_retryCompleter != null && !_retryCompleter!.isCompleted) {
+      _retryCompleter!.complete();
+    }
     _retryCompleter = null;
   }
 
@@ -140,9 +143,10 @@ class SetupOrchestrator extends GetxService {
   }
 
   Future<void> _runPythonSetup(int i) async {
-    // Reset PythonSetupService state to avoid stuck isChecking guard on retry
+    // Reset state to avoid stuck guards on retry
     _pythonSetup.isChecking = false;
     _pythonSetup.isSetupComplete = false;
+    PythonResolver.resetCache();
 
     _updateStep(i, detail: 'Checking Python availability...');
     if (!await _pythonSetup.checkPythonAvailable()) {
@@ -212,22 +216,10 @@ class SetupOrchestrator extends GetxService {
   Future<void> _runMicrobotSetup(int i) async {
     _updateStep(i, detail: 'Checking configuration...');
 
-    // Check if GitHub PAT is configured — prompt if missing
+    // Check if GitHub PAT is configured — prompt if missing or invalid
     var token = await _appConfig.getGithubPat();
     if (token == null || token.isEmpty) {
-      _updateStep(
-        i,
-        status: StepStatus.running,
-        detail:
-            'A GitHub Personal Access Token is required to download Microbot from the private repository.',
-        needsInput: true,
-        inputLabel: 'GitHub Personal Access Token',
-      );
-      // Block until user submits the PAT
-      _inputCompleter = Completer<String>();
-      token = await _inputCompleter!.future;
-      await _appConfig.saveGithubPat(token);
-      _updateStep(i, detail: 'Checking Microbot...', needsInput: false);
+      token = await _promptForPat(i);
     }
 
     _updateStep(i, detail: 'Checking for cached Microbot JAR...');
@@ -247,6 +239,23 @@ class SetupOrchestrator extends GetxService {
       throw Exception('Microbot JAR not available');
     }
     _updateStep(i, detail: 'Microbot JAR ready at: $jarPath');
+  }
+
+  /// Prompt the user for a GitHub PAT via the splash screen input field.
+  Future<String> _promptForPat(int i) async {
+    _updateStep(
+      i,
+      status: StepStatus.running,
+      detail:
+          'A GitHub Personal Access Token is required to download Microbot from the private repository.',
+      needsInput: true,
+      inputLabel: 'GitHub Personal Access Token',
+    );
+    _inputCompleter = Completer<String>();
+    final token = await _inputCompleter!.future;
+    await _appConfig.saveGithubPat(token);
+    _updateStep(i, detail: 'Verifying token...', needsInput: false);
+    return token;
   }
 
   // -- Error Mapping ---------------------------------------------------------
@@ -271,7 +280,13 @@ class SetupOrchestrator extends GetxService {
         }
         return SetupMessages.javaDownloadFailed();
       case 3:
-        if (msg.contains('token') || msg.contains('PAT')) {
+        if (msg.contains('401') ||
+            msg.contains('invalid') ||
+            msg.contains('expired') ||
+            msg.contains('token') ||
+            msg.contains('PAT')) {
+          // Clear the bad PAT so user is re-prompted on retry
+          _appConfig.saveGithubPat('');
           return SetupMessages.githubPatMissing();
         }
         return SetupMessages.jarDownloadFailed();

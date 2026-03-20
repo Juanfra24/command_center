@@ -25,6 +25,7 @@ class _AppState extends State<App> with WindowListener {
 
   ResolvedServices _services = const ResolvedServices();
   final List<Worker> _onboardingWorkers = [];
+  String? _fatalError;
 
   @override
   void initState() {
@@ -34,16 +35,22 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Future<void> _initializeApp() async {
-    await AppLifecycle.initialize();
+    try {
+      await AppLifecycle.initialize();
 
-    _services = AppLifecycle.resolveServices();
-    _onboardingWorkers.addAll(
-      AppLifecycle.setupOnboardingWorkers(() {
-        if (mounted) setState(() {});
-      }),
-    );
+      _services = AppLifecycle.resolveServices();
+      _onboardingWorkers.addAll(
+        AppLifecycle.setupOnboardingWorkers(() {
+          if (mounted) setState(() {});
+        }),
+      );
 
-    if (mounted) setState(() => _initialized = true);
+      if (mounted) setState(() => _initialized = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _fatalError = 'Initialization failed: $e');
+      }
+    }
   }
 
   @override
@@ -119,6 +126,9 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildSplashScreen() {
+    if (_fatalError != null) {
+      return SplashScreen(fatalError: _fatalError);
+    }
     final orchestrator = Get.isRegistered<SetupOrchestrator>()
         ? Get.find<SetupOrchestrator>()
         : null;

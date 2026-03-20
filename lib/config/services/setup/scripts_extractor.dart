@@ -34,11 +34,17 @@ class ScriptsExtractor {
   ];
 
   /// Check if extraction is needed (first launch or version change).
+  /// If already extracted, sets the scripts path for all consumers.
   Future<bool> needsExtraction() async {
     final marker = File(_versionMarker);
     if (!await marker.exists()) return true;
     final storedVersion = (await marker.readAsString()).trim();
-    return storedVersion != appVersion;
+    if (storedVersion == appVersion) {
+      // Scripts already extracted — point all consumers to the extracted dir
+      sp.setScriptsPath(_scriptsDir);
+      return false;
+    }
+    return true;
   }
 
   /// Extract all bundled scripts to the app data directory.

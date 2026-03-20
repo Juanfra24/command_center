@@ -8,8 +8,9 @@ import 'package:get/get.dart';
 /// Displays all 4 setup steps as a vertical list with real-time progress.
 class SplashScreen extends StatefulWidget {
   final SetupOrchestrator? orchestrator;
+  final String? fatalError;
 
-  const SplashScreen({super.key, this.orchestrator});
+  const SplashScreen({super.key, this.orchestrator, this.fatalError});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -54,14 +55,22 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Setting up...',
-                style: theme.typography.caption?.copyWith(
-                  color: theme.inactiveColor,
+              if (widget.fatalError != null) ...[
+                const SizedBox(height: 32),
+                InfoBar(
+                  title: const Text('Failed to start'),
+                  content: Text(widget.fatalError!),
+                  severity: InfoBarSeverity.error,
+                  isLong: true,
                 ),
-              ),
-              const SizedBox(height: 32),
-              if (orchestrator != null) ...[
+              ] else if (orchestrator != null) ...[
+                Text(
+                  'Setting up...',
+                  style: theme.typography.caption?.copyWith(
+                    color: theme.inactiveColor,
+                  ),
+                ),
+                const SizedBox(height: 32),
                 Obx(() {
                   final stepList = orchestrator.steps;
                   return Column(

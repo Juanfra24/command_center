@@ -126,7 +126,13 @@ class PythonSetupService extends GetxService {
         logger.w(text);
       });
 
-      final exitCode = await process.exitCode;
+      final exitCode = await process.exitCode.timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          process.kill();
+          return -1;
+        },
+      );
 
       if (exitCode != 0) {
         setupError = 'Failed to install dependencies: ${output.toString()}';

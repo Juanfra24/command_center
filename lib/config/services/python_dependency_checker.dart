@@ -47,7 +47,7 @@ class PythonDependencyChecker extends GetxService {
       final python = await PythonResolver.executable;
       final result = await Process.run(
         python,
-        ['-c', 'import patchright; print("OK")'],
+        ['-c', 'import patchright; import requests; print("OK")'],
       );
 
       if (result.exitCode == 0 &&
