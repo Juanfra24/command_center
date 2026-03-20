@@ -38,8 +38,9 @@ class StatusScreen extends GetView<StatusController> {
         ),
       ),
       content: Obx(() {
-        if (controller.isLoading.value)
+        if (controller.isLoading.value) {
           return const Center(child: ProgressRing());
+        }
         if (controller.accountList.isEmpty) return _buildEmptyState(context);
         return _buildAccountsContent(context);
       }),
