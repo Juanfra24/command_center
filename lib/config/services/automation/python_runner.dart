@@ -5,8 +5,8 @@ import 'dart:io';
 import 'package:command_center/core/constants/app_values.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/helper/python_resolver.dart';
+import 'package:command_center/core/helper/scripts_path.dart' as sp;
 import 'package:command_center/domain/entities/proxy_slot.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
@@ -21,36 +21,8 @@ class PythonRunner {
 
   PythonRunner({required this.onLog});
 
-  /// Resolve the scripts directory (development or production).
-  String get scriptsPath {
-    final execDir = path.dirname(Platform.resolvedExecutable);
-
-    // In development, scripts are next to lib
-    final devScriptsPath = path.join(
-      path.dirname(path.dirname(execDir)),
-      'scripts',
-    );
-    if (Directory(devScriptsPath).existsSync()) return devScriptsPath;
-
-    // Try relative to workspace (development only — USERPROFILE is user-controlled)
-    if (kDebugMode) {
-      final userProfile = Platform.environment['USERPROFILE'] ??
-          Platform.environment['HOME'] ??
-          '';
-      if (userProfile.isNotEmpty) {
-        final workspacePath = path.join(
-          userProfile,
-          'projects',
-          'command_center',
-          'scripts',
-        );
-        if (Directory(workspacePath).existsSync()) return workspacePath;
-      }
-    }
-
-    // Fallback to bundled scripts
-    return path.join(execDir, 'data', 'scripts');
-  }
+  /// Resolve the scripts directory — delegates to shared resolver.
+  String get scriptsPath => sp.scriptsPath;
 
   /// Full path to account_automation.py
   String get scriptFile => path.join(scriptsPath, 'account_automation.py');

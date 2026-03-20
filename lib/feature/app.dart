@@ -1,4 +1,4 @@
-import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/config/services/setup/setup_orchestrator.dart';
 import 'package:command_center/config/theme/fluent_app_theme.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
 import 'package:command_center/core/widgets/toast_overlay.dart';
@@ -119,10 +119,10 @@ class _AppState extends State<App> with WindowListener {
   }
 
   Widget _buildSplashScreen() {
-    final setupService = Get.isRegistered<MicrobotSetupService>()
-        ? Get.find<MicrobotSetupService>()
+    final orchestrator = Get.isRegistered<SetupOrchestrator>()
+        ? Get.find<SetupOrchestrator>()
         : null;
-    return SplashScreen(setupService: setupService);
+    return SplashScreen(orchestrator: orchestrator);
   }
 
   @override
