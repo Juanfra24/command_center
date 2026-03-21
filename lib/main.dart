@@ -17,19 +17,17 @@ void main(List<String> args) async {
   await windowManager.ensureInitialized();
 
   // Set window properties with Windows-style configuration
-  windowManager.waitUntilReadyToShow().then(
-    (_) async {
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-      await windowManager.setSize(const Size(1280, 800));
-      await windowManager.setMinimumSize(const Size(1024, 700));
-      await windowManager.setResizable(true);
-      await windowManager.center();
-      await windowManager.show();
-      // Prevent the OS from immediately destroying the window on close so that
-      // onWindowClose() can run async teardown before calling destroy().
-      await windowManager.setPreventClose(true);
-    },
-  );
+  await windowManager.waitUntilReadyToShow(null, () async {
+    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+    await windowManager.setSize(const Size(1280, 800));
+    await windowManager.setMinimumSize(const Size(1024, 700));
+    await windowManager.setResizable(true);
+    await windowManager.center();
+    await windowManager.show();
+    // Prevent the OS from immediately destroying the window on close so that
+    // onWindowClose() can run async teardown before calling destroy().
+    await windowManager.setPreventClose(true);
+  });
 
   await GetStorage.init();
 
