@@ -60,24 +60,26 @@ class AccountRepositoryImpl implements AccountRepository {
 
   @override
   Future<int> insertAccount(AccountEntity account) async {
-    final accountId = await _db.into(_db.accountsTable).insert(
-          AccountsTableCompanion.insert(
-            accountName: account.accountName,
-            birthday: Value(account.birthday),
-            email: account.email,
-            password: account.password,
-            proxySlotId: Value(account.proxySlotId),
-            createdAt: Value(account.createdAt ?? DateTime.now()),
-            lastUpdated: Value(account.lastUpdated ?? DateTime.now()),
-          ),
-        );
+    return await _db.transaction(() async {
+      final accountId = await _db.into(_db.accountsTable).insert(
+            AccountsTableCompanion.insert(
+              accountName: account.accountName,
+              birthday: Value(account.birthday),
+              email: account.email,
+              password: account.password,
+              proxySlotId: Value(account.proxySlotId),
+              createdAt: Value(account.createdAt ?? DateTime.now()),
+              lastUpdated: Value(account.lastUpdated ?? DateTime.now()),
+            ),
+          );
 
-    // Insert characters
-    for (final character in account.characters) {
-      await _insertCharacter(character.copyWith(accountId: accountId));
-    }
+      // Insert characters
+      for (final character in account.characters) {
+        await _insertCharacter(character.copyWith(accountId: accountId));
+      }
 
-    return accountId;
+      return accountId;
+    });
   }
 
   @override
@@ -173,13 +175,21 @@ class AccountRepositoryImpl implements AccountRepository {
       ..where((tbl) => tbl.proxySlotId.equals(proxySlotId));
     final accounts = await query.get();
 
-    final result = <AccountEntity>[];
-    for (final account in accounts) {
-      final characters = await _getCharactersForAccount(account.id);
-      result.add(_mapAccountRow(account, characters));
+    if (accounts.isEmpty) return [];
+
+    final accountIds = accounts.map((a) => a.id).toSet();
+    final allChars = await _db.select(_db.charactersTable).get();
+    final charsByAccountId = <int, List<CharacterEntity>>{};
+    for (final charRow
+        in allChars.where((c) => accountIds.contains(c.accountId))) {
+      charsByAccountId
+          .putIfAbsent(charRow.accountId, () => [])
+          .add(_mapCharacterRow(charRow));
     }
 
-    return result;
+    return accounts
+        .map((a) => _mapAccountRow(a, charsByAccountId[a.id] ?? []))
+        .toList();
   }
 
   @override

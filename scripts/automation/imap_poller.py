@@ -38,7 +38,7 @@ def fetch_verification_code(
                 mail.select("INBOX")
                 _, messages = mail.search(None, '(FROM "jagex" UNSEEN)')
                 if not messages[0]:
-                    _, messages = mail.search(None, '(FROM "jagex.com")')
+                    _, messages = mail.search(None, '(FROM "jagex.com" UNSEEN)')
 
                 email_ids = messages[0].split()
                 for eid in reversed(email_ids[-10:]):

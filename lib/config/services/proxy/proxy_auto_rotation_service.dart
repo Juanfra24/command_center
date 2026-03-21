@@ -59,7 +59,6 @@ class ProxyAutoRotationService {
     final threshold = _configService.autoRotationThreshold.value;
 
     // Filter to above-threshold IPs (high fraud score = bad), sorted worst first
-    _recentlyRotatedSlotIds.clear();
     final aboveThreshold = results
         .where((r) => r.score > threshold && r.slot.id != null)
         .toList()
@@ -197,6 +196,9 @@ class ProxyAutoRotationService {
             'All $failedCount replacement attempts failed. Manual review recommended.',
       );
     }
+
+    // Clear the guard set after all processing is done (not before)
+    _recentlyRotatedSlotIds.clear();
   }
 
   /// Rotate the IP for a specific slot (triggered by watchdog on ban detection).

@@ -40,7 +40,7 @@ class PythonSetupService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    _checker = Get.put(PythonDependencyChecker());
+    _checker = PythonDependencyChecker();
   }
 
   String get _scriptsPath => scriptsPath;
@@ -188,7 +188,9 @@ class PythonSetupService extends GetxService {
         python,
         ['-m', 'patchright', 'install', 'chromium'],
         workingDirectory: _scriptsPath,
-      );
+      ).timeout(const Duration(minutes: 5), onTimeout: () {
+        return ProcessResult(-1, -1, '', 'Chromium install timed out');
+      });
 
       if (result.exitCode == 0) {
         logger.i('Patchright Chromium installed successfully');

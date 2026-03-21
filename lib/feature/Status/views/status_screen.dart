@@ -19,23 +19,26 @@ class StatusScreen extends GetView<StatusController> {
     return ScaffoldPage(
       header: PageHeader(
         title: const Text('Accounts & Characters'),
-        commandBar: CommandBar(
-          mainAxisAlignment: MainAxisAlignment.end,
-          primaryItems: [
-            CommandBarButton(
-              icon: const Icon(FluentIcons.add),
-              label: const Text('New Character'),
-              onPressed: CreateCharacterDialog.canCreate()
-                  ? () => CreateCharacterDialog.show(context)
-                  : null,
-            ),
-            CommandBarButton(
-              icon: const Icon(FluentIcons.refresh),
-              label: const Text('Refresh'),
-              onPressed: () => controller.getAccountsData(),
-            ),
-          ],
-        ),
+        commandBar: Obx(() {
+          final canCreate = CreateCharacterDialog.canCreate();
+          return CommandBar(
+            mainAxisAlignment: MainAxisAlignment.end,
+            primaryItems: [
+              CommandBarButton(
+                icon: const Icon(FluentIcons.add),
+                label: const Text('New Character'),
+                onPressed: canCreate
+                    ? () => CreateCharacterDialog.show(context)
+                    : null,
+              ),
+              CommandBarButton(
+                icon: const Icon(FluentIcons.refresh),
+                label: const Text('Refresh'),
+                onPressed: () => controller.getAccountsData(),
+              ),
+            ],
+          );
+        }),
       ),
       content: Obx(() {
         if (controller.isLoading.value) {
@@ -49,7 +52,14 @@ class StatusScreen extends GetView<StatusController> {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final canCreate = CreateCharacterDialog.canCreate();
+    return Obx(() {
+      final canCreate = CreateCharacterDialog.canCreate();
+      return _buildEmptyStateContent(context, theme, canCreate);
+    });
+  }
+
+  Widget _buildEmptyStateContent(
+      BuildContext context, FluentThemeData theme, bool canCreate) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -7,6 +7,7 @@ class NotificationController extends GetxController {
 
   var notifications = <NotificationEntity>[].obs;
   var isLoading = false.obs;
+  Worker? _unreadWorker;
 
   NotificationController(this._notificationService);
 
@@ -16,7 +17,14 @@ class NotificationController extends GetxController {
   void onInit() {
     super.onInit();
     loadNotifications();
-    ever(_notificationService.unreadCount, (_) => loadNotifications());
+    _unreadWorker =
+        ever(_notificationService.unreadCount, (_) => loadNotifications());
+  }
+
+  @override
+  void onClose() {
+    _unreadWorker?.dispose();
+    super.onClose();
   }
 
   Future<void> loadNotifications() async {

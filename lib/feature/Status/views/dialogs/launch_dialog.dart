@@ -30,13 +30,17 @@ class _LaunchDialogState extends State<LaunchDialog> {
     super.initState();
     final configService = Get.find<AppConfigService>();
     final last = LaunchDialog._lastConfig;
-    _selectedScript = last?.scriptName ??
-        (configService.scriptRegistry.isNotEmpty
-            ? configService.scriptRegistry.first
-            : '');
+    final registry = configService.scriptRegistry;
+    final lastScript = last?.scriptName;
+    _selectedScript = (lastScript != null && registry.contains(lastScript))
+        ? lastScript
+        : (registry.isNotEmpty ? registry.first : '');
     final w = last?.world ?? 'auto';
     _selectedWorld =
         const {'auto', 'f2p', 'members'}.contains(w) ? w : 'specific';
+    if (_selectedWorld == 'specific') {
+      _worldNumberController.text = w;
+    }
     _scriptParamsController.text = last?.scriptParams ?? '';
     _advancedFlagsController.text = last?.advancedFlags ?? '';
     _jvmArgsController.text = last?.jvmArgs ?? '';
