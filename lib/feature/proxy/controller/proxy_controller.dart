@@ -289,7 +289,8 @@ class ProxyController extends GetxController {
       await _proxyRepository!.updateSlot(slot.copyWith(slotName: newName));
       await loadProxySlots();
       if (selectedSlot.value?.id == slot.id) {
-        selectedSlot.value = slot.copyWith(slotName: newName);
+        selectedSlot.value =
+            proxySlots.firstWhereOrNull((s) => s.id == slot.id);
       }
       return true;
     } catch (e) {
