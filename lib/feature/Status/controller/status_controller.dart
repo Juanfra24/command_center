@@ -241,6 +241,15 @@ class StatusController extends GetxController {
   Future<void> deleteAccount(int accountId) async {
     if (_accountRepository == null) return;
     try {
+      // Stop any running characters before deleting
+      final account = await _accountRepository!.getAccountById(accountId);
+      if (account != null && _watchdog != null) {
+        for (final character in account.characters) {
+          if (_watchdog!.trackedClients.containsKey(character.name)) {
+            await _watchdog!.stop(character.name);
+          }
+        }
+      }
       await _accountRepository!.deleteAccount(accountId);
       await getAccountsData();
     } catch (e) {
