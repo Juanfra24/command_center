@@ -88,10 +88,17 @@ class IpqsResult {
 class IpqsApiClient {
   static const String _baseUrl = 'https://ipqualityscore.com/api/json/ip';
 
-  /// Score a single IP address
+  /// Score a single IP address.
+  ///
+  /// The IPQS v1 API requires the key in the URL path:
+  /// `GET /api/json/ip/{key}/{ip}?{params}`
+  /// It cannot be moved to a header — this is the required format per the
+  /// IPQualityScore API specification. Exception messages are sanitized below
+  /// to prevent the key from leaking into logs.
   Future<IpqsResult> scoreIp(String apiKey, String ipAddress) async {
     try {
-      final uri = Uri.parse('$_baseUrl/$ipAddress?strictness=1&key=$apiKey');
+      // Key is in the path segment as required by IPQS API spec, not in query params.
+      final uri = Uri.parse('$_baseUrl/$apiKey/$ipAddress?strictness=1');
 
       final response = await http.get(
         uri,
@@ -105,9 +112,8 @@ class IpqsApiClient {
         return IpqsResult.error('API request failed: ${response.statusCode}');
       }
     } catch (e) {
-      // Scrub API key from exception messages (URL may contain key= param)
-      final sanitized =
-          e.toString().replaceAll(RegExp(r'key=[^&\s]+'), 'key=***');
+      // Scrub API key from exception messages — key appears in the URL path.
+      final sanitized = e.toString().replaceAll(apiKey, '***');
       logger.e('IPQS API request failed: $sanitized');
       return IpqsResult.error('IPQS request failed. Check logs for details.');
     }
