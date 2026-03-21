@@ -5,6 +5,7 @@ import 'package:command_center/config/services/bot_engine/microbot_setup_service
 import 'package:command_center/config/services/setup/scripts_extractor.dart';
 import 'package:command_center/config/services/setup/setup_orchestrator.dart';
 import 'package:command_center/core/helper/logger.dart';
+import 'package:command_center/core/helper/python_resolver.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
@@ -144,6 +145,9 @@ class AppBindings extends Bindings {
     // 9. MicrobotSetupService (orchestrates dependency downloads)
     final appDataPath = Get.find<AppDataPath>();
     final basePath = await appDataPath.basePath;
+
+    // Set app data dir for Python venv creation on Linux (PEP 668)
+    PythonResolver.setAppDataDir(basePath);
     final javaInstaller =
         JavaInstaller(appConfig: appConfigService, basePath: basePath);
     final jarDownloader =
