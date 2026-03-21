@@ -30,7 +30,7 @@ class Character extends Equatable {
     return Character(
       id: json['id'] as int?,
       banned: json['banned'] as bool? ?? false,
-      name: json['name'] as String? ?? 'Jhon Doe',
+      name: json['name'] as String? ?? 'John Doe',
       actualSkills:
           Skills.fromJson(json['actualSkills'] as Map<String, dynamic>? ?? {}),
       targetSkills:
