@@ -90,7 +90,16 @@ class WatchdogService extends GetxService {
   // ===== Public API =====
 
   /// Start tracking a client (called after launch dialog).
-  void track(TrackedClient client) {
+  Future<void> track(TrackedClient client) async {
+    // Check for duplicate character ID already tracked under a different name
+    final existingEntry = trackedClients.entries.firstWhereOrNull(
+      (e) => e.value.characterId == client.characterId,
+    );
+    if (existingEntry != null) {
+      // Stop the old instance before launching new one
+      await stop(existingEntry.key);
+    }
+
     final wasEmpty = trackedClients.isEmpty;
     trackedClients[client.characterName] = client;
     trackedClients.refresh();

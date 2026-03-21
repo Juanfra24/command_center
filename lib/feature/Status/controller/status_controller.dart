@@ -160,7 +160,7 @@ class StatusController extends GetxController {
         status: ClientStatus.running,
         launchedAt: DateTime.now(),
       );
-      _watchdog!.track(tracked);
+      await _watchdog!.track(tracked);
     } catch (e) {
       logger.e('Failed to launch ${character.name}: $e');
     }
