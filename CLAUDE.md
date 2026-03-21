@@ -231,13 +231,15 @@ Process management, Java installation, Python resolution, and file opening are a
 
 ## Current State
 
-- **Version:** 0.7.0 (pubspec.yaml and CHANGELOG in sync)
+- **Version:** 0.9.5 (pubspec.yaml and CHANGELOG in sync)
 - **Platforms:** Windows x64, Linux x64 (ARM64 build-from-source only)
-- **Test suite:** 35 test files, 311 tests covering bot engine, watchdog handlers, services, repositories, controllers, UI components, and helpers
-- **Feature files:** 93 Dart files across 7 features
+- **Test suite:** 36 test files, 315 tests covering bot engine, watchdog handlers, services, repositories, controllers, UI components, and helpers
+- **Feature files:** 94 Dart files across 7 features
 - Layered atomic architecture enforced across all features
 - Performance optimized: cached IP lookups, batched DB queries, scoped Obx rebuilds, DB indices on FK columns
 - Rx lifecycle clean: no leaked workers, no dead observables, proper disposal throughout
 - AutomationService decomposed: PythonRunner (process management) + ResultParser (output parsing)
-- Security hardened: credentials via env vars, log sanitization, IPQS key out of URL, proxy password obscured in UI
-- App shell decomposed: app.dart (139 lines) + extracted title bar, navigation, lifecycle components
+- Security hardened: credentials via env vars, log sanitization, IPQS key in URL path (not query), proxy password obscured in UI, stderr redacted in error results
+- App shell decomposed: app.dart (160 lines) + extracted title bar, navigation, lifecycle components
+- Setup flow: 4-step wizard (scripts extraction, Python/venv, Java 17, Microbot JAR) with PAT prompt, retry, progress tiles
+- Python venv: auto-created on Linux to bypass PEP 668 externally-managed-environment
