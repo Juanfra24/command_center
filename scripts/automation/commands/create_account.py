@@ -364,19 +364,29 @@ async def create_account(
 
         dob_str = f"{dob['day']}/{dob['month']}/{dob['year']}"
         log_fn("[INFO] Account creation flow completed")
-        return AutomationResult(
-            status=AutomationStatus.ACCOUNT_CREATED.value,
-            message="Account creation completed",
-            expected_ip=expected_ip,
-            actual_ip=actual_ip,
-            data={
-                "email": generated_email,
-                "password": generated_password,
-                "accountName": account_name,
-                "dob": dob_str,
-                "confirmed": confirmed,
-            },
-        )
+        result_data = {
+            "email": generated_email,
+            "password": generated_password,
+            "accountName": account_name,
+            "dob": dob_str,
+            "confirmed": confirmed,
+        }
+        if confirmed:
+            return AutomationResult(
+                status=AutomationStatus.ACCOUNT_CREATED.value,
+                message="Account created successfully",
+                expected_ip=expected_ip,
+                actual_ip=actual_ip,
+                data=result_data,
+            )
+        else:
+            return AutomationResult(
+                status=AutomationStatus.UNKNOWN_ERROR.value,
+                message="Account creation could not be confirmed",
+                expected_ip=expected_ip,
+                actual_ip=actual_ip,
+                data=result_data,
+            )
 
     except Exception as e:
         log_fn(f"[ERROR] Account creation failed at unexpected point: {type(e).__name__}: {e}")
