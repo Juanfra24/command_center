@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-03-21
+
+### Bug Fixes
+
+- create Python venv on Linux to bypass PEP 668 externally-managed-environment (setup)
 ## [0.9.4] - 2026-03-20
 
 ### Bug Fixes
