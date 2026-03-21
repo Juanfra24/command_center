@@ -123,6 +123,11 @@ class ProxyController extends GetxController {
       final ips = await _proxyRepository!.getAllIpAddresses();
       ipAddresses.value = ips;
       _rebuildIpLookup();
+      // Refresh selected slot's IP history if a slot is selected
+      if (selectedSlot.value?.id != null) {
+        selectedSlotIpHistory.value =
+            getIpHistoryForSlot(selectedSlot.value!.id!);
+      }
     } catch (e) {
       logger.e('Error loading IP addresses: $e');
     }
