@@ -37,12 +37,9 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 class AppBindings extends Bindings {
-  static bool _initialized = false;
-
   @override
   void dependencies() {
-    if (_initialized) return;
-    _initialized = true;
+    if (Get.isRegistered<AppDataPath>()) return; // already initialized
 
     // Synchronous services first
     Get.put<AppDataPath>(AppDataPath(), permanent: true);
