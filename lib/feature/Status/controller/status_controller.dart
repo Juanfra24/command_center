@@ -20,6 +20,7 @@ import '../../../core/helper/logger.dart';
 class StatusController extends GetxController {
   var isLoading = true.obs;
   final accountList = <JagexAccount>[].obs;
+  bool _isRefreshing = false;
 
   AccountRepository? _accountRepository;
   ProxyRepository? _proxyRepository;
@@ -62,6 +63,8 @@ class StatusController extends GetxController {
 
   Future<void> getAccountsData() async {
     if (_accountRepository == null) return;
+    if (_isRefreshing) return;
+    _isRefreshing = true;
 
     try {
       final accounts = await _accountRepository!.getAllAccounts();
@@ -98,6 +101,8 @@ class StatusController extends GetxController {
         ]);
     } catch (err) {
       logger.e(err);
+    } finally {
+      _isRefreshing = false;
     }
   }
 
