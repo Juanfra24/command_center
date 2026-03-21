@@ -102,8 +102,14 @@ class WatchdogService extends GetxService {
   /// Stop a client: kill process (with profile cleanup), remove from tracking.
   Future<void> stop(String characterName) async {
     final client = trackedClients[characterName];
-    if (client != null && client.pid != null) {
-      await _botEngine.stop(client.pid!);
+    if (client != null) {
+      // Mark stopped BEFORE killing the process so that a concurrent _tick
+      // cannot classify the imminent process-death as an unexpected death and
+      // schedule a restart.
+      client.status = ClientStatus.stopped;
+      if (client.pid != null) {
+        await _botEngine.stop(client.pid!);
+      }
     }
     trackedClients.remove(characterName);
     trackedClients.refresh();
