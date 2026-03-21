@@ -10,6 +10,7 @@ import 'package:command_center/domain/repositories/proxy_repository.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
 import 'package:command_center/feature/Status/data/skills_model.dart';
+import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
@@ -257,6 +258,9 @@ class StatusController extends GetxController {
       }
       await _accountRepository!.deleteAccount(accountId);
       await getAccountsData();
+      try {
+        Get.find<StatusSelectionController>().clearSelection();
+      } catch (_) {}
     } catch (e) {
       logger.e('Failed to delete account: $e');
     }
