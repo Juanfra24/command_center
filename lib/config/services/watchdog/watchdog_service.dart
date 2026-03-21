@@ -206,6 +206,7 @@ class WatchdogService extends GetxService {
                 }
                 client.lastStatus = newStatus;
               } else {
+                await response.drain<void>();
                 client.lastStatus = null;
               }
             } catch (_) {
