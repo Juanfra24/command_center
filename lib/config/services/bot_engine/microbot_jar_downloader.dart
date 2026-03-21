@@ -10,8 +10,9 @@ class MicrobotJarDownloader {
   final AppConfigService _appConfig;
   final String _basePath;
 
+  /// Fetches all releases (not just latest) — the latest release may not have JAR assets.
   static const _releasesUrl =
-      'https://api.github.com/repos/Juanfra24/Microbot_Frieren/releases/latest';
+      'https://api.github.com/repos/Juanfra24/Microbot_Frieren/releases';
 
   MicrobotJarDownloader({
     required AppConfigService appConfig,
@@ -43,11 +44,18 @@ class MicrobotJarDownloader {
     String? remoteVersion;
     String? downloadUrl;
     try {
-      final release = await _fetchLatestRelease(token);
+      final release = await _fetchReleaseWithJar(token);
       remoteVersion = release['tag_name'] as String?;
       final assets = (release['assets'] as List?)?.cast<Map<String, dynamic>>();
       downloadUrl = assets != null ? findShadedJarUrl(assets) : null;
     } catch (e) {
+      // Let auth errors propagate so the orchestrator can prompt for a new PAT
+      final msg = e.toString();
+      if (msg.contains('invalid') ||
+          msg.contains('expired') ||
+          msg.contains('401')) {
+        rethrow;
+      }
       logger.w('GitHub API check failed (rate limited?): $e');
       // Fall back to cached JAR if available
       if (existingPath != null && File(existingPath).existsSync()) {
@@ -126,7 +134,9 @@ class MicrobotJarDownloader {
     return jarPath;
   }
 
-  Future<Map<String, dynamic>> _fetchLatestRelease(String token) async {
+  /// Fetch the first release that contains a shaded JAR asset.
+  /// Iterates all releases (newest first) since the latest release may have no assets.
+  Future<Map<String, dynamic>> _fetchReleaseWithJar(String token) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
     try {
@@ -147,7 +157,18 @@ class MicrobotJarDownloader {
       }
 
       final body = await response.transform(utf8.decoder).join();
-      return jsonDecode(body) as Map<String, dynamic>;
+      final releases = (jsonDecode(body) as List).cast<Map<String, dynamic>>();
+
+      // Find the first release with a shaded JAR asset
+      for (final release in releases) {
+        final assets =
+            (release['assets'] as List?)?.cast<Map<String, dynamic>>();
+        if (assets != null && findShadedJarUrl(assets) != null) {
+          return release;
+        }
+      }
+
+      throw Exception('No release found with a shaded JAR asset');
     } finally {
       client.close();
     }

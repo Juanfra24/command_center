@@ -40,12 +40,9 @@ except ImportError as e:
 
 
 def _get_proxy_url(args) -> str:
-    """Resolve proxy URL from env var (preferred) or CLI arg (fallback)."""
+    """Resolve proxy URL from env var."""
     import os
-    env_proxy = os.environ.get("CC_PROXY_URL")
-    if env_proxy:
-        return env_proxy
-    return getattr(args, "proxy_url", "")
+    return os.environ.get("CC_PROXY_URL", "")
 
 
 def _get_imap_creds(args) -> tuple:
@@ -61,13 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_p = subparsers.add_parser("validate", help="Validate proxy IP address")
-    validate_p.add_argument("proxy_url", nargs="?", default="", help="Proxy URL (prefer CC_PROXY_URL env var)")
     validate_p.add_argument("expected_ip", help="Expected IP address")
     validate_p.add_argument("--headless", action="store_true")
     validate_p.add_argument("--debug", action="store_true")
 
     create_p = subparsers.add_parser("create-account", help="Create a new Jagex account")
-    create_p.add_argument("proxy_url", nargs="?", default="", help="Proxy URL (prefer CC_PROXY_URL env var)")
     create_p.add_argument("expected_ip", help="Expected IP address")
     create_p.add_argument("--headless", action="store_true")
     create_p.add_argument("--debug", action="store_true")
@@ -76,7 +71,6 @@ def build_parser() -> argparse.ArgumentParser:
     create_p.add_argument("--imap-pass", help="IMAP password (prefer CC_IMAP_PASS env var)")
 
     session_p = subparsers.add_parser("session", help="Open browser session with proxy")
-    session_p.add_argument("proxy_url", nargs="?", default="", help="Proxy URL (prefer CC_PROXY_URL env var)")
     session_p.add_argument("expected_ip", help="Expected IP address")
     session_p.add_argument("--keep-open", action="store_true")
     session_p.add_argument("--debug", action="store_true")

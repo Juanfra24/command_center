@@ -173,13 +173,13 @@ class PythonRunner {
     await Future.delayed(warmup);
 
     final output = outputBuffer.toString();
-    final exited = output.contains('RESULT');
+    final exited = output.contains('=== RESULT ===');
 
     // Track the detached PID for cleanup on app close
     if (_currentProcess != null) {
       _detachedSessionPids.add(_currentProcess!.pid);
     }
-    _currentProcess = null;
+    // Keep _currentProcess alive so cancel() can kill it if the session is still running
 
     return (output: output, exited: exited);
   }

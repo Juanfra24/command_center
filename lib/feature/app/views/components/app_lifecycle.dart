@@ -35,15 +35,22 @@ class ResolvedServices {
 
 /// Initialization and teardown helpers extracted from the App shell.
 class AppLifecycle {
-  /// Runs full DI bootstrap: sync bindings, async services, setup, post-setup.
-  static Future<void> initialize() async {
+  /// Phase 1: Register all services in DI (including SetupOrchestrator).
+  /// Call this first, then setState so the splash can observe the orchestrator.
+  static Future<void> initializeServices() async {
     AppBindings().dependencies();
     await AppBindings.initializeAsyncServices();
+  }
 
+  /// Phase 2: Run the setup orchestrator (blocks until all steps complete).
+  static Future<void> runSetup() async {
     if (Get.isRegistered<SetupOrchestrator>()) {
       await Get.find<SetupOrchestrator>().run();
     }
+  }
 
+  /// Phase 3: Register BotEngine + WatchdogService.
+  static Future<void> finalizeSetup() async {
     await AppBindings.initializePostSetup();
   }
 

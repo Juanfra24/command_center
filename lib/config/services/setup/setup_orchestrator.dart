@@ -81,7 +81,7 @@ class SetupOrchestrator extends GetxService {
           success = true;
         } catch (e) {
           logger.e('Setup step ${steps[i].label} failed: $e');
-          final msg = _errorForStep(i, e);
+          final msg = await _errorForStep(i, e);
           _updateStep(
             i,
             status: StepStatus.failed,
@@ -260,7 +260,8 @@ class SetupOrchestrator extends GetxService {
 
   // -- Error Mapping ---------------------------------------------------------
 
-  ({String error, String hint}) _errorForStep(int index, Object e) {
+  Future<({String error, String hint})> _errorForStep(
+      int index, Object e) async {
     final msg = e.toString();
     switch (index) {
       case 0:
@@ -286,7 +287,7 @@ class SetupOrchestrator extends GetxService {
             msg.contains('token') ||
             msg.contains('PAT')) {
           // Clear the bad PAT so user is re-prompted on retry
-          _appConfig.saveGithubPat('');
+          await _appConfig.saveGithubPat('');
           return SetupMessages.githubPatMissing();
         }
         return SetupMessages.jarDownloadFailed();

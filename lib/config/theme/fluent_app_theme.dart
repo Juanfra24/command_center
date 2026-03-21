@@ -34,6 +34,20 @@ class FluentAppTheme {
         iconPadding: const EdgeInsets.symmetric(horizontal: 10.0),
         labelPadding: const EdgeInsets.only(left: 8.0, right: 4.0),
       ),
+      dialogTheme: ContentDialogThemeData(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F3F3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+      ),
       buttonTheme: ButtonThemeData(
         defaultButtonStyle: ButtonStyle(
           padding: WidgetStateProperty.all(
@@ -58,6 +72,20 @@ class FluentAppTheme {
         highlightColor: accent,
         iconPadding: const EdgeInsets.symmetric(horizontal: 10.0),
         labelPadding: const EdgeInsets.only(left: 8.0, right: 4.0),
+      ),
+      dialogTheme: ContentDialogThemeData(
+        decoration: BoxDecoration(
+          color: const Color(0xFF2D2D2D),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF3D3D3D)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
       ),
       buttonTheme: ButtonThemeData(
         defaultButtonStyle: ButtonStyle(

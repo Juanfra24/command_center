@@ -13,7 +13,7 @@ class SetupMessages {
         error: 'pip is required for dependency installation',
         hint: Platform.isWindows
             ? 'Reinstall Python with pip enabled'
-            : 'Run: sudo apt install python3-pip',
+            : 'Run: sudo apt install python3-pip python3-venv',
       );
 
   static ({String error, String hint}) scriptsExtractionFailed() => (

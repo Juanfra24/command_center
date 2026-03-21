@@ -143,14 +143,13 @@ class AccountRepositoryImpl implements AccountRepository {
 
   @override
   Future<void> deleteAccount(int id) async {
-    // Delete characters first
-    await (_db.delete(_db.charactersTable)
-          ..where((tbl) => tbl.accountId.equals(id)))
-        .go();
-
-    // Delete account
-    await (_db.delete(_db.accountsTable)..where((tbl) => tbl.id.equals(id)))
-        .go();
+    await _db.transaction(() async {
+      await (_db.delete(_db.charactersTable)
+            ..where((tbl) => tbl.accountId.equals(id)))
+          .go();
+      await (_db.delete(_db.accountsTable)..where((tbl) => tbl.id.equals(id)))
+          .go();
+    });
   }
 
   @override

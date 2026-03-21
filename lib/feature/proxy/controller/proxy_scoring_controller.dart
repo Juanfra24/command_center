@@ -20,6 +20,7 @@ class ProxyScoringController extends GetxController {
   ProxyAutoRotationService? _autoRotationService;
 
   var isScoring = false.obs;
+  bool _scoringLock = false;
 
   // Integration state
   var isIpqsConfigured = false.obs;
@@ -122,19 +123,10 @@ class ProxyScoringController extends GetxController {
 
   // --- Score actions ---
 
-  /// Score a single IP address using IPQualityScore.
-  /// When [skipReload] is true, skips reloading IP addresses from DB
-  /// (useful during batch scoring to avoid N+1 reloads).
-  Future<bool> scoreIpWithIpqs(ProxyIpAddressEntity ip,
+  /// Internal implementation: scores one IP and optionally reloads data.
+  /// Does NOT acquire [_scoringLock] — callers must hold it.
+  Future<bool> _scoreIpInternal(ProxyIpAddressEntity ip,
       {bool skipReload = false}) async {
-    if (!_ipqsService.isConfigured.value) {
-      logger.w('IPQS not configured');
-      return false;
-    }
-
-    // Only manage isScoring when called standalone (not from batch).
-    // During batch scoring, scoreAllCurrentIps owns the flag.
-    if (!skipReload) isScoring.value = true;
     try {
       final result = await _ipqsService.scoreIp(ip.ipAddress);
 
@@ -195,7 +187,26 @@ class ProxyScoringController extends GetxController {
     } catch (e) {
       logger.e('Error scoring IP with IPQS: $e');
       return false;
+    }
+  }
+
+  /// Score a single IP address using IPQualityScore.
+  /// When [skipReload] is true, skips reloading IP addresses from DB
+  /// (useful during batch scoring to avoid N+1 reloads).
+  Future<bool> scoreIpWithIpqs(ProxyIpAddressEntity ip,
+      {bool skipReload = false}) async {
+    if (!_ipqsService.isConfigured.value) {
+      logger.w('IPQS not configured');
+      return false;
+    }
+
+    if (_scoringLock) return false;
+    _scoringLock = true;
+    if (!skipReload) isScoring.value = true;
+    try {
+      return await _scoreIpInternal(ip, skipReload: skipReload);
     } finally {
+      _scoringLock = false;
       if (!skipReload) isScoring.value = false;
     }
   }
@@ -209,6 +220,8 @@ class ProxyScoringController extends GetxController {
       return 0;
     }
 
+    if (_scoringLock) return 0;
+    _scoringLock = true;
     isScoring.value = true;
     int successCount = 0;
 
@@ -225,7 +238,7 @@ class ProxyScoringController extends GetxController {
             continue;
           }
 
-          final success = await scoreIpWithIpqs(currentIp, skipReload: true);
+          final success = await _scoreIpInternal(currentIp, skipReload: true);
           if (success) successCount++;
           // Small delay to avoid rate limiting
           await Future.delayed(const Duration(milliseconds: 300));
@@ -265,6 +278,7 @@ class ProxyScoringController extends GetxController {
       logger.e('Error scoring all IPs: $e');
       return successCount;
     } finally {
+      _scoringLock = false;
       isScoring.value = false;
     }
   }

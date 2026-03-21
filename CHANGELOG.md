@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-03-21
+
+### Bug Fixes
+
+- create Python venv on Linux to bypass PEP 668 externally-managed-environment (setup)
+## [0.9.4] - 2026-03-20
+
+### Bug Fixes
+
+- set explicit ContentDialog background for Linux (acrylic renders as grey box) (theme)
+## [0.9.3] - 2026-03-20
+
+### Bug Fixes
+
+- search all releases for shaded JAR (latest release may have no assets) (setup)
+## [0.9.2] - 2026-03-20
+
+### Bug Fixes
+
+- splash screen updates during setup + PAT retry re-prompts on auth failure (setup)
+## [0.9.1] - 2026-03-20
+
+### Bug Fixes
+
+- resolve 7 critical bugs — path on 2nd launch, pip timeout, retry stuck, PAT recovery, error boundary, dep check (setup)
+- add detailed substep progress + fix retry stuck on isChecking guard (setup)
+- prompt for GitHub PAT during Microbot step when not configured (setup)
+## [0.9.0] - 2026-03-20
+
+### Features
+
+- rewrite splash screen as 4-step setup wizard with progress tiles (setup)
+- wire SetupOrchestrator into DI and app lifecycle (setup)
+- add SetupOrchestrator with 4-step reactive flow (setup)
+- add ScriptsExtractor + bundle scripts in pubspec.yaml assets (setup)
+- add platform-specific setup error messages (setup)
+- add SetupStepState model and StepStatus enum (setup)
 ## [0.8.0] - 2026-03-20
 
 ### Features
