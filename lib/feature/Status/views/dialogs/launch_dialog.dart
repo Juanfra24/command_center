@@ -38,6 +38,9 @@ class _LaunchDialogState extends State<LaunchDialog> {
     final w = last?.world ?? 'auto';
     _selectedWorld =
         const {'auto', 'f2p', 'members'}.contains(w) ? w : 'specific';
+    if (_selectedWorld == 'specific') {
+      _worldNumberController.text = w;
+    }
     _scriptParamsController.text = last?.scriptParams ?? '';
     _advancedFlagsController.text = last?.advancedFlags ?? '';
     _jvmArgsController.text = last?.jvmArgs ?? '';
