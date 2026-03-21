@@ -365,8 +365,8 @@ void main() {
       expect(result, isTrue);
       expect(client.retryCount, 1);
       expect(client.lastDeathAt, isNotNull);
-      // Status should NOT be changed to running on failure
-      expect(client.status, ClientStatus.restarting);
+      // Status should transition to failed when launch throws
+      expect(client.status, ClientStatus.failed);
     });
 
     test('exponential backoff: cooldown doubles with each retry', () async {
