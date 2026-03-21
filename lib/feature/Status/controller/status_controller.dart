@@ -137,40 +137,40 @@ class StatusController extends GetxController {
       }
     }
 
-    try {
-      final result = await _botEngine!.launch(
-        characterId: character.id!,
-        characterName: character.name,
-        email: account.email,
-        password: account.password,
-        proxyUrl: proxyUrl,
-        config: config,
-      );
+    final result = await _botEngine!.launch(
+      characterId: character.id!,
+      characterName: character.name,
+      email: account.email,
+      password: account.password,
+      proxyUrl: proxyUrl,
+      config: config,
+    );
 
-      final tracked = TrackedClient(
-        characterName: character.name,
-        characterId: character.id!,
-        accountId: account.id!,
-        proxySlotId: account.proxySlotId,
-        email: account.email,
-        password: account.password,
-        proxyUrl: proxyUrl,
-        launchConfig: config,
-        pid: result.pid,
-        statusPort: result.statusPort,
-        status: ClientStatus.running,
-        launchedAt: DateTime.now(),
-      );
-      await _watchdog!.track(tracked);
-    } catch (e) {
-      logger.e('Failed to launch ${character.name}: $e');
-    }
+    final tracked = TrackedClient(
+      characterName: character.name,
+      characterId: character.id!,
+      accountId: account.id!,
+      proxySlotId: account.proxySlotId,
+      email: account.email,
+      password: account.password,
+      proxyUrl: proxyUrl,
+      launchConfig: config,
+      pid: result.pid,
+      statusPort: result.statusPort,
+      status: ClientStatus.running,
+      launchedAt: DateTime.now(),
+    );
+    await _watchdog!.track(tracked);
   }
 
   /// Launch all launchable characters with the given config.
   Future<void> launchAll(LaunchConfig config) async {
     // Snapshot to avoid iterating a live RxList across awaits
     final snapshot = List.of(accountList);
+    int consecutiveFailures = 0;
+    const maxConsecutiveFailures = 3;
+
+    outer:
     for (final account in snapshot) {
       for (final character in account.characters) {
         // Skip if already tracked (running, restarting, etc.)
@@ -181,9 +181,21 @@ class StatusController extends GetxController {
         // Skip banned characters (DB flag)
         if (character.banned) continue;
 
-        await launchCharacter(account, character, config);
-        // Small delay between launches to avoid overwhelming
-        await Future.delayed(const Duration(milliseconds: 200));
+        try {
+          await launchCharacter(account, character, config);
+          consecutiveFailures = 0;
+          // Small delay between launches to avoid overwhelming
+          await Future.delayed(const Duration(milliseconds: 200));
+        } catch (e) {
+          logger.e('Failed to launch ${character.name}: $e');
+          consecutiveFailures++;
+          if (consecutiveFailures >= maxConsecutiveFailures) {
+            logger.e(
+              'Aborting launchAll after $maxConsecutiveFailures consecutive failures',
+            );
+            break outer;
+          }
+        }
       }
     }
   }
@@ -312,8 +324,12 @@ class StatusController extends GetxController {
         if (character.banned) continue;
         if (character.defaultScriptName == null) continue;
         final config = LaunchConfig(scriptName: character.defaultScriptName!);
-        await launchCharacter(account, character, config);
-        count++;
+        try {
+          await launchCharacter(account, character, config);
+          count++;
+        } catch (e) {
+          logger.e('Failed to launch ${character.name}: $e');
+        }
       }
     }
     return count;
