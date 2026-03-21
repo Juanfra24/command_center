@@ -60,24 +60,26 @@ class AccountRepositoryImpl implements AccountRepository {
 
   @override
   Future<int> insertAccount(AccountEntity account) async {
-    final accountId = await _db.into(_db.accountsTable).insert(
-          AccountsTableCompanion.insert(
-            accountName: account.accountName,
-            birthday: Value(account.birthday),
-            email: account.email,
-            password: account.password,
-            proxySlotId: Value(account.proxySlotId),
-            createdAt: Value(account.createdAt ?? DateTime.now()),
-            lastUpdated: Value(account.lastUpdated ?? DateTime.now()),
-          ),
-        );
+    return await _db.transaction(() async {
+      final accountId = await _db.into(_db.accountsTable).insert(
+            AccountsTableCompanion.insert(
+              accountName: account.accountName,
+              birthday: Value(account.birthday),
+              email: account.email,
+              password: account.password,
+              proxySlotId: Value(account.proxySlotId),
+              createdAt: Value(account.createdAt ?? DateTime.now()),
+              lastUpdated: Value(account.lastUpdated ?? DateTime.now()),
+            ),
+          );
 
-    // Insert characters
-    for (final character in account.characters) {
-      await _insertCharacter(character.copyWith(accountId: accountId));
-    }
+      // Insert characters
+      for (final character in account.characters) {
+        await _insertCharacter(character.copyWith(accountId: accountId));
+      }
 
-    return accountId;
+      return accountId;
+    });
   }
 
   @override
