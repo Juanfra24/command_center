@@ -1,14 +1,13 @@
 import 'package:command_center/feature/Status/data/skills_model.dart';
 import 'package:equatable/equatable.dart';
 
-// ignore: must_be_immutable
 class Character extends Equatable {
-  int? id;
-  bool banned = false;
-  String name = 'Default Character';
-  Skills actualSkills = Skills.empty();
-  Skills targetSkills = Skills.empty();
-  String? defaultScriptName;
+  final int? id;
+  final bool banned;
+  final String name;
+  final Skills actualSkills;
+  final Skills targetSkills;
+  final String? defaultScriptName;
 
   Character({
     this.id,
@@ -30,13 +29,31 @@ class Character extends Equatable {
     }
     return Character(
       id: json['id'] as int?,
-      banned: json['banned'] ?? false,
-      name: json['name'] ?? 'Jhon Doe',
+      banned: json['banned'] as bool? ?? false,
+      name: json['name'] as String? ?? 'Jhon Doe',
       actualSkills:
           Skills.fromJson(json['actualSkills'] as Map<String, dynamic>? ?? {}),
       targetSkills:
           Skills.fromJson(json['targetSkills'] as Map<String, dynamic>? ?? {}),
       defaultScriptName: json['defaultScriptName'] as String?,
+    );
+  }
+
+  Character copyWith({
+    int? id,
+    bool? banned,
+    String? name,
+    Skills? actualSkills,
+    Skills? targetSkills,
+    String? defaultScriptName,
+  }) {
+    return Character(
+      id: id ?? this.id,
+      banned: banned ?? this.banned,
+      name: name ?? this.name,
+      actualSkills: actualSkills ?? this.actualSkills,
+      targetSkills: targetSkills ?? this.targetSkills,
+      defaultScriptName: defaultScriptName ?? this.defaultScriptName,
     );
   }
 
