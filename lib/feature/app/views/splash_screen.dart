@@ -83,6 +83,9 @@ class _SplashScreenState extends State<SplashScreen> {
                 // Input field (shown when a step needs user input, e.g. GitHub PAT)
                 Obx(() {
                   final currentIdx = orchestrator.currentStepIndex.value;
+                  if (currentIdx >= orchestrator.steps.length) {
+                    return const SizedBox.shrink();
+                  }
                   final currentStep = orchestrator.steps[currentIdx];
                   if (!currentStep.needsInput) {
                     return const SizedBox.shrink();
@@ -139,6 +142,9 @@ class _SplashScreenState extends State<SplashScreen> {
                 // Retry button (visible when a step fails)
                 Obx(() {
                   final currentIdx = orchestrator.currentStepIndex.value;
+                  if (currentIdx >= orchestrator.steps.length) {
+                    return const SizedBox.shrink();
+                  }
                   final currentStep = orchestrator.steps[currentIdx];
                   if (currentStep.status != StepStatus.failed) {
                     return const SizedBox.shrink();

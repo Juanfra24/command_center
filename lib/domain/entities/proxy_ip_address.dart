@@ -127,7 +127,8 @@ class ProxyIpAddressEntity extends Equatable {
 
   static IpScoreLevel getScoreLevel(double score) {
     if (score <= 0) return IpScoreLevel.unknown;
-    if (score <= 30) return IpScoreLevel.excellent;
+    if (score <= 20) return IpScoreLevel.excellent;
+    if (score <= 40) return IpScoreLevel.good;
     if (score <= 60) return IpScoreLevel.fair;
     if (score <= 80) return IpScoreLevel.poor;
     return IpScoreLevel.bad;

@@ -90,7 +90,20 @@ class WatchdogService extends GetxService {
   // ===== Public API =====
 
   /// Start tracking a client (called after launch dialog).
-  void track(TrackedClient client) {
+  Future<void> track(TrackedClient client) async {
+    // Check for duplicate character ID already tracked under a different name
+    MapEntry<String, TrackedClient>? existingEntry;
+    for (final entry in trackedClients.entries) {
+      if (entry.value.characterId == client.characterId) {
+        existingEntry = entry;
+        break;
+      }
+    }
+    if (existingEntry != null) {
+      // Stop the old instance before launching new one
+      await stop(existingEntry.key);
+    }
+
     final wasEmpty = trackedClients.isEmpty;
     trackedClients[client.characterName] = client;
     trackedClients.refresh();
@@ -102,8 +115,14 @@ class WatchdogService extends GetxService {
   /// Stop a client: kill process (with profile cleanup), remove from tracking.
   Future<void> stop(String characterName) async {
     final client = trackedClients[characterName];
-    if (client != null && client.pid != null) {
-      await _botEngine.stop(client.pid!);
+    if (client != null) {
+      // Mark stopped BEFORE killing the process so that a concurrent _tick
+      // cannot classify the imminent process-death as an unexpected death and
+      // schedule a restart.
+      client.status = ClientStatus.stopped;
+      if (client.pid != null) {
+        await _botEngine.stop(client.pid!);
+      }
     }
     trackedClients.remove(characterName);
     trackedClients.refresh();
@@ -200,6 +219,7 @@ class WatchdogService extends GetxService {
                 }
                 client.lastStatus = newStatus;
               } else {
+                await response.drain<void>();
                 client.lastStatus = null;
               }
             } catch (_) {

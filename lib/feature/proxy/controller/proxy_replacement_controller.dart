@@ -104,9 +104,9 @@ class ProxyReplacementController extends GetxController {
             await _proxyController.syncWithWebshare();
           } catch (e) {
             logger.w('Sync after replacement failed: $e');
-            // Replacement succeeded but sync failed — still a partial success
             await fetchPlanInfo();
-            return Result.success(null);
+            return Result.failure(
+                'IP replaced but local data not synced. Please sync manually.');
           }
           // Refresh plan info to update remaining replacements
           await fetchPlanInfo();

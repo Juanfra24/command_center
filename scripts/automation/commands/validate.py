@@ -75,7 +75,7 @@ async def validate_proxy_ip(
 
         # Step 4/4: Verify IP match
         log_fn(f"[STEP 4/4] Verifying IP match: expected={expected_ip}, actual={actual_ip}")
-        ip_matches = (expected_ip in actual_ip) or (actual_ip in expected_ip)
+        ip_matches = actual_ip.strip() == expected_ip.strip()
         if ip_matches:
             log_fn("[STEP 4/4] OK - IPs match")
             return AutomationResult(

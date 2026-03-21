@@ -85,6 +85,11 @@ class AppLifecycle {
 
   /// Cleans up controllers and stops music on window close.
   static Future<void> teardown() async {
+    // Cancel any pending setup completers so the suspended run() future
+    // doesn't leak memory if the window is closed during PAT input or retry.
+    try {
+      Get.find<SetupOrchestrator>().cancelPendingInput();
+    } catch (_) {}
     try {
       await Get.delete<StatusController>(force: true);
     } catch (_) {}

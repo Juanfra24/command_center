@@ -365,8 +365,8 @@ void main() {
       expect(result, isTrue);
       expect(client.retryCount, 1);
       expect(client.lastDeathAt, isNotNull);
-      // Status should NOT be changed to running on failure
-      expect(client.status, ClientStatus.restarting);
+      // Status should transition to failed when launch throws
+      expect(client.status, ClientStatus.failed);
     });
 
     test('exponential backoff: cooldown doubles with each retry', () async {
@@ -585,11 +585,17 @@ void main() {
 
       final pid = handlers.discoverPid(client, processes);
 
-      // Note: The current implementation uses String.contains('bot-4'),
-      // which WILL match 'bot-42'. This test documents that behavior.
-      // If this is a bug, it should be fixed in the source code.
-      // For now we test the actual behavior:
-      expect(pid, 5678); // contains 'bot-4' matches 'bot-42'
+      expect(pid, isNull, reason: 'bot-4 must not match bot-42');
+    });
+
+    test('discoverPid does not match partial character IDs', () {
+      final client = makeClient(characterId: 4, pid: null);
+      final processes = [
+        const ProcessClient(
+            processId: 999, commandLine: 'java --cc-profile-dir=/p/bot-42'),
+      ];
+      final pid = handlers.discoverPid(client, processes);
+      expect(pid, isNull, reason: 'bot-4 must not match bot-42');
     });
   });
 

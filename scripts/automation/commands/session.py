@@ -60,7 +60,7 @@ async def launch_session(
                 log_fn(f"[STEP 3/4] IP check failed: {e}")
 
         if actual_ip:
-            ip_matches = (expected_ip in actual_ip) or (actual_ip in expected_ip)
+            ip_matches = actual_ip.strip() == expected_ip.strip()
             if ip_matches:
                 log_fn(f"[STEP 3/4] OK - proxy IP validated: {actual_ip}")
             else:

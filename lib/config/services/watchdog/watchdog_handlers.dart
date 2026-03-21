@@ -128,6 +128,7 @@ class WatchdogHandlers {
       return true;
     } catch (e) {
       client.lastDeathAt = DateTime.now();
+      client.status = ClientStatus.failed;
       logger.e('Failed to relaunch ${client.characterName}: $e');
       return true;
     }
@@ -136,10 +137,11 @@ class WatchdogHandlers {
   /// Match a tracked client to a live process by characterId in command line.
   int? discoverPid(TrackedClient client, List<ProcessClient> liveProcesses) {
     final profileArg = '--cc-profile-dir=';
-    final suffix = 'bot-${client.characterId}';
+    final suffixPattern =
+        RegExp(r'bot-' + client.characterId.toString() + r'(?:[/\\]|$)');
     for (final process in liveProcesses) {
       if (process.commandLine.contains(profileArg) &&
-          process.commandLine.contains(suffix)) {
+          suffixPattern.hasMatch(process.commandLine)) {
         return process.processId;
       }
     }
@@ -224,11 +226,11 @@ class WatchdogHandlers {
         logger.i('Recaptured $recaptured running bot clients');
       }
 
-      // Clean stale profiles for characters that are no longer running
-      final engine = _botEngine;
-      if (engine is MicrobotEngine) {
-        await engine.cleanStaleProfiles(recapturedCharacterIds);
-      }
+      // Stale profiles are cleaned during stop() — removing from recapture to avoid
+      // race where a launching bot's profile is deleted before it appears in ps output.
+      // if (engine is MicrobotEngine) {
+      //   await engine.cleanStaleProfiles(recapturedCharacterIds);
+      // }
     } catch (e) {
       logger.e('Failed to recapture running clients: $e');
     }
@@ -239,25 +241,30 @@ class WatchdogHandlers {
     // Transition immediately to prevent re-entry on next tick
     client.status = ClientStatus.awaitingAccount;
 
-    await _accountRepository.updateCharacterBanned(client.characterId, true);
+    try {
+      await _accountRepository.updateCharacterBanned(client.characterId, true);
 
-    await _notificationService.createNotification(
-      type: NotificationType.banDetected,
-      severity: NotificationSeverity.error,
-      title: 'Ban Detected',
-      message: '${client.characterName} banned after '
-          '${client.consecutiveQuickDeaths} consecutive quick deaths.',
-    );
+      await _notificationService.createNotification(
+        type: NotificationType.banDetected,
+        severity: NotificationSeverity.error,
+        title: 'Ban Detected',
+        message: '${client.characterName} banned after '
+            '${client.consecutiveQuickDeaths} consecutive quick deaths.',
+      );
 
-    if (client.proxySlotId != null) {
-      final rotated =
-          await _autoRotationService.rotateSlot(client.proxySlotId!);
-      if (rotated) {
-        final newProxyUrl = await _buildProxyUrl(client.proxySlotId!);
-        if (newProxyUrl != null) {
-          client.proxyUrl = newProxyUrl;
+      if (client.proxySlotId != null) {
+        final rotated =
+            await _autoRotationService.rotateSlot(client.proxySlotId!);
+        if (rotated) {
+          final newProxyUrl = await _buildProxyUrl(client.proxySlotId!);
+          if (newProxyUrl != null) {
+            client.proxyUrl = newProxyUrl;
+          }
         }
       }
+    } catch (e) {
+      logger.e('Failed to handle ban for ${client.characterName}: $e');
+      client.status = ClientStatus.failed;
     }
   }
 

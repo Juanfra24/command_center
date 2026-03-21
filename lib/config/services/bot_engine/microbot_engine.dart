@@ -53,6 +53,19 @@ class MicrobotEngine implements BotEngine {
 
     logger.i('Launching Microbot for $characterName (id=$characterId)');
 
+    // Poll for status port file (max 10s, 500ms intervals)
+    final portFilePath = p.join(
+      _profileWriter.profilePath(characterId: characterId),
+      'status.port',
+    );
+    // Delete any stale port file from a previous crashed session BEFORE
+    // starting the process, so we cannot accidentally delete the file written
+    // by the newly-launched process.
+    final staleFile = File(portFilePath);
+    if (await staleFile.exists()) {
+      await staleFile.delete();
+    }
+
     final process = await Process.start(javaPath, args);
     final pid = process.pid;
 
@@ -70,17 +83,6 @@ class MicrobotEngine implements BotEngine {
       _activePids.remove(pid);
       _pidToCharacterId.remove(pid);
     });
-
-    // Poll for status port file (max 10s, 500ms intervals)
-    final portFilePath = p.join(
-      _profileWriter.profilePath(characterId: characterId),
-      'status.port',
-    );
-    // Delete any stale port file from a previous crashed session
-    final staleFile = File(portFilePath);
-    if (await staleFile.exists()) {
-      await staleFile.delete();
-    }
     int? statusPort;
     for (int i = 0; i < 20; i++) {
       await Future.delayed(const Duration(milliseconds: 500));

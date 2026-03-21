@@ -140,6 +140,11 @@ class PythonRunner {
       );
     } on TimeoutException {
       _currentProcess?.kill(ProcessSignal.sigkill);
+      // Drain orphaned stream subscriptions so they don't leak after kill
+      await Future.wait([
+        stdoutDone.catchError((_) {}),
+        stderrDone.catchError((_) {}),
+      ]).timeout(const Duration(seconds: 2), onTimeout: () => []);
       rethrow;
     } finally {
       _currentProcess = null;
@@ -173,13 +178,13 @@ class PythonRunner {
     await Future.delayed(warmup);
 
     final output = outputBuffer.toString();
-    final exited = output.contains('RESULT');
+    final exited = output.contains('=== RESULT ===');
 
     // Track the detached PID for cleanup on app close
     if (_currentProcess != null) {
       _detachedSessionPids.add(_currentProcess!.pid);
     }
-    _currentProcess = null;
+    // Keep _currentProcess alive so cancel() can kill it if the session is still running
 
     return (output: output, exited: exited);
   }
