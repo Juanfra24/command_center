@@ -1,6 +1,6 @@
 # RuneScape Bot Command Center
 
-A Windows desktop application for managing a RuneScape bot farm — accounts, proxies, bot engine orchestration, and browser-based Jagex account creation. Integrates with a private [Microbot](https://github.com/chsami/Microbot) fork for headless OSRS automation.
+A cross-platform desktop application (Windows + Linux) for managing a RuneScape bot farm — accounts, proxies, bot engine orchestration, and browser-based Jagex account creation. Integrates with a private [Microbot](https://github.com/chsami/Microbot) fork for headless OSRS automation.
 
 ## Features
 
@@ -12,32 +12,41 @@ A Windows desktop application for managing a RuneScape bot farm — accounts, pr
 - **Browser Automation** - Automated Jagex account creation using Patchright (stealth Chromium) with proxy validation
 - **Dashboard** - System overview with bot status grid, proxy health, and quick actions
 - **Notifications** - Persistent notification system with bell/flyout UI (auto-rotation events, ban alerts, etc.)
-- **Modern UI** - Windows 11 Fluent Design with light/dark theme, branded splash screen with setup progress
-- **Local Database** - SQLite via Drift ORM (schema v4) with 6 tables
+- **Modern UI** - Windows 11 Fluent Design (renders on both platforms) with light/dark theme
+- **4-Step Setup Wizard** - Guided dependency installation with progress tiles, retry, and GitHub PAT prompt
+- **Local Database** - SQLite via Drift ORM (schema v7) with 6 tables and performance indices
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Flutter 3.3.4+ (Windows desktop) |
-| UI | Fluent UI 4.13.0 (Windows 11 design) |
+| Framework | Flutter 3.3.4+ (Windows + Linux desktop) |
+| UI | Fluent UI 4.13.0 (Windows 11 Fluent Design) |
 | State Management | GetX 4.6.5 |
-| Database | Drift ORM 2.22.1 (SQLite) |
+| Database | Drift ORM 2.22.1 (SQLite, schema v7) |
 | Bot Engine | Microbot (private RuneLite fork) via Java 17 |
 | Automation | Python 3.8+ / Patchright (patched Playwright) |
 | Proxy Provider | Webshare API |
 | IP Scoring | IPQualityScore API |
-| CI/CD | GitHub Actions (semantic release) |
+| CI/CD | GitHub Actions (semantic release, Windows + Linux builds) |
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Windows 10/11**
-- **Flutter SDK** 3.3.4+ ([install guide](https://docs.flutter.dev/get-started/install/windows/desktop))
-- **Visual Studio 2022** with "Desktop development with C++" workload (for Flutter Windows builds)
-- **Python 3.8+** with pip (for browser automation)
-- **Git**
+**Windows:**
+- Windows 10/11
+- Flutter SDK 3.3.4+ ([install guide](https://docs.flutter.dev/get-started/install/windows/desktop))
+- Visual Studio 2022 with "Desktop development with C++" workload
+- Python 3.8+ with pip
+- Git
+
+**Linux:**
+- Ubuntu 22.04+ / Debian 12+ (or equivalent)
+- Flutter SDK 3.3.4+
+- Build dependencies: `sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev`
+- Python 3.8+ with pip and venv: `sudo apt install python3 python3-pip python3-venv`
+- Git
 
 ### 1. Clone and Build
 
@@ -46,24 +55,29 @@ git clone <repo-url>
 cd command_center
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
+
+# Windows
 flutter run -d windows
+
+# Linux
+flutter run -d linux
 ```
 
-### 2. First Launch (Splash Screen Setup)
+### 2. First Launch (Setup Wizard)
 
-On first launch, the splash screen automatically installs dependencies:
+On first launch, the 4-step setup wizard automatically installs dependencies:
 
-1. **Python + Patchright** - Browser automation dependencies (stealth Chromium)
-2. **Java 17 (Eclipse Temurin)** - Downloaded to `%APPDATA%/CommandCenter/java/`
-3. **Microbot JAR** - Latest release from the private GitHub fork
+1. **Extract Scripts** - Bundled Python automation scripts extracted to app data dir
+2. **Python Setup** - Checks python3/pip, creates venv (Linux), installs patchright + requests, installs Chromium
+3. **Java 17 (Eclipse Temurin)** - Downloaded and extracted (PowerShell on Windows, tar on Linux)
+4. **Microbot JAR** - Prompts for GitHub PAT, then downloads latest shaded JAR from private repo
 
-If any step fails, the app still launches — bot engine features will be unavailable until dependencies are resolved.
+All steps are mandatory with retry on failure. Each step shows detailed progress.
 
 ### 3. Configure Integrations
 
 1. **Webshare** - Settings > Integrations > Webshare > enter API key > "Connect & Sync"
 2. **IPQualityScore** - Settings > Integrations > IPQS > enter API key
-3. **GitHub PAT** (for private Microbot fork) - Settings > Bot Engine > enter Personal Access Token with `repo` scope
 
 ### 4. Environment Variables (Security)
 
@@ -74,22 +88,23 @@ Credentials are passed to bot instances via environment variables, never command
 | `CC_PROFILE_DIR` | Path to bot profile directory |
 | `CC_STATUS_PORT_FILE` | Path to status port file for IPC |
 
-Bot profiles are written to `%APPDATA%/CommandCenter/microbot_profiles/<account_id>/`.
+Bot profiles are written to the app data directory under `microbot_profiles/<account_id>/`.
 
 ## How It Works
 
 ```
 Command Center (Flutter)
     |
-    |-- Splash Screen ── MicrobotSetupService
-    |                      ├── PythonSetupService (patchright + chromium)
+    |-- Setup Wizard ── SetupOrchestrator
+    |                      ├── ScriptsExtractor (Flutter assets → app data)
+    |                      ├── PythonSetupService (venv + patchright + chromium)
     |                      ├── JavaInstaller (Eclipse Temurin JRE 17)
     |                      └── MicrobotJarDownloader (GitHub Releases + PAT)
     |
     |-- BotEngine (MicrobotEngine)
     |     ├── MicrobotProfileWriter (credentials.properties + commandcenter.properties)
     |     ├── Process.start() with env vars (no credentials in argv)
-    |     └── NativeCommandsService (WMI COM API for process management)
+    |     └── NativeCommandsService (Windows: WMI COM API / Linux: ps + kill)
     |
     |-- WatchdogService
     |     ├── Adaptive polling (5s running / 30s idle)
@@ -102,7 +117,7 @@ Command Center (Flutter)
     |     ├── StatusApiServer (localhost-only HTTP, ephemeral port)
     |     ├── AutoLoginPlugin (profile-based credentials)
     |     ├── ScriptAutoStartPlugin (plugin activation by name)
-    |     └── CC Bot Scripts (5 scripts + 6 behaviors)
+    |     └── CC Bot Scripts (5 scripts + 7 behaviors)
     |
     └── Python Automation
           ├── IP validation via proxy
@@ -126,11 +141,12 @@ lib/
 │   ├── app/             # Navigation shell, settings, onboarding, splash screen
 │   └── dev_tools/       # Database viewer, SQL runner (debug only)
 ├── config/services/     # Business logic services
-│   ├── bot_engine/      # BotEngine, MicrobotEngine, JavaInstaller, JarDownloader, ProfileWriter, SetupService
+│   ├── bot_engine/      # BotEngine, MicrobotEngine, JavaInstaller, JarDownloader, ProfileWriter
 │   ├── watchdog/        # WatchdogService, TrackedClient, LaunchConfig, Handlers
 │   ├── proxy/           # AutoRotation, Replacement, Sync, ScoredIpResult
 │   ├── automation/      # AutomationService, PythonRunner, ResultParser
-│   ├── webshare/        # WebshareApiClient, WebshareService, ReplacementHandler
+│   ├── setup/           # SetupOrchestrator, ScriptsExtractor, SetupStepState, SetupMessages
+│   ├── webshare/        # WebshareApiClient, WebshareService
 │   └── ipqs/            # IpqsApiClient, IpqsService
 └── core/                # Constants, helpers, DI bindings, shared widgets
 
@@ -139,64 +155,71 @@ scripts/
 └── automation/             # Patchright automation package
 ```
 
-## Database Schema (v4)
+## Platform Abstraction
+
+| Concern | Windows | Linux |
+|---------|---------|-------|
+| Process management | WMI COM API (C++ platform channel) | Pure Dart (`ps` + `kill`) |
+| Java extraction | PowerShell `Expand-Archive` | `tar -xzf` |
+| Python executable | `python` (launcher) | `python3` + venv (PEP 668) |
+| File manager | `explorer.exe` | `xdg-open` |
+| Distribution | `.zip` in GitHub Release | `.AppImage` in GitHub Release |
+
+## Database Schema (v7)
 
 | Table | Purpose |
 |-------|---------|
 | `AppConfigTable` | Key-value config (API keys, theme, auto-rotation settings, Java/JAR paths, GitHub PAT) |
 | `ProxySlotsTable` | Webshare proxy slots with soft delete and IP rotation tracking |
-| `ProxyIpAddressesTable` | IP history per slot with IPQS fraud scoring, geo-location, ASN |
+| `ProxyIpAddressesTable` | IP history per slot with IPQS fraud scoring, geo-location, ASN (indexed: slot_id+is_active) |
 | `AccountsTable` | Jagex accounts (email, password, birthday, proxy_slot_id) |
-| `CharactersTable` | Game characters linked to accounts (skills JSON, banned flag, CASCADE delete) |
-| `NotificationsTable` | Persistent notifications (type, severity, read status, timestamps) |
+| `CharactersTable` | Game characters linked to accounts (skills JSON, banned flag, CASCADE delete, indexed: account_id) |
+| `NotificationsTable` | Persistent notifications (type, severity, read status, indexed: is_read) |
 
-Migrations: v1 initial > v2 soft delete > v3 cascade delete > v4 notifications
+Migrations: v1 initial > v2 soft delete > v3 cascade delete > v4 notifications > v5 IPQS columns > v6 socksPort > v7 performance indices
 
 ## Development
 
 See [SETUP.md](SETUP.md) for detailed development environment setup.
 
 ```bash
-flutter run -d windows                                      # Debug mode
-flutter build windows --release                             # Release build
-dart run build_runner build --delete-conflicting-outputs     # Regenerate Drift code
-flutter test                                                # Run tests (31 test files)
-flutter analyze                                             # Static analysis
-dart format --set-exit-if-changed .                         # Check formatting
+# Windows
+flutter run -d windows
+flutter build windows --release
+
+# Linux
+flutter run -d linux
+flutter build linux --release
+
+# Code generation, tests, analysis
+dart run build_runner build --delete-conflicting-outputs
+flutter test                                                # 36 test files, 315 tests
+flutter analyze
+dart format --set-exit-if-changed .
 ```
 
 ### Test Suite
 
-31 test files covering:
+36 test files, 315 tests covering:
 - Bot engine services (7): engine, JAR downloader, Java installer, profile writer, setup service, bot status, integration
+- Watchdog (1): death classification, restart backoff, ban detection, PID discovery
 - Core services (7): app config, automation, IPQS, notification, proxy auto-rotation, proxy sync, webshare
+- Setup (1): scripts extractor
 - Data repositories (4): account, config, notification, proxy
 - Feature controllers (5): status, status selection, dev tools, proxy, proxy scoring
+- Onboarding (1): onboarding service
 - UI components (2): IP history list, IP score indicator
-- Core utilities (4): result, loading button, app data path, proxy URL builder
+- Core utilities (6): result, loading button, app data path, proxy URL builder, native commands linux, python runner
 - Domain entities (1): proxy IP address
 
-## Contributing
+## Release Flow
 
-### Commit Convention (Enforced by CI)
+Automated semantic releases via GitHub Actions:
 
-```
-<type>(<scope>): <description>
-```
-
-| Type | Purpose | Triggers Release? |
-|------|---------|-------------------|
-| `feat` | New feature | Yes (minor) |
-| `fix` | Bug fix | Yes (patch) |
-| `perf` | Performance improvement | Yes (patch) |
-| `chore` | Maintenance | No |
-| `docs` | Documentation | No |
-| `refactor` | Code restructure | No |
-| `test` | Tests | No |
-
-### Releases
-
-Automated via GitHub Actions: push to `main` triggers commit lint, build, and (if releasable) version bump + GitHub Release with Windows zip.
+1. Push to `main` triggers: lint & test (Linux) → build (Windows x64 + Linux x64) → release
+2. Commits analyzed: `feat:` (minor), `fix:`/`perf:` (patch), `BREAKING CHANGE` (major)
+3. If releasable: bumps `pubspec.yaml`, updates `CHANGELOG.md`, tags, creates GitHub Release with Windows `.zip` + Linux `.AppImage`
+4. ARM64 builds not in CI — Flutter SDK lacks ARM64 CI binaries. Build from source locally.
 
 ## License
 
