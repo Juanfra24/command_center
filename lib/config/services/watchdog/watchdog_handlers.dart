@@ -136,10 +136,11 @@ class WatchdogHandlers {
   /// Match a tracked client to a live process by characterId in command line.
   int? discoverPid(TrackedClient client, List<ProcessClient> liveProcesses) {
     final profileArg = '--cc-profile-dir=';
-    final suffix = 'bot-${client.characterId}';
+    final suffixPattern =
+        RegExp(r'bot-' + client.characterId.toString() + r'(?:[/\\]|$)');
     for (final process in liveProcesses) {
       if (process.commandLine.contains(profileArg) &&
-          process.commandLine.contains(suffix)) {
+          suffixPattern.hasMatch(process.commandLine)) {
         return process.processId;
       }
     }
