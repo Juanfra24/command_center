@@ -241,25 +241,30 @@ class WatchdogHandlers {
     // Transition immediately to prevent re-entry on next tick
     client.status = ClientStatus.awaitingAccount;
 
-    await _accountRepository.updateCharacterBanned(client.characterId, true);
+    try {
+      await _accountRepository.updateCharacterBanned(client.characterId, true);
 
-    await _notificationService.createNotification(
-      type: NotificationType.banDetected,
-      severity: NotificationSeverity.error,
-      title: 'Ban Detected',
-      message: '${client.characterName} banned after '
-          '${client.consecutiveQuickDeaths} consecutive quick deaths.',
-    );
+      await _notificationService.createNotification(
+        type: NotificationType.banDetected,
+        severity: NotificationSeverity.error,
+        title: 'Ban Detected',
+        message: '${client.characterName} banned after '
+            '${client.consecutiveQuickDeaths} consecutive quick deaths.',
+      );
 
-    if (client.proxySlotId != null) {
-      final rotated =
-          await _autoRotationService.rotateSlot(client.proxySlotId!);
-      if (rotated) {
-        final newProxyUrl = await _buildProxyUrl(client.proxySlotId!);
-        if (newProxyUrl != null) {
-          client.proxyUrl = newProxyUrl;
+      if (client.proxySlotId != null) {
+        final rotated =
+            await _autoRotationService.rotateSlot(client.proxySlotId!);
+        if (rotated) {
+          final newProxyUrl = await _buildProxyUrl(client.proxySlotId!);
+          if (newProxyUrl != null) {
+            client.proxyUrl = newProxyUrl;
+          }
         }
       }
+    } catch (e) {
+      logger.e('Failed to handle ban for ${client.characterName}: $e');
+      client.status = ClientStatus.failed;
     }
   }
 
