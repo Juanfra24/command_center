@@ -40,7 +40,7 @@ class PythonSetupService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    _checker = Get.put(PythonDependencyChecker());
+    _checker = PythonDependencyChecker();
   }
 
   String get _scriptsPath => scriptsPath;
