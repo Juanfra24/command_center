@@ -99,8 +99,11 @@ class AccountListSection extends StatelessWidget {
 
     return Obx(() {
       final rows = _buildFilteredRows();
-      // Update filtered count for SearchFilterBar (deferred to avoid setting Rx during build)
-      Future.microtask(() => selectionCtrl.filteredCount.value = rows.length);
+      // Update filtered count for SearchFilterBar after the current frame to
+      // avoid triggering a setState during build.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => selectionCtrl.filteredCount.value = rows.length,
+      );
 
       return Column(
         children: [

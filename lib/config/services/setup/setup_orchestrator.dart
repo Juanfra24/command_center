@@ -98,6 +98,17 @@ class SetupOrchestrator extends GetxService {
     isComplete.value = true;
   }
 
+  /// Cancels any pending input/retry completers — called on window close to
+  /// prevent the suspended [run()] future from leaking memory indefinitely.
+  void cancelPendingInput() {
+    if (_inputCompleter != null && !_inputCompleter!.isCompleted) {
+      _inputCompleter!.completeError(Exception('Setup cancelled'));
+    }
+    if (_retryCompleter != null && !_retryCompleter!.isCompleted) {
+      _retryCompleter!.completeError(Exception('Setup cancelled'));
+    }
+  }
+
   /// Called by the UI Retry button. Safe against double-tap.
   void retryCurrentStep() {
     if (_retryCompleter != null && !_retryCompleter!.isCompleted) {

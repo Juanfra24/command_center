@@ -140,6 +140,11 @@ class PythonRunner {
       );
     } on TimeoutException {
       _currentProcess?.kill(ProcessSignal.sigkill);
+      // Drain orphaned stream subscriptions so they don't leak after kill
+      await Future.wait([
+        stdoutDone.catchError((_) {}),
+        stderrDone.catchError((_) {}),
+      ]).timeout(const Duration(seconds: 2), onTimeout: () => []);
       rethrow;
     } finally {
       _currentProcess = null;

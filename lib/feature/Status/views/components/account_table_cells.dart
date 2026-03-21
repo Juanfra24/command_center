@@ -142,8 +142,10 @@ class ActionsCell extends StatelessWidget {
                 onPressed: () async {
                   final config = await LaunchDialog.show(context);
                   if (config != null) {
-                    await controller.launchCharacter(
-                        account, character!, config);
+                    try {
+                      await controller.launchCharacter(
+                          account, character!, config);
+                    } catch (_) {}
                   }
                 },
               ),

@@ -25,6 +25,9 @@ void main(List<String> args) async {
       await windowManager.setResizable(true);
       await windowManager.center();
       await windowManager.show();
+      // Prevent the OS from immediately destroying the window on close so that
+      // onWindowClose() can run async teardown before calling destroy().
+      await windowManager.setPreventClose(true);
     },
   );
 

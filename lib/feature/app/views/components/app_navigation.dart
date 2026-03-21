@@ -47,6 +47,13 @@ class AppNavigation extends StatelessWidget {
 
     try {
       onboardingService = Get.find<OnboardingService>();
+      // needsOnboarding is read synchronously here, but AppNavigation is
+      // always rebuilt when the parent _AppState calls setState(). The parent
+      // installs ever() workers on OnboardingService's observables
+      // (isWebshareConfigured, isIpqsConfigured, isInitialSyncComplete) via
+      // AppLifecycle.setupOnboardingWorkers(), so any change to onboarding
+      // state triggers a parent setState → this build() reruns with fresh
+      // values. No Obx wrapper is needed here.
       needsOnboarding = !onboardingService.isOnboardingComplete;
     } catch (_) {
       // Service not ready yet

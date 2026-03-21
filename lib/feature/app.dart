@@ -73,13 +73,14 @@ class _AppState extends State<App> with WindowListener {
     super.dispose();
   }
 
+  // Navigation indices: Home=0, Accounts=1, Proxies=2, [Separator], Settings=3, [DevTools=4 in debug]
+  static const _settingsIndex = 3;
+
   void _navigateToIndex(int index) {
     setState(() => _currentIndex = index);
   }
 
-  void navigateToSettings() {
-    _navigateToIndex(3);
-  }
+  void navigateToSettings() => _navigateToIndex(_settingsIndex);
 
   void _togglePane() {
     setState(() {

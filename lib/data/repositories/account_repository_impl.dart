@@ -155,12 +155,15 @@ class AccountRepositoryImpl implements AccountRepository {
   @override
   Stream<List<AccountEntity>> watchAllAccounts() {
     return _db.select(_db.accountsTable).watch().asyncMap((accounts) async {
-      final result = <AccountEntity>[];
-      for (final account in accounts) {
-        final characters = await _getCharactersForAccount(account.id);
-        result.add(_mapAccountRow(account, characters));
+      final allCharacters = await _db.select(_db.charactersTable).get();
+      final charsByAccountId = <int, List<CharacterEntity>>{};
+      for (final charRow in allCharacters) {
+        final entity = _mapCharacterRow(charRow);
+        charsByAccountId.putIfAbsent(charRow.accountId, () => []).add(entity);
       }
-      return result;
+      return accounts
+          .map((a) => _mapAccountRow(a, charsByAccountId[a.id] ?? []))
+          .toList();
     });
   }
 

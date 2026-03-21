@@ -77,7 +77,10 @@ class CreateAccountButton extends StatelessWidget {
         final data = createResult.data ?? {};
         final accountName = data['accountName'] ?? 'Unknown';
         final createdEmail = data['email'] ?? 'Unknown';
-        final password = data['password'] ?? '';
+        final password = (data['password'] ?? '') as String;
+        final maskedPass = password.length > 4
+            ? '${password.substring(0, 2)}${'*' * (password.length - 4)}${password.substring(password.length - 2)}'
+            : '****';
         displayInfoBar(
           // ignore: use_build_context_synchronously
           context,
@@ -85,7 +88,7 @@ class CreateAccountButton extends StatelessWidget {
           builder: (ctx, close) {
             return InfoBar(
               title: Text('Account Created: $accountName'),
-              content: Text('Email: $createdEmail\nPassword: $password'),
+              content: Text('Email: $createdEmail\nPassword: $maskedPass'),
               severity: InfoBarSeverity.success,
               isLong: true,
               action: IconButton(

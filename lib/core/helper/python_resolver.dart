@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:command_center/core/helper/logger.dart';
@@ -13,14 +14,29 @@ import 'package:path/path.dart' as p;
 class PythonResolver {
   static String? _cached;
   static String? _appDataDir;
+  static Completer<String>? _resolving;
 
   /// Set the app data directory (called during DI initialization).
   /// Used to create/find the venv on Linux.
   static void setAppDataDir(String dir) => _appDataDir = dir;
 
   /// Get the cached Python executable, or resolve it.
+  /// Uses a Completer to prevent concurrent callers from racing to create
+  /// the venv simultaneously.
   static Future<String> get executable async {
-    return _cached ??= await resolve();
+    if (_cached != null) return _cached!;
+    if (_resolving != null) return _resolving!.future;
+    _resolving = Completer<String>();
+    try {
+      _cached = await resolve();
+      _resolving!.complete(_cached!);
+      return _cached!;
+    } catch (e) {
+      _resolving!.completeError(e);
+      rethrow;
+    } finally {
+      _resolving = null;
+    }
   }
 
   /// Resolve which Python command to use.
