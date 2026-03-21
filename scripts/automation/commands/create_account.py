@@ -149,7 +149,7 @@ async def create_account(
                 expected_ip=expected_ip,
             )
 
-        if not ((expected_ip in actual_ip) or (actual_ip in expected_ip)):
+        if not (actual_ip.strip() == expected_ip.strip()):
             log_fn(f"[STEP 1/13] FAILED - IP mismatch: expected {expected_ip}, got {actual_ip}")
             return AutomationResult(
                 status=AutomationStatus.PROXY_VALIDATION_FAILED.value,
