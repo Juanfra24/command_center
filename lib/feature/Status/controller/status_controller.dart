@@ -23,6 +23,12 @@ class StatusController extends GetxController {
   final accountList = <JagexAccount>[].obs;
   bool _isRefreshing = false;
 
+  // Worker to refresh proxy addresses when active IPs change.
+  // NOTE: proxyAddress on JagexAccount is resolved once per getAccountsData()
+  // call and does not update reactively on its own. This worker ensures the
+  // displayed address stays in sync after auto-rotation or manual IP changes.
+  Worker? _proxyIpWorker;
+
   AccountRepository? _accountRepository;
   ProxyRepository? _proxyRepository;
   BotEngine? _botEngine;
@@ -33,6 +39,23 @@ class StatusController extends GetxController {
     super.onInit();
     _initDependencies();
     _loadData();
+    _registerProxyIpWorker();
+  }
+
+  void _registerProxyIpWorker() {
+    try {
+      final proxyCtrl = Get.find<ProxyController>();
+      _proxyIpWorker = ever(proxyCtrl.ipAddresses, (_) => getAccountsData());
+    } catch (_) {
+      // ProxyController not yet available; proxy addresses will update on
+      // next manual refresh.
+    }
+  }
+
+  @override
+  void onClose() {
+    _proxyIpWorker?.dispose();
+    super.onClose();
   }
 
   Future<void> _loadData() async {
