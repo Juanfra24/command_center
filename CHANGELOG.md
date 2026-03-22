@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-03-22
+
+### Bug Fixes
+
+- resolve analyzer warnings + add dart analyze to pre-commit hook
+- fix typo in Character default name (Jhon → John) (status)
+- make Character model immutable (final fields, remove must_be_immutable) (status)
+- refresh proxy address on IP change via ever() worker (status)
+- wrap canCreate check in Obx for reactive updates (status)
+- await windowManager.waitUntilReadyToShow instead of .then() (app)
+- eliminate N+1 query in getAccountsByProxySlot (data)
+- wrap insertAccount in transaction (data)
+- use freshly loaded slot entity for selectedSlot after name update (proxy)
+- instantiate PythonDependencyChecker directly instead of Get.put (python)
+- restore world number from last config in launch dialog (status)
+- add 5-minute timeout to Chromium installation (python)
+- report partial failure when replacement succeeds but sync fails (proxy)
+- store and dispose ever() worker to prevent leak on recreation (notification)
+- add UNSEEN filter to IMAP fallback search to prevent stale codes (automation)
+- refresh selected slot IP history after loadIpAddresses (proxy)
+- use exact IP comparison instead of substring match (automation)
+- validate last script name against current registry in launch dialog (status)
+- add good tier to IpScoreLevel scoring thresholds (proxy)
+- return correct status based on account creation confirmation (automation)
+- revert to failed status if ban handling throws (watchdog)
+- order getActiveIpForSlot by assignedAt desc for deterministic result (data)
+- set status to failed when launch throws during restart (watchdog)
+- move _recentlyRotatedSlotIds clear to end of processing loop (proxy)
+- use plain loop for MapEntry lookup (firstWhereOrNull not available on Iterable<MapEntry>) (watchdog)
+- abort launchAll after 3 consecutive failures (status)
+- use Completer to prevent concurrent venv creation races (python)
+- drain stream subscriptions on timeout to prevent leaks (automation)
+- redact stderr in error results to prevent credential leaks (automation)
+- move API key to URL path segment as required by IPQS API spec (ipqs)
+- cancel pending completers on window close to prevent memory leak (setup)
+- add bounds check on splash screen step index access (app)
+- add comment documenting onboarding reactivity chain (app)
+- mask password in account creation success notification (status)
+- set preventClose to allow async teardown before window destroy (app)
+- use post-frame callback for filteredCount to avoid stale display (status)
+- document navigation index assumption for Settings (app)
+- batch character loading in watchAllAccounts to eliminate N+1 queries (data)
+- replace static _initialized with Get.isRegistered check for hot-restart safety (di)
+- clear selection after account deletion (status)
+- check for duplicate character ID before tracking new client (watchdog)
+- drain HTTP response body on non-200 to release connection (watchdog)
+- remove stale profile cleanup from recapture to prevent race with launching bots (watchdog)
+- set status to stopped before killing process to prevent tick race (watchdog)
+- delete stale port file before process start to prevent race (bot-engine)
+- add scoring lock to prevent concurrent DB writes during scoring (proxy)
+- keep session process reference for cancellation + fix RESULT marker check (automation)
+- remove vestigial proxy_url positional arg from Python parsers (automation)
+- wrap deleteAccount in transaction to prevent orphaned characters (data)
+- add refresh guard to prevent concurrent getAccountsData races (status)
+- stop running bots before deleting account to prevent zombie watchdog clients (status)
+- use regex anchor in PID discovery to prevent partial ID matches (watchdog)
 ## [0.9.5] - 2026-03-21
 
 ### Bug Fixes
