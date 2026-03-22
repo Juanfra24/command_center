@@ -9,7 +9,7 @@ class Character extends Equatable {
   final Skills targetSkills;
   final String? defaultScriptName;
 
-  Character({
+  const Character({
     this.id,
     required this.banned,
     required this.name,
