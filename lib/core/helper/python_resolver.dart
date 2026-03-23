@@ -84,15 +84,17 @@ class PythonResolver {
     final venvDir = p.join(_appDataDir!, 'python_venv');
     final venvPython = p.join(venvDir, 'bin', 'python');
 
-    // If venv already exists and works, use it
+    // If venv already exists, verify BOTH python and pip work
     if (File(venvPython).existsSync()) {
+      if (await _isVenvHealthy(venvPython)) {
+        logger.i('Using existing venv Python: $venvPython');
+        return venvPython;
+      }
+      // Broken venv (e.g. created without python3-venv) — delete and recreate
+      logger.w(
+          'Venv exists but is unhealthy (no pip). Deleting and recreating...');
       try {
-        final result = await Process.run(venvPython, ['--version']);
-        if (result.exitCode == 0) {
-          logger.i(
-              'Using venv Python: $venvPython (${(result.stdout as String).trim()})');
-          return venvPython;
-        }
+        await Directory(venvDir).delete(recursive: true);
       } catch (_) {}
     }
 
@@ -104,16 +106,35 @@ class PythonResolver {
         systemPython,
         ['-m', 'venv', venvDir],
       );
-      if (result.exitCode == 0 && File(venvPython).existsSync()) {
-        logger.i('Python venv created successfully');
+      if (result.exitCode == 0 &&
+          File(venvPython).existsSync() &&
+          await _isVenvHealthy(venvPython)) {
+        logger.i('Python venv created successfully with pip');
         return venvPython;
       }
-      logger.w('Failed to create venv: ${result.stderr}');
+      logger.w('Venv creation failed or unhealthy: ${result.stderr}');
+      // Clean up broken venv
+      try {
+        await Directory(venvDir).delete(recursive: true);
+      } catch (_) {}
     } catch (e) {
       logger.w('Venv creation error: $e');
     }
 
     return null;
+  }
+
+  /// Check that a venv python has both a working interpreter and pip.
+  static Future<bool> _isVenvHealthy(String venvPython) async {
+    try {
+      final pyResult = await Process.run(venvPython, ['--version']);
+      if (pyResult.exitCode != 0) return false;
+      final pipResult =
+          await Process.run(venvPython, ['-m', 'pip', '--version']);
+      return pipResult.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Reset the cache (for testing/retry).

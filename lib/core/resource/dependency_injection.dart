@@ -145,6 +145,8 @@ class AppBindings extends Bindings {
 
     // Set app data dir for Python venv creation on Linux (PEP 668)
     PythonResolver.setAppDataDir(basePath);
+    // Detect CPU architecture for Java download (x64 vs aarch64)
+    await JavaInstaller.detectArch();
     final javaInstaller =
         JavaInstaller(appConfig: appConfigService, basePath: basePath);
     final jarDownloader =

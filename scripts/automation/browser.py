@@ -25,8 +25,8 @@ async def launch_browser(
         "--disable-features=IsolateOrigins,site-per-process",
     ]
 
+    # Use bundled Chromium (no channel) — system Chrome may not be installed (e.g. WSL)
     browser = await pw.chromium.launch(
-        channel="chrome",
         headless=headless,
         args=launch_args,
     )
