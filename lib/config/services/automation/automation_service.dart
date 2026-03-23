@@ -102,6 +102,8 @@ class AutomationService extends GetxService {
       return null;
     }
     _log('Expected IP: ${currentIp.ipAddress}');
+    _log(
+        'Proxy URL length: ${proxyUrl.length} chars (non-empty: ${proxyUrl.isNotEmpty})');
     return (expectedIp: currentIp.ipAddress, proxyUrl: proxyUrl);
   }
 
