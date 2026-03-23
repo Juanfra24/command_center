@@ -3,7 +3,6 @@ import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/feature/app/views/components/api_key_configured_banner.dart';
-import 'package:command_center/feature/app/views/components/api_key_form_field.dart';
 import 'package:command_center/feature/app/views/components/connect_action_button.dart';
 import 'package:command_center/feature/app/views/components/info_bar_helper.dart';
 import 'package:command_center/feature/app/views/components/processing_status_bar.dart';
@@ -56,34 +55,10 @@ class _WebshareConfigDialogState extends State<WebshareConfigDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
+      constraints: const BoxConstraints(maxWidth: 450),
       title:
           Text(_isConfigured ? 'Webshare Configuration' : 'Configure Webshare'),
-      content: Obx(() => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_isConfigured)
-                const ApiKeyConfiguredBanner(
-                  title: 'Webshare Connected',
-                  subtitle: 'Your proxy slots are synced',
-                )
-              else
-                ApiKeyFormField(
-                  controller: _apiKeyController,
-                  isProcessing: _isProcessing,
-                  description:
-                      'Enter your Webshare API key to sync your proxy slots.',
-                  hint:
-                      'You can find your API key in your Webshare dashboard under API settings.',
-                  placeholder: 'Enter your Webshare API key',
-                ),
-              ProcessingStatusBar(
-                statusMessage: _statusMessage,
-                isError: _isError,
-                isProcessing: _isProcessing,
-              ),
-            ],
-          )),
+      content: _buildContent(),
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
@@ -101,6 +76,57 @@ class _WebshareConfigDialogState extends State<WebshareConfigDialog> {
             icon: FluentIcons.sync,
             onConnect: () => _handleConnect(context),
           ),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isConfigured) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const ApiKeyConfiguredBanner(
+            title: 'Webshare Connected',
+            subtitle: 'Your proxy slots are synced',
+          ),
+          ProcessingStatusBar(
+            statusMessage: _statusMessage,
+            isError: _isError,
+            isProcessing: _isProcessing,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Enter your Webshare API key to sync your proxy slots.'),
+        const SizedBox(height: 16),
+        Obx(() => InfoLabel(
+              label: 'API Key',
+              child: TextBox(
+                controller: _apiKeyController,
+                placeholder: 'Enter your Webshare API key',
+                obscureText: true,
+                enabled: !_isProcessing.value,
+              ),
+            )),
+        const SizedBox(height: 8),
+        Text(
+          'You can find your API key in your Webshare dashboard under API settings.',
+          style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).inactiveColor,
+          ),
+        ),
+        ProcessingStatusBar(
+          statusMessage: _statusMessage,
+          isError: _isError,
+          isProcessing: _isProcessing,
+        ),
       ],
     );
   }

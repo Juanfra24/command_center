@@ -40,15 +40,16 @@ class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
+      constraints: const BoxConstraints(maxWidth: 450),
       title: const Text('Configure IPQualityScore'),
-      content: Obx(() => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                  'Enter your IPQualityScore API key to enable IP scoring and fraud detection.'),
-              const SizedBox(height: 16),
-              InfoLabel(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+              'Enter your IPQualityScore API key to enable IP scoring and fraud detection.'),
+          const SizedBox(height: 16),
+          Obx(() => InfoLabel(
                 label: 'API Key',
                 child: TextBox(
                   controller: _apiKeyController,
@@ -56,22 +57,28 @@ class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
                   obscureText: true,
                   enabled: !_isProcessing.value,
                 ),
+              )),
+          const SizedBox(height: 8),
+          Text(
+            'Get your free API key from ipqualityscore.com (1,000 free lookups/month)',
+            style: TextStyle(
+              fontSize: 12,
+              color: FluentTheme.of(context).inactiveColor,
+            ),
+          ),
+          Obx(() {
+            if (_statusMessage.value == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: ScoringProgressDisplay(
+                statusMessage: _statusMessage,
+                isError: _isError,
+                isProcessing: _isProcessing,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Get your free API key from ipqualityscore.com (1,000 free lookups/month)',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              if (_statusMessage.value != null) ...[
-                const SizedBox(height: 16),
-                ScoringProgressDisplay(
-                  statusMessage: _statusMessage,
-                  isError: _isError,
-                  isProcessing: _isProcessing,
-                ),
-              ],
-            ],
-          )),
+            );
+          }),
+        ],
+      ),
       actions: [
         Obx(() => Button(
               onPressed: _isProcessing.value

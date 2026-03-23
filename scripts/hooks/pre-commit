@@ -1,12 +1,61 @@
 #!/bin/sh
-# Pre-commit hook: auto-format staged Dart files.
+# Pre-commit hook: auto-format, analyze, and check for secrets.
 # Install: cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
 STAGED_DART=$(git diff --cached --name-only --diff-filter=ACM | grep '\.dart$')
-if [ -z "$STAGED_DART" ]; then
-  exit 0
+STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM)
+
+# ── 1. Dart format + analyze ──────────────────────────────────
+if [ -n "$STAGED_DART" ]; then
+  echo "Auto-formatting staged Dart files..."
+  echo "$STAGED_DART" | xargs dart format
+  echo "$STAGED_DART" | xargs git add
+
+  echo "Running dart analyze..."
+  dart analyze --fatal-infos 2>&1
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "dart analyze found issues. Fix them before committing."
+    exit 1
+  fi
 fi
 
-echo "Auto-formatting staged Dart files..."
-echo "$STAGED_DART" | xargs dart format
-echo "$STAGED_DART" | xargs git add
+# ── 2. Secrets detection ──────────────────────────────────────
+# Scan staged content for common secret patterns
+if [ -n "$STAGED_ALL" ]; then
+  SECRETS_FOUND=0
+  for file in $STAGED_ALL; do
+    # Skip binary files and lock files
+    case "$file" in
+      *.g.dart|*.lock|*.png|*.jpg|*.mp3|*.jar) continue ;;
+    esac
+
+    # Check staged content (not working tree) for secret patterns
+    CONTENT=$(git diff --cached -- "$file" | grep '^+' | grep -v '^+++')
+
+    # GitHub PAT
+    echo "$CONTENT" | grep -qE 'github_pat_[A-Za-z0-9_]{20,}' && {
+      echo "BLOCKED: GitHub PAT detected in $file"
+      SECRETS_FOUND=1
+    }
+
+    # Generic API keys (long hex/alphanumeric strings assigned to key-like variables)
+    echo "$CONTENT" | grep -qiE "(api_key|apikey|secret_key|password)\s*[:=]\s*['\"][A-Za-z0-9]{20,}['\"]" && {
+      echo "BLOCKED: Possible API key/secret in $file"
+      SECRETS_FOUND=1
+    }
+
+    # AWS keys
+    echo "$CONTENT" | grep -qE 'AKIA[0-9A-Z]{16}' && {
+      echo "BLOCKED: AWS access key detected in $file"
+      SECRETS_FOUND=1
+    }
+  done
+
+  if [ "$SECRETS_FOUND" -ne 0 ]; then
+    echo ""
+    echo "Secrets detected in staged files. Remove them before committing."
+    echo "If this is a false positive, use: git commit --no-verify"
+    exit 1
+  fi
+fi

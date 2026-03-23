@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-push hook: run full test suite before pushing.
+# Install: cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
+echo "Running full test suite before push..."
+flutter test 2>&1
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Tests failed. Fix them before pushing."
+  echo "To skip: git push --no-verify"
+  exit 1
+fi
+echo "All tests passed."
