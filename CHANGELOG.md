@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.7] - 2026-03-23
+
+### Bug Fixes
+
+- fix broken ContentDialog rendering — inline content, add maxWidth constraint, scope Obx to reactive widgets only (ui)
 ## [0.9.6] - 2026-03-22
 
 ### Bug Fixes
