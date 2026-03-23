@@ -94,8 +94,8 @@ def generate_password() -> str:
 
 
 def generate_random_dob() -> dict:
-    """Generate random DOB (18-35 years old)."""
+    """Generate random DOB (18-35 years old). Zero-padded for DD/MM fields."""
     year = random.randint(1991, 2008)
     month = random.randint(1, 12)
     day = random.randint(1, 28)
-    return {"day": str(day), "month": str(month), "year": str(year)}
+    return {"day": str(day).zfill(2), "month": str(month).zfill(2), "year": str(year)}

@@ -1,5 +1,6 @@
 # scripts/automation/commands/create_account.py
 import asyncio
+import random
 import sys
 from typing import Optional, Callable
 
@@ -228,17 +229,32 @@ async def create_account(
         # Step 7: Fill DOB
         log_fn("[STEP 7/13] Filling DOB...")
         dob_fields = [
-            ("input[placeholder='DD']", dob["day"]),
-            ("input[placeholder='MM']", dob["month"]),
-            ("input[placeholder='YYYY']", dob["year"]),
+            (["input[placeholder='DD']", "input[name='dobDay']", "input[name='day']", "input[aria-label*='day' i]"], dob["day"]),
+            (["input[placeholder='MM']", "input[name='dobMonth']", "input[name='month']", "input[aria-label*='month' i]"], dob["month"]),
+            (["input[placeholder='YYYY']", "input[name='dobYear']", "input[name='year']", "input[aria-label*='year' i]"], dob["year"]),
         ]
-        for sel, value in dob_fields:
-            try:
-                await page.wait_for_selector(sel, timeout=5000, state="visible")
-                await human_type(page, sel, value, min_delay=30, max_delay=100)
-                log_fn(f"[INFO] DOB field '{sel}' filled with '{value}'")
-            except Exception as e:
-                log_fn(f"[WARNING] Could not fill DOB field {sel}: {e}")
+        for selectors, value in dob_fields:
+            filled = False
+            for sel in selectors:
+                try:
+                    await page.wait_for_selector(sel, timeout=3000, state="visible")
+                    # Triple-click to select any existing text, then type over it
+                    await page.click(sel, click_count=3)
+                    human_delay(0.1, 0.2)
+                    await page.type(sel, value, delay=random.uniform(30, 80))
+                    log_fn(f"[INFO] DOB field '{sel}' filled with '{value}'")
+                    filled = True
+                    break
+                except Exception:
+                    continue
+            if not filled:
+                log_fn(f"[STEP 7/13] FAILED - could not fill DOB value '{value}'")
+                return AutomationResult(
+                    status=AutomationStatus.BROWSER_ERROR.value,
+                    message=f"Could not fill date of birth field (value: {value})",
+                    expected_ip=expected_ip, actual_ip=actual_ip,
+                )
+            human_delay(0.2, 0.4)
 
         human_delay(0.5, 1.0)
 
@@ -288,9 +304,14 @@ async def create_account(
                     except Exception:
                         continue
             else:
-                log_fn("[WARNING] Could not fetch verification code")
+                log_fn("[STEP 10/13] FAILED - could not fetch verification code within timeout")
+                return AutomationResult(
+                    status=AutomationStatus.UNKNOWN_ERROR.value,
+                    message="Email verification code not received within timeout",
+                    expected_ip=expected_ip, actual_ip=actual_ip,
+                )
         else:
-            log_fn("[WARNING] IMAP not configured, skipping verification")
+            log_fn("[WARNING] IMAP not configured, skipping email verification")
 
         # Step 11: Display name
         log_fn("[STEP 11/13] Setting display name...")
@@ -298,6 +319,7 @@ async def create_account(
             "input[name='displayName']", "input[name='display_name']",
             "input[name='username']", "input[placeholder*='name' i]",
         ]
+        name_filled = False
         for sel in name_selectors:
             try:
                 await page.wait_for_selector(sel, timeout=10000, state="visible")
@@ -309,15 +331,25 @@ async def create_account(
                     "text=Set", "text=Next",
                 ], timeout=5000, label="Display name submitted", log_fn=log_fn)
                 human_delay(3.0, 5.0)
+                name_filled = True
                 break
             except Exception:
                 continue
+
+        if not name_filled:
+            log_fn("[STEP 11/13] FAILED - could not fill display name")
+            return AutomationResult(
+                status=AutomationStatus.BROWSER_ERROR.value,
+                message="Could not find or fill the display name field",
+                expected_ip=expected_ip, actual_ip=actual_ip,
+            )
 
         # Step 12: Set password
         log_fn("[STEP 12/13] Setting password...")
         pwd_selectors = [
             "input[name='password']", "input[type='password']", "#password",
         ]
+        password_filled = False
         for sel in pwd_selectors:
             try:
                 await page.wait_for_selector(sel, timeout=10000, state="visible")
@@ -344,9 +376,18 @@ async def create_account(
                     "text=Set", "text=Submit",
                 ], timeout=5000, label="Password submitted", log_fn=log_fn)
                 human_delay(3.0, 5.0)
+                password_filled = True
                 break
             except Exception:
                 continue
+
+        if not password_filled:
+            log_fn("[STEP 12/13] FAILED - could not fill password")
+            return AutomationResult(
+                status=AutomationStatus.BROWSER_ERROR.value,
+                message="Could not find or fill the password field",
+                expected_ip=expected_ip, actual_ip=actual_ip,
+            )
 
         # Step 13: Confirmation
         log_fn("[STEP 13/13] Checking for confirmation...")
