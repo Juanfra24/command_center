@@ -189,14 +189,7 @@ class AccountListSection extends StatelessWidget {
                       // Status
                       Expanded(
                         flex: flexes[6],
-                        child: Obx(() {
-                          final tracked = Get.find<WatchdogService>()
-                              .trackedClients[row.character?.name];
-                          return BotStatusBadge(
-                            status: tracked?.status,
-                            retryCount: tracked?.retryCount ?? 0,
-                          );
-                        }),
+                        child: _buildStatusCell(row.character),
                       ),
                       // Actions
                       Expanded(
@@ -235,6 +228,23 @@ class AccountListSection extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildStatusCell(Character? character) {
+    if (character == null) {
+      return const BotStatusBadge();
+    }
+    if (!Get.isRegistered<WatchdogService>()) {
+      return const BotStatusBadge();
+    }
+    return Obx(() {
+      final watchdog = Get.find<WatchdogService>();
+      final tracked = watchdog.trackedClients[character.name];
+      return BotStatusBadge(
+        status: tracked?.status,
+        retryCount: tracked?.retryCount ?? 0,
+      );
+    });
   }
 
   Widget _buildTableHeader(String text) {
