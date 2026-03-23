@@ -1,7 +1,6 @@
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/core/resource/result.dart';
 import 'package:command_center/feature/app/views/components/api_key_configured_banner.dart';
-import 'package:command_center/feature/app/views/components/api_key_form_field.dart';
 import 'package:command_center/feature/app/views/components/connect_action_button.dart';
 import 'package:command_center/feature/app/views/components/info_bar_helper.dart';
 import 'package:command_center/feature/app/views/components/processing_status_bar.dart';
@@ -53,34 +52,11 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
+      constraints: const BoxConstraints(maxWidth: 450),
       title: Text(_isConfigured
           ? 'IPQualityScore Configuration'
           : 'Configure IPQualityScore'),
-      content: Obx(() => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_isConfigured)
-                const ApiKeyConfiguredBanner(
-                  title: 'IPQualityScore Connected',
-                  subtitle: 'IP scoring is active',
-                )
-              else
-                ApiKeyFormField(
-                  controller: _apiKeyController,
-                  isProcessing: _isProcessing,
-                  description:
-                      'Enter your IPQualityScore API key to enable IP scoring.',
-                  hint: 'Get your API key from ipqualityscore.com',
-                  placeholder: 'Enter your IPQualityScore API key',
-                ),
-              ProcessingStatusBar(
-                statusMessage: _statusMessage,
-                isError: _isError,
-                isProcessing: _isProcessing,
-              ),
-            ],
-          )),
+      content: _buildContent(context),
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
@@ -96,6 +72,57 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
             isProcessing: _isProcessing,
             onConnect: () => _handleConnect(context),
           ),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    if (_isConfigured) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const ApiKeyConfiguredBanner(
+            title: 'IPQualityScore Connected',
+            subtitle: 'IP scoring is active',
+          ),
+          ProcessingStatusBar(
+            statusMessage: _statusMessage,
+            isError: _isError,
+            isProcessing: _isProcessing,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Enter your IPQualityScore API key to enable IP scoring.'),
+        const SizedBox(height: 16),
+        Obx(() => InfoLabel(
+              label: 'API Key',
+              child: TextBox(
+                controller: _apiKeyController,
+                placeholder: 'Enter your IPQualityScore API key',
+                obscureText: true,
+                enabled: !_isProcessing.value,
+              ),
+            )),
+        const SizedBox(height: 8),
+        Text(
+          'Get your API key from ipqualityscore.com',
+          style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).inactiveColor,
+          ),
+        ),
+        ProcessingStatusBar(
+          statusMessage: _statusMessage,
+          isError: _isError,
+          isProcessing: _isProcessing,
+        ),
       ],
     );
   }
