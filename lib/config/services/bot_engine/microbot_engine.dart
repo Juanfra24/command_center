@@ -127,7 +127,8 @@ class MicrobotEngine implements BotEngine {
         ? '-Xmx512m'
         : config.jvmArgs!;
     if (jvmArgs.contains('"') || jvmArgs.contains("'")) {
-      logger.w('JVM args contain quotes which may not be split correctly: $jvmArgs');
+      logger.w(
+          'JVM args contain quotes which may not be split correctly: $jvmArgs');
     }
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
     args.addAll(['-jar', jarPath]);
