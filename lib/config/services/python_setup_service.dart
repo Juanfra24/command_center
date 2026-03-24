@@ -99,6 +99,9 @@ class PythonSetupService extends GetxService {
       logger.i('Installing from: $requirementsPath');
 
       final python = await PythonResolver.executable;
+      // If using system python on Linux (no venv), add --break-system-packages
+      // to bypass PEP 668 externally-managed-environment restriction.
+      final needsBreakFlag = !Platform.isWindows && !python.contains('venv');
       final process = await Process.start(
         python,
         [
@@ -109,6 +112,7 @@ class PythonSetupService extends GetxService {
           requirementsPath,
           '--upgrade',
           '--no-cache-dir',
+          if (needsBreakFlag) '--break-system-packages',
         ],
         workingDirectory: _scriptsPath,
       );

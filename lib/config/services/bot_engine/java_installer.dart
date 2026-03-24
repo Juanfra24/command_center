@@ -13,9 +13,34 @@ class JavaInstaller {
       : _appConfig = appConfig,
         _basePath = basePath;
 
+  /// Adoptium architecture string for the current platform.
+  static String get _arch {
+    // Dart's Platform doesn't expose CPU arch directly, but we can check
+    // the resolved executable path or use a process call.
+    // On Linux, `uname -m` returns aarch64 or x86_64.
+    // On Windows, x64 is the only supported Flutter desktop arch.
+    if (Platform.isWindows) return 'x64';
+    // For Linux, detect at runtime — _archCache is set by _detectArch()
+    return _archCache ?? 'x64';
+  }
+
+  static String? _archCache;
+
+  /// Detect the CPU architecture on Linux.
+  static Future<void> detectArch() async {
+    if (Platform.isWindows) return;
+    try {
+      final result = await Process.run('uname', ['-m']);
+      final machine = (result.stdout as String).trim();
+      _archCache = machine == 'aarch64' ? 'aarch64' : 'x64';
+    } catch (_) {
+      _archCache = 'x64';
+    }
+  }
+
   static String get adoptiumDownloadUrl => Platform.isWindows
       ? 'https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse'
-      : 'https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jre/hotspot/normal/eclipse';
+      : 'https://api.adoptium.net/v3/binary/latest/17/ga/linux/$_arch/jre/hotspot/normal/eclipse';
 
   /// Check if Java 17+ is available (either configured path or system).
   Future<String?> findJavaPath() async {
