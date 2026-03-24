@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.10] - 2026-03-24
+
+### Bug Fixes
+
+- Linux ARM64 Java download, venv health check, bundled Chromium (platform)
 ## [0.9.9] - 2026-03-23
 
 ### Bug Fixes
