@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.10] - 2026-03-24
+
+### Bug Fixes
+
+- Linux ARM64 Java download, venv health check, bundled Chromium (platform)
+## [0.9.9] - 2026-03-23
+
+### Bug Fixes
+
+- strict account creation flow, DOB filling, status column rendering, proxy debug logging (ui+automation)
+## [0.9.8] - 2026-03-23
+
+### Bug Fixes
+
+- strict account creation flow, DOB filling, status column rendering (ui+automation)
+## [0.9.7] - 2026-03-23
+
+### Bug Fixes
+
+- fix broken ContentDialog rendering — inline content, add maxWidth constraint, scope Obx to reactive widgets only (ui)
 ## [0.9.6] - 2026-03-22
 
 ### Bug Fixes

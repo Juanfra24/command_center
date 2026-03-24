@@ -27,7 +27,10 @@ def clean_proxy(proxy: Optional[str]) -> Optional[str]:
     if not proxy or proxy.lower() == "none":
         return None
     p = proxy.strip().strip("'\"")
-    p = p.replace("http://", "").replace("https://", "")
+    for scheme in ("socks5://", "socks4://", "https://", "http://"):
+        if p.lower().startswith(scheme):
+            p = p[len(scheme):]
+            break
     return p
 
 
@@ -37,13 +40,13 @@ def validate_proxy_format(proxy: str) -> Optional[str]:
         return None
     if proxy.startswith(("socks4://", "socks5://")):
         return None
+    if proxy.count("@") > 1:
+        return f"Proxy contains multiple '@': {mask_proxy(proxy)}. URL-encode the password."
     ok = re.fullmatch(
-        r"([^:@\s]+):(\d+)|([^:@\s]+):([^@\s]+)@([^:@\s]+):(\d+)", proxy
+        r"([^:@\s]+):([^@\s]+)@([^:@\s]+):(\d+)|([^:@\s]+):(\d+)", proxy
     )
     if not ok:
         return f"Bad proxy format: {mask_proxy(proxy)}. Use host:port or user:pass@host:port"
-    if proxy.count("@") > 1:
-        return f"Proxy contains multiple '@': {mask_proxy(proxy)}. URL-encode the password."
     return None
 
 

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show HttpClient;
+import 'dart:io' show HttpClient, HttpClientResponse;
 
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/bot_status.dart';
@@ -201,15 +201,17 @@ class WatchdogService extends GetxService {
           }
           // Poll Status API if port is known
           if (client.statusPort != null) {
+            HttpClientResponse? statusResponse;
             try {
               final request = await _statusHttpClient
                   .getUrl(
                       Uri.parse('http://127.0.0.1:${client.statusPort}/status'))
                   .timeout(const Duration(seconds: 2));
-              final response =
+              statusResponse =
                   await request.close().timeout(const Duration(seconds: 2));
-              if (response.statusCode == 200) {
-                final body = await response.transform(utf8.decoder).join();
+              if (statusResponse.statusCode == 200) {
+                final body =
+                    await statusResponse.transform(utf8.decoder).join();
                 final newStatus = BotStatus.fromJson(
                     jsonDecode(body) as Map<String, dynamic>);
                 if (client.lastStatus?.status != newStatus.status ||
@@ -219,10 +221,14 @@ class WatchdogService extends GetxService {
                 }
                 client.lastStatus = newStatus;
               } else {
-                await response.drain<void>();
+                await statusResponse.drain<void>();
                 client.lastStatus = null;
               }
             } catch (_) {
+              // Drain response body to release connection back to pool
+              try {
+                await statusResponse?.drain<void>();
+              } catch (_) {}
               client.lastStatus = null;
             }
           }

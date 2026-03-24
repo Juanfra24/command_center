@@ -25,7 +25,7 @@ def fetch_verification_code(
             # Connect/reconnect only when needed
             if mail is None:
                 try:
-                    mail = imaplib.IMAP4_SSL(imap_host, 993)
+                    mail = imaplib.IMAP4_SSL(imap_host, 993, timeout=30)
                     mail.login(imap_user, imap_pass)
                     log_fn("[INFO] IMAP connected")
                 except Exception as e:
@@ -37,12 +37,14 @@ def fetch_verification_code(
             try:
                 mail.select("INBOX")
                 _, messages = mail.search(None, '(FROM "jagex" UNSEEN)')
-                if not messages[0]:
-                    _, messages = mail.search(None, '(FROM "jagex.com" UNSEEN)')
-
                 email_ids = messages[0].split()
+                if not email_ids:
+                    _, messages = mail.search(None, '(FROM "jagex.com" UNSEEN)')
+                    email_ids = messages[0].split()
                 for eid in reversed(email_ids[-10:]):
                     _, msg_data = mail.fetch(eid, "(RFC822)")
+                    if not msg_data or not isinstance(msg_data[0], tuple):
+                        continue
                     msg = email.message_from_bytes(msg_data[0][1])
 
                     to_header = msg.get("To", "").lower()
@@ -68,7 +70,12 @@ def fetch_verification_code(
                         if payload:
                             body = payload.decode("utf-8", errors="ignore")
 
-                    code_match = re.search(r"\b(\d{6})\b", body)
+                    # Prefer code near verification keywords
+                    code_match = re.search(
+                        r'(?:code|verify|verification)[:\s]*(\d{6})', body, re.IGNORECASE
+                    )
+                    if not code_match:
+                        code_match = re.search(r"\b(\d{6})\b", body)
                     if code_match:
                         code = code_match.group(1)
                         log_fn(f"[INFO] Found verification code: {code}")

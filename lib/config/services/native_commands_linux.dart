@@ -54,10 +54,12 @@ class NativeCommandsLinux implements NativeCommandsService {
   @override
   Future<void> killProcess(int pid) async {
     try {
-      final result = await Process.run('kill', ['-9', '$pid']);
-      if (result.exitCode != 0) {
-        logger.e('Failed to kill process $pid: ${result.stderr}');
-      }
+      // Send SIGTERM first for graceful shutdown
+      await Process.run('kill', ['-15', '$pid']);
+      // Wait briefly for process to exit
+      await Future.delayed(const Duration(seconds: 2));
+      // Force kill if still alive
+      await Process.run('kill', ['-9', '$pid']);
     } catch (e) {
       logger.e('Failed to kill process $pid: $e');
     }
