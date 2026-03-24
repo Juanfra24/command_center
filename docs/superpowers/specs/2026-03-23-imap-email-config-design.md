@@ -18,6 +18,7 @@ Dedicated service following the same pattern as `WebshareService` and `IpqsServi
 ```dart
 class ImapConfigService extends GetxService {
   final isConfigured = false.obs;
+  String? cachedHost; // Synchronous access for dialog pre-fill
   // ...
 }
 ```
@@ -29,6 +30,7 @@ Future<ImapConfigService> init()
 ```
 - Gets `ConfigRepository` from `DatabaseService`
 - Seeds default host (`mail.privateemail.com`) if not set
+- Loads `cachedHost` from DB (always has a value after seed)
 - Checks if `imap_user` and `imap_pass` have values -> sets `isConfigured`
 
 ```dart
@@ -40,13 +42,15 @@ Future<Result<void>> saveConfig({
 ```
 - Validates all 3 are non-empty
 - Saves `imap_host`, `imap_user`, `imap_pass` to the config repository
+- Updates `cachedHost = host`
 - Sets `isConfigured.value = true`
 
 ```dart
 Future<Result<void>> clearConfig()
 ```
 - Deletes `imap_user` and `imap_pass`
-- Re-seeds `imap_host` to the default (`mail.privateemail.com`)
+- Re-seeds `imap_host` to the default via `setValue` (not delete+seed, to avoid race)
+- Updates `cachedHost` to the default
 - Sets `isConfigured.value = false`
 
 ```dart
@@ -72,11 +76,11 @@ final imapPass = await imapService.getPass();
 
 ### Modified: DI (`lib/core/resource/dependency_injection.dart`)
 
-Register `ImapConfigService` in Phase 2 (async services), after `DatabaseService`:
+Register `ImapConfigService` in Phase 2 (`initializeAsyncServices()`), after IpqsService (step 4) and before OnboardingService (step 7):
 ```dart
-final imapConfigService = ImapConfigService();
-Get.put(imapConfigService, permanent: true);
-await imapConfigService.init();
+// 4b. ImapConfigService (depends on DatabaseService)
+final imapConfigService = await ImapConfigService().init();
+Get.put<ImapConfigService>(imapConfigService, permanent: true);
 ```
 
 ### Modified: OnboardingService (`lib/config/services/onboarding_service.dart`)
@@ -134,6 +138,28 @@ isImapConfigured.value = false;
 
 This automatically gates account creation since `canCreateCharacter` checks `isOnboardingComplete`.
 
+## Widget Tree Changes
+
+### Modified: `app_lifecycle.dart` (`lib/feature/app/views/components/`)
+
+**`setupOnboardingWorkers()`:** Add IMAP watcher so the parent `_AppState` rebuilds when IMAP config changes (without this, the onboarding screen won't dismiss after IMAP is configured):
+```dart
+workers.add(ever(obs.isImapConfigured, check));
+```
+
+**`ResolvedServices`:** Add `ImapConfigService? imapConfigService` field and resolve it in `resolveServices()`:
+```dart
+imapConfigService: _tryFind<ImapConfigService>(),
+```
+
+### Modified: `app.dart` (`lib/feature/`)
+
+Pass `services.imapConfigService` through to `AppNavigation`.
+
+### Modified: `app_navigation.dart` (`lib/feature/app/views/components/`)
+
+Add `ImapConfigService? imapConfigService` constructor parameter. Pass it to `SettingsSection`.
+
 ## UI Layer Changes
 
 ### New: `imap_config_dialog.dart` (`lib/feature/app/views/dialogs/`)
@@ -143,12 +169,13 @@ Follows the pattern of `ipqs_config_dialog.dart` (190 lines):
 - `StatefulWidget` with private constructor + `static void show(BuildContext context)`
 - State: `_hostController`, `_userController`, `_passController`, `_isProcessing`, `_statusMessage`, `_isError`
 - Reads `ImapConfigService.isConfigured` in `initState()` to determine configured vs unconfigured view
+- Pre-fills host from `ImapConfigService.cachedHost` (synchronous, no async needed in initState)
 - If approaching the 200-line dialog ceiling, extract the 3 form fields into a `_buildFormFields()` helper method
 
 **Unconfigured view:**
 - Instructional text: "Configure your IMAP mailbox for Jagex email verification."
 - 3 `InfoLabel` + `TextBox` fields:
-  - IMAP Host (pre-filled with current value or default `mail.privateemail.com`)
+  - IMAP Host (pre-filled from `cachedHost`)
   - Email / Username
   - Password (`obscureText: true`)
 - Helper text: "Uses IMAP over SSL (port 993). Your catch-all mailbox for receiving Jagex verification emails."
@@ -175,6 +202,8 @@ Follows the pattern of `ipqs_config_dialog.dart` (190 lines):
 
 ### Modified: `settings_section.dart` (`lib/feature/app/views/sections/`)
 
+Add `ImapConfigService? imapConfigService` constructor parameter.
+
 Add IMAP integration tile in `_buildIntegrationsCard()`, after IPQS and before WhatsApp:
 
 ```dart
@@ -186,11 +215,9 @@ New method `_buildImapIntegrationTile(BuildContext context)`:
 - Icon: `FluentIcons.mail`
 - Title: "Email (IMAP)"
 - Description: "Email verification for account creation"
-- `isConfigured`: reads from `ImapConfigService.isConfigured` via injected parameter or `Get.find`
+- `isConfigured`: reads from `imapConfigService.isConfigured`
 - `onConfigure`: opens `ImapConfigDialog.show(context)`
 - Follows the null-check + `Obx()` wrapping pattern of existing tiles
-
-Constructor: Add `ImapConfigService?` parameter (or reuse existing `appConfigService` to resolve via GetX).
 
 ### Modified: `onboarding_section.dart` (`lib/feature/app/views/sections/`)
 
@@ -215,19 +242,22 @@ Update description text to: "Configure your integrations to start managing proxi
 
 | File | Change |
 |------|--------|
-| `lib/config/services/imap/imap_config_service.dart` | **New file** — IMAP config service (owns `isConfigured`, save/clear/getters) |
+| `lib/config/services/imap/imap_config_service.dart` | **New file** — IMAP config service (owns `isConfigured`, `cachedHost`, save/clear/getters) |
 | `lib/config/services/app_config_service.dart` | **Remove** IMAP key constants, getters, and seed logic (moved to ImapConfigService) |
 | `lib/config/services/automation/automation_service.dart` | Read IMAP config from `ImapConfigService` instead of `AppConfigService` |
-| `lib/core/resource/dependency_injection.dart` | Register `ImapConfigService` in Phase 2 |
+| `lib/core/resource/dependency_injection.dart` | Register `ImapConfigService` in Phase 2, after IpqsService |
 | `lib/config/services/onboarding_service.dart` | Add `isImapConfigured` observable, SharedPreferences fallback, update `isOnboardingComplete`, update `resetOnboarding()` |
+| `lib/feature/app/views/components/app_lifecycle.dart` | Add IMAP watcher to `setupOnboardingWorkers()`, add `ImapConfigService` to `ResolvedServices` |
+| `lib/feature/app.dart` | Pass `imapConfigService` to `AppNavigation` |
+| `lib/feature/app/views/components/app_navigation.dart` | Add `imapConfigService` parameter, pass to `SettingsSection` |
 | `lib/feature/app/views/dialogs/imap_config_dialog.dart` | **New file** — IMAP configuration dialog |
-| `lib/feature/app/views/sections/settings_section.dart` | Add IMAP integration tile |
+| `lib/feature/app/views/sections/settings_section.dart` | Add `imapConfigService` parameter, add IMAP integration tile |
 | `lib/feature/app/views/sections/onboarding_section.dart` | Add IMAP onboarding step, update description text |
 
 ## Test Changes
 
-- Update `OnboardingService` tests: `isOnboardingComplete` now requires IMAP configured
-- Add unit tests for `ImapConfigService`: `saveConfig()`, `clearConfig()`, `isConfigured` reactivity
+- Update `OnboardingService` tests: `isOnboardingComplete` now requires all 4 flags (add `isImapConfigured`)
+- Add unit tests for `ImapConfigService`: `init()`, `saveConfig()`, `clearConfig()`, `isConfigured` reactivity, `cachedHost` updates
 - Verify `canCreateCharacter` gating works with the new IMAP requirement
 - Update any mocks that depend on `AppConfigService` IMAP getters to use `ImapConfigService`
 
