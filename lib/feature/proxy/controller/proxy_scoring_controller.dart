@@ -226,7 +226,8 @@ class ProxyScoringController extends GetxController {
     int successCount = 0;
 
     try {
-      for (final slot in _proxyController.proxySlots) {
+      final slotsSnapshot = List.of(_proxyController.proxySlots);
+      for (final slot in slotsSnapshot) {
         if (isClosed) break;
         final currentIp = _proxyController.getCurrentIpForSlot(slot);
         if (currentIp != null) {

@@ -11,14 +11,9 @@ from ..helpers import (
     human_type, click_first_match, human_delay,
     extract_ip_from_response,
     generate_account_name, generate_email, generate_password, generate_random_dob,
+    IP_CHECK_URLS,
 )
 from ..imap_poller import fetch_verification_code
-
-IP_CHECK_URLS = [
-    "https://api.ipify.org?format=json",
-    "https://httpbin.org/ip",
-    "https://api.myip.com",
-]
 
 
 async def _is_past_cloudflare(page, log_fn) -> bool:
@@ -53,7 +48,7 @@ async def _handle_turnstile(page, log_fn, max_attempts: int = 5) -> bool:
             log_fn("[INFO] Already past Cloudflare")
             return True
 
-        human_delay(1.0, 2.0)
+        await human_delay(1.0, 2.0)
 
         # Try to find and click the Turnstile checkbox inside its iframe
         try:
@@ -77,7 +72,7 @@ async def _handle_turnstile(page, log_fn, max_attempts: int = 5) -> bool:
 
         # Wait for verification
         log_fn("[INFO] Waiting for Turnstile verification...")
-        human_delay(5.0, 8.0)
+        await human_delay(5.0, 8.0)
 
         if await _is_past_cloudflare(page, log_fn):
             log_fn("[INFO] Turnstile solved!")
@@ -88,7 +83,7 @@ async def _handle_turnstile(page, log_fn, max_attempts: int = 5) -> bool:
             log_fn("[INFO] Reloading page for retry...")
             try:
                 await page.goto("https://account.jagex.com/", wait_until="domcontentloaded")
-                human_delay(3.0, 5.0)
+                await human_delay(3.0, 5.0)
             except Exception:
                 pass
 
@@ -133,7 +128,7 @@ async def create_account(
         for i, url in enumerate(IP_CHECK_URLS):
             try:
                 await page.goto(url, wait_until="domcontentloaded")
-                human_delay(1.0, 2.0)
+                await human_delay(1.0, 2.0)
                 body = await page.text_content("body") or ""
                 actual_ip = extract_ip_from_response(body)
                 if actual_ip:
@@ -162,7 +157,7 @@ async def create_account(
         # Step 2: Navigate to Jagex
         log_fn("[STEP 2/13] Navigating to account.jagex.com...")
         await page.goto("https://account.jagex.com/", wait_until="domcontentloaded")
-        human_delay(2.0, 3.0)
+        await human_delay(2.0, 3.0)
 
         # Step 3: Handle Cloudflare Turnstile
         log_fn("[STEP 3/13] Handling Cloudflare Turnstile...")
@@ -183,7 +178,7 @@ async def create_account(
             "//button[contains(text(), 'Allow all cookies')]",
         ]
         await click_first_match(page, cookie_selectors, timeout=3000, label="Cookie consent handled", log_fn=log_fn)
-        human_delay(1.0, 2.0)
+        await human_delay(1.0, 2.0)
 
         # Step 5: Click 'Create an account'
         log_fn("[STEP 5/13] Clicking 'Create an account'...")
@@ -195,11 +190,11 @@ async def create_account(
         ]
         created = await click_first_match(page, create_selectors, timeout=5000, label="Create account clicked", log_fn=log_fn)
         if created:
-            human_delay(2.0, 3.0)
+            await human_delay(2.0, 3.0)
         else:
             log_fn("[WARNING] Could not find link, trying direct URL")
             await page.goto("https://account.jagex.com/en-GB/login/registration-start", wait_until="domcontentloaded")
-            human_delay(2.0, 3.0)
+            await human_delay(2.0, 3.0)
 
         # Step 6: Fill email
         log_fn("[STEP 6/13] Filling email...")
@@ -240,7 +235,7 @@ async def create_account(
                     await page.wait_for_selector(sel, timeout=3000, state="visible")
                     # Triple-click to select any existing text, then type over it
                     await page.click(sel, click_count=3)
-                    human_delay(0.1, 0.2)
+                    await human_delay(0.1, 0.2)
                     await page.type(sel, value, delay=random.uniform(30, 80))
                     log_fn(f"[INFO] DOB field '{sel}' filled with '{value}'")
                     filled = True
@@ -254,9 +249,9 @@ async def create_account(
                     message=f"Could not fill date of birth field (value: {value})",
                     expected_ip=expected_ip, actual_ip=actual_ip,
                 )
-            human_delay(0.2, 0.4)
+            await human_delay(0.2, 0.4)
 
-        human_delay(0.5, 1.0)
+        await human_delay(0.5, 1.0)
 
         # Step 8: Accept terms
         log_fn("[STEP 8/13] Accepting terms...")
@@ -265,7 +260,7 @@ async def create_account(
             "label[for*='agree']", "text=I agree",
         ]
         await click_first_match(page, terms_selectors, timeout=3000, label="Terms accepted", log_fn=log_fn)
-        human_delay(0.5, 1.0)
+        await human_delay(0.5, 1.0)
 
         # Step 9: Click Continue
         log_fn("[STEP 9/13] Clicking Continue...")
@@ -274,7 +269,7 @@ async def create_account(
             "button.submit", "input[type='submit']",
         ]
         await click_first_match(page, continue_selectors, timeout=5000, label="Continue clicked", log_fn=log_fn)
-        human_delay(3.0, 5.0)
+        await human_delay(3.0, 5.0)
 
         # Step 10: Email verification
         log_fn("[STEP 10/13] Email verification...")
@@ -294,12 +289,12 @@ async def create_account(
                         await page.wait_for_selector(sel, timeout=10000, state="visible")
                         await human_type(page, sel, code, min_delay=50, max_delay=150)
                         log_fn(f"[INFO] Code entered with: {sel}")
-                        human_delay(0.5, 1.0)
+                        await human_delay(0.5, 1.0)
                         await click_first_match(page, [
                             "button[type='submit']", "text=Continue",
                             "text=Submit", "text=Verify",
                         ], timeout=5000, label="Verification submitted", log_fn=log_fn)
-                        human_delay(3.0, 5.0)
+                        await human_delay(3.0, 5.0)
                         break
                     except Exception:
                         continue
@@ -311,7 +306,14 @@ async def create_account(
                     expected_ip=expected_ip, actual_ip=actual_ip,
                 )
         else:
-            log_fn("[WARNING] IMAP not configured, skipping email verification")
+            log_fn("[STEP 10/13] FAILED - IMAP not configured, cannot complete email verification")
+            return AutomationResult(
+                status=AutomationStatus.UNKNOWN_ERROR.value,
+                message="Email verification required but IMAP not configured. "
+                        "Set up IMAP in Settings to enable account creation.",
+                expected_ip=expected_ip,
+                actual_ip=actual_ip,
+            )
 
         # Step 11: Display name
         log_fn("[STEP 11/13] Setting display name...")
@@ -325,12 +327,12 @@ async def create_account(
                 await page.wait_for_selector(sel, timeout=10000, state="visible")
                 await human_type(page, sel, account_name)
                 log_fn(f"[INFO] Display name entered with: {sel}")
-                human_delay(0.5, 1.0)
+                await human_delay(0.5, 1.0)
                 await click_first_match(page, [
                     "button[type='submit']", "text=Continue",
                     "text=Set", "text=Next",
                 ], timeout=5000, label="Display name submitted", log_fn=log_fn)
-                human_delay(3.0, 5.0)
+                await human_delay(3.0, 5.0)
                 name_filled = True
                 break
             except Exception:
@@ -370,12 +372,12 @@ async def create_account(
                     except Exception:
                         continue
 
-                human_delay(0.5, 1.0)
+                await human_delay(0.5, 1.0)
                 await click_first_match(page, [
                     "button[type='submit']", "text=Continue",
                     "text=Set", "text=Submit",
                 ], timeout=5000, label="Password submitted", log_fn=log_fn)
-                human_delay(3.0, 5.0)
+                await human_delay(3.0, 5.0)
                 password_filled = True
                 break
             except Exception:
@@ -391,7 +393,7 @@ async def create_account(
 
         # Step 13: Confirmation
         log_fn("[STEP 13/13] Checking for confirmation...")
-        human_delay(2.0, 3.0)
+        await human_delay(2.0, 3.0)
         confirmed = False
         try:
             content = (await page.content()).lower()
@@ -421,12 +423,14 @@ async def create_account(
                 data=result_data,
             )
         else:
+            # Redact password from failure result — only persist on confirmed success
+            safe_data = {k: v for k, v in result_data.items() if k != "password"}
             return AutomationResult(
                 status=AutomationStatus.UNKNOWN_ERROR.value,
                 message="Account creation could not be confirmed",
                 expected_ip=expected_ip,
                 actual_ip=actual_ip,
-                data=result_data,
+                data=safe_data,
             )
 
     except Exception as e:

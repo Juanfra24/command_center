@@ -56,7 +56,8 @@ class ProxyAutoRotationService {
   }
 
   Future<void> _processResults(List<ScoredIpResult> results) async {
-    final threshold = _configService.autoRotationThreshold.value;
+    try {
+      final threshold = _configService.autoRotationThreshold.value;
 
     // Filter to above-threshold IPs (high fraud score = bad), sorted worst first
     final aboveThreshold = results
@@ -197,8 +198,11 @@ class ProxyAutoRotationService {
       );
     }
 
-    // Clear the guard set after all processing is done (not before)
-    _recentlyRotatedSlotIds.clear();
+    } finally {
+      // Clear the guard set even if processing fails, to avoid permanently
+      // skipping slots on subsequent rotation cycles.
+      _recentlyRotatedSlotIds.clear();
+    }
   }
 
   /// Rotate the IP for a specific slot (triggered by watchdog on ban detection).

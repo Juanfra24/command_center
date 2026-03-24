@@ -1,17 +1,12 @@
 # scripts/automation/commands/session.py
 import asyncio
+import time
 from typing import Optional, Callable
 
 from ..models import AutomationResult, AutomationStatus
 from ..proxy import preflight_proxy
 from ..browser import launch_browser, close_browser
-from ..helpers import extract_ip_from_response, human_delay
-
-IP_CHECK_URLS = [
-    "https://api.ipify.org?format=json",
-    "https://httpbin.org/ip",
-    "https://api.myip.com",
-]
+from ..helpers import extract_ip_from_response, human_delay, IP_CHECK_URLS
 
 
 async def launch_session(
@@ -50,7 +45,7 @@ async def launch_session(
             try:
                 log_fn(f"[STEP 3/4] IP check {i + 1}/{len(IP_CHECK_URLS)}: {url}")
                 await page.goto(url, wait_until="domcontentloaded")
-                human_delay(0.5, 1.0)
+                await human_delay(0.5, 1.0)
                 body = await page.text_content("body") or ""
                 actual_ip = extract_ip_from_response(body)
                 if actual_ip:
@@ -71,13 +66,18 @@ async def launch_session(
         # Step 4/4: Navigate to Jagex
         log_fn("[STEP 4/4] Navigating to account.jagex.com...")
         await page.goto("https://account.jagex.com/", wait_until="domcontentloaded")
-        human_delay(2.0, 3.0)
+        await human_delay(2.0, 3.0)
         log_fn("[STEP 4/4] OK - browser is ready. Close the browser window when done.")
 
-        # Block until browser is closed by user
+        # Block until browser is closed by user (max 4 hours to prevent orphans)
+        max_duration = 4 * 60 * 60  # 4 hours
+        start_time = time.monotonic()
         try:
             while True:
                 await asyncio.sleep(2)
+                if time.monotonic() - start_time > max_duration:
+                    log_fn("[INFO] Session reached maximum duration (4h), closing")
+                    break
                 try:
                     await page.title()
                 except Exception:
