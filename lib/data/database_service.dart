@@ -20,6 +20,15 @@ class DatabaseService extends GetxService {
   late final AccountRepository accountRepository;
   late final NotificationRepository notificationRepository;
 
+  /// Test-only constructor: injects an in-memory [AppDatabase].
+  DatabaseService.forTesting(AppDatabase db) {
+    _database = db;
+    configRepository = ConfigRepositoryImpl(db);
+    proxyRepository = ProxyRepositoryImpl(db);
+    accountRepository = AccountRepositoryImpl(db);
+    notificationRepository = NotificationRepositoryImpl(db);
+  }
+
   /// Initialize the database service
   Future<DatabaseService> init() async {
     _database = AppDatabase();

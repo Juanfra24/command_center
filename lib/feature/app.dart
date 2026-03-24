@@ -126,6 +126,7 @@ class _AppState extends State<App> with WindowListener {
                         webshareService: _services.webshareService,
                         ipqsService: _services.ipqsService,
                         appConfigService: _services.appConfigService,
+                        imapConfigService: _services.imapConfigService,
                       ),
                     )
                   : _buildSplashScreen(),

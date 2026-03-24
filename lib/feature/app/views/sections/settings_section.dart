@@ -1,9 +1,11 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/imap/imap_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
 import 'package:command_center/config/theme/theme_manager.dart';
 import 'package:command_center/feature/app/views/components/about_card.dart';
 import 'package:command_center/feature/app/views/components/integration_tile.dart';
+import 'package:command_center/feature/app/views/dialogs/imap_config_dialog.dart';
 import 'package:command_center/feature/app/views/dialogs/ipqs_config_dialog.dart';
 import 'package:command_center/feature/app/views/dialogs/webshare_config_dialog.dart';
 import 'package:command_center/feature/app/views/sections/auto_rotation_settings.dart';
@@ -17,6 +19,7 @@ class SettingsSection extends StatelessWidget {
   final WebshareService? webshareService;
   final IpqsService? ipqsService;
   final AppConfigService? appConfigService;
+  final ImapConfigService? imapConfigService;
 
   const SettingsSection({
     super.key,
@@ -25,6 +28,7 @@ class SettingsSection extends StatelessWidget {
     this.webshareService,
     this.ipqsService,
     this.appConfigService,
+    this.imapConfigService,
   });
 
   @override
@@ -160,6 +164,8 @@ class SettingsSection extends StatelessWidget {
           const SizedBox(height: 12),
           _buildIpqsIntegrationTile(context),
           const SizedBox(height: 12),
+          _buildImapIntegrationTile(context),
+          const SizedBox(height: 12),
           IntegrationTile(
             icon: FluentIcons.message,
             title: 'WhatsApp',
@@ -208,6 +214,26 @@ class SettingsSection extends StatelessWidget {
           description: 'IP scoring and fraud detection service',
           isConfigured: ipqs.isConfigured.value,
           onConfigure: () => IpqsConfigDialog.show(context),
+        ));
+  }
+
+  Widget _buildImapIntegrationTile(BuildContext context) {
+    final imap = imapConfigService;
+    if (imap == null) {
+      return IntegrationTile(
+        icon: FluentIcons.mail,
+        title: 'Email (IMAP)',
+        description: 'Email verification for account creation',
+        isConfigured: false,
+        onConfigure: () => ImapConfigDialog.show(context),
+      );
+    }
+    return Obx(() => IntegrationTile(
+          icon: FluentIcons.mail,
+          title: 'Email (IMAP)',
+          description: 'Email verification for account creation',
+          isConfigured: imap.isConfigured.value,
+          onConfigure: () => ImapConfigDialog.show(context),
         ));
   }
 }

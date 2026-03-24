@@ -9,6 +9,7 @@ import 'package:command_center/core/helper/python_resolver.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
+import 'package:command_center/config/services/imap/imap_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'dart:io' show Platform;
 import 'package:command_center/config/services/native_commands_linux.dart';
@@ -123,6 +124,10 @@ class AppBindings extends Bindings {
     final ipqsService = await IpqsService().init();
     Get.put<IpqsService>(ipqsService, permanent: true);
 
+    // 4b. ImapConfigService (depends on DatabaseService)
+    final imapConfigService = await ImapConfigService().init();
+    Get.put<ImapConfigService>(imapConfigService, permanent: true);
+
     // 5. PythonSetupService (check and install Python dependencies)
     final pythonSetupService = PythonSetupService();
     Get.put<PythonSetupService>(pythonSetupService, permanent: true);
@@ -130,7 +135,7 @@ class AppBindings extends Bindings {
     // 6. AutomationService (depends on Python setup)
     Get.put<AutomationService>(AutomationService(), permanent: true);
 
-    // 7. OnboardingService (depends on WebshareService, IpqsService)
+    // 7. OnboardingService (depends on WebshareService, IpqsService, ImapConfigService)
     Get.put<OnboardingService>(OnboardingService(), permanent: true);
 
     // 8. NotificationService (depends on DatabaseService)

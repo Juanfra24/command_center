@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/setup/setup_orchestrator.dart';
+import 'package:command_center/config/services/imap/imap_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
@@ -22,6 +23,7 @@ class ResolvedServices {
   final WebshareService? webshareService;
   final IpqsService? ipqsService;
   final AppConfigService? appConfigService;
+  final ImapConfigService? imapConfigService;
 
   const ResolvedServices({
     this.musicController,
@@ -30,6 +32,7 @@ class ResolvedServices {
     this.webshareService,
     this.ipqsService,
     this.appConfigService,
+    this.imapConfigService,
   });
 }
 
@@ -63,6 +66,7 @@ class AppLifecycle {
       webshareService: _tryFind<WebshareService>(),
       ipqsService: _tryFind<IpqsService>(),
       appConfigService: _tryFind<AppConfigService>(),
+      imapConfigService: _tryFind<ImapConfigService>(),
     );
   }
 
@@ -78,6 +82,7 @@ class AppLifecycle {
 
       workers.add(ever(obs.isWebshareConfigured, check));
       workers.add(ever(obs.isIpqsConfigured, check));
+      workers.add(ever(obs.isImapConfigured, check));
       workers.add(ever(obs.isInitialSyncComplete, check));
     } catch (_) {}
     return workers;
