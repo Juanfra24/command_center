@@ -5,13 +5,7 @@ from typing import Optional, Callable
 from ..models import AutomationResult, AutomationStatus
 from ..proxy import preflight_proxy
 from ..browser import launch_browser, close_browser
-from ..helpers import extract_ip_from_response, human_delay
-
-IP_CHECK_URLS = [
-    "https://api.ipify.org?format=json",
-    "https://httpbin.org/ip",
-    "https://api.myip.com",
-]
+from ..helpers import extract_ip_from_response, human_delay, IP_CHECK_URLS
 
 
 async def validate_proxy_ip(
@@ -53,7 +47,7 @@ async def validate_proxy_ip(
             try:
                 log_fn(f"[STEP 3/4] IP check {i + 1}/{len(IP_CHECK_URLS)}: {url}")
                 await page.goto(url, wait_until="domcontentloaded")
-                human_delay(0.3, 0.8)
+                await human_delay(0.3, 0.8)
 
                 body = await page.text_content("body") or ""
                 actual_ip = extract_ip_from_response(body)

@@ -126,6 +126,9 @@ class MicrobotEngine implements BotEngine {
     final jvmArgs = (config.jvmArgs == null || config.jvmArgs!.isEmpty)
         ? '-Xmx512m'
         : config.jvmArgs!;
+    if (jvmArgs.contains('"') || jvmArgs.contains("'")) {
+      logger.w('JVM args contain quotes which may not be split correctly: $jvmArgs');
+    }
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
     args.addAll(['-jar', jarPath]);
     args.add('--cc-profile-dir=$profileDir');

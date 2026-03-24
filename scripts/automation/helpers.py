@@ -1,9 +1,11 @@
 # scripts/automation/helpers.py
 import re
 import json
-import time
+import asyncio
 import random
 import string
+import secrets
+from datetime import datetime
 from typing import Optional, List
 
 from patchright.async_api import Page
@@ -33,9 +35,9 @@ async def click_first_match(page: Page, selectors: List[str],
     return False
 
 
-def human_delay(min_sec: float = 0.5, max_sec: float = 2.0):
+async def human_delay(min_sec: float = 0.5, max_sec: float = 2.0):
     """Sleep for a random duration to mimic human behavior."""
-    time.sleep(random.uniform(min_sec, max_sec))
+    await asyncio.sleep(random.uniform(min_sec, max_sec))
 
 
 def extract_ip_from_response(text: str) -> Optional[str]:
@@ -81,21 +83,29 @@ def generate_password() -> str:
     """Generate a strong password meeting Jagex requirements (12-16 chars)."""
     length = random.randint(12, 16)
     chars = [
-        random.choice(string.ascii_uppercase),
-        random.choice(string.ascii_lowercase),
-        random.choice(string.digits),
-        random.choice("!@#$%^&*"),
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+        secrets.choice("!@#$%^&*"),
     ]
     remaining = length - len(chars)
     pool = string.ascii_letters + string.digits + "!@#$%^&*"
-    chars += random.choices(pool, k=remaining)
+    chars += [secrets.choice(pool) for _ in range(remaining)]
     random.shuffle(chars)
     return "".join(chars)
 
 
 def generate_random_dob() -> dict:
     """Generate random DOB (18-35 years old). Zero-padded for DD/MM fields."""
-    year = random.randint(1991, 2008)
+    current_year = datetime.now().year
+    year = random.randint(current_year - 35, current_year - 18)
     month = random.randint(1, 12)
     day = random.randint(1, 28)
     return {"day": str(day).zfill(2), "month": str(month).zfill(2), "year": str(year)}
+
+
+IP_CHECK_URLS = [
+    "https://api.ipify.org?format=json",
+    "https://httpbin.org/ip",
+    "https://api.myip.com",
+]

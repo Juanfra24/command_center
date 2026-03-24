@@ -17,31 +17,35 @@ async def launch_browser(
     """
     pw = await async_playwright().start()
 
-    launch_args = [
-        "--disable-dev-shm-usage",
-        "--no-sandbox",
-        "--disable-webrtc",
-        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-        "--disable-features=IsolateOrigins,site-per-process",
-    ]
+    try:
+        launch_args = [
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--disable-webrtc",
+            "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+            "--disable-features=IsolateOrigins,site-per-process",
+        ]
 
-    # Use bundled Chromium (no channel) — system Chrome may not be installed (e.g. WSL)
-    browser = await pw.chromium.launch(
-        headless=headless,
-        args=launch_args,
-    )
+        # Use bundled Chromium (no channel) — system Chrome may not be installed (e.g. WSL)
+        browser = await pw.chromium.launch(
+            headless=headless,
+            args=launch_args,
+        )
 
-    proxy_config = parse_proxy_credentials(proxy_url) if proxy_url else None
+        proxy_config = parse_proxy_credentials(proxy_url) if proxy_url else None
 
-    context = await browser.new_context(
-        proxy=proxy_config,
-        viewport={"width": 1920, "height": 1080},
-        locale="en-US",
-        timezone_id="America/New_York",
-    )
+        context = await browser.new_context(
+            proxy=proxy_config,
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US",
+            timezone_id="America/New_York",
+        )
 
-    page = await context.new_page()
-    return pw, browser, context, page
+        page = await context.new_page()
+        return pw, browser, context, page
+    except Exception:
+        await pw.stop()
+        raise
 
 
 async def close_browser(pw: Playwright, browser: Browser):

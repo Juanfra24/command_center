@@ -28,7 +28,7 @@ static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
   final webshareApiKey = Rxn<String>();
   final isWebshareSetup = false.obs;
   final themeMode = 'system'.obs; // 'light', 'dark', 'system'
-  bool isLoading = true;
+  final isLoading = true.obs;
   final autoRotationEnabled = true.obs;
   final autoRotationThreshold = 60.obs;
   final scriptRegistry = <String>[
@@ -52,7 +52,7 @@ static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
 
   /// Load configuration from SQLite
   Future<void> loadConfig() async {
-    isLoading = true;
+    isLoading.value = true;
     try {
       if (_configRepository == null) return;
 
@@ -86,7 +86,7 @@ static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
     } catch (e) {
       logger.e('Error loading config: $e');
     } finally {
-      isLoading = false;
+      isLoading.value = false;
     }
   }
 

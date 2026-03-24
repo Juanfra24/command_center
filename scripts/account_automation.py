@@ -18,9 +18,8 @@ from automation.models import AutomationResult, AutomationStatus
 
 
 def signal_handler(signum, frame):
-    print("\n=== RESULT ===")
-    print(json.dumps({"status": "unknown_error", "message": "Script terminated by signal"}))
-    sys.exit(1)
+    """Raise KeyboardInterrupt so asyncio.run() can cancel tasks and run finally blocks."""
+    raise KeyboardInterrupt
 
 
 signal.signal(signal.SIGTERM, signal_handler)
