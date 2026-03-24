@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-03-24
+
+### Features
+
+- add IMAP email configuration UI and onboarding gate (imap)
+
+### Bug Fixes
+
+- drop stale characters_backup before migration (db)
+- add explicit default constructor to DatabaseService
+- address 23 bugs from full codebase audit
 ## [0.9.10] - 2026-03-24
 
 ### Bug Fixes
