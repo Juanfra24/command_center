@@ -58,6 +58,8 @@ class AppDatabase extends _$AppDatabase {
           // Recreate characters_table with ON DELETE CASCADE on accountId.
           // SQLite cannot ALTER foreign key constraints, so we use
           // the copy-and-recreate pattern.
+          // Drop stale backup from a previously interrupted migration.
+          await customStatement('DROP TABLE IF EXISTS characters_backup');
           await customStatement(
             'CREATE TABLE characters_backup AS SELECT * FROM characters_table',
           );
