@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/config/services/automation/automation_result.dart';
 import 'package:command_center/config/services/automation/python_runner.dart';
 import 'package:command_center/config/services/automation/result_parser.dart';
+import 'package:command_center/config/services/imap/imap_config_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database_service.dart';
@@ -208,10 +208,10 @@ class AutomationService extends GetxService {
         timeoutMessage: 'Account creation timed out. The browser may be stuck '
             'on captcha or loading.',
         body: (ip, proxy) async {
-          final cfg = Get.find<AppConfigService>();
-          final imapHost = await cfg.getImapHost();
-          final imapUser = await cfg.getImapUser();
-          final imapPass = await cfg.getImapPass();
+          final imapService = Get.find<ImapConfigService>();
+          final imapHost = await imapService.getHost();
+          final imapUser = await imapService.getUser();
+          final imapPass = await imapService.getPass();
           final result = await _runAndParse(
             [
               _runner.scriptFile,

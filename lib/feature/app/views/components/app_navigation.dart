@@ -1,4 +1,5 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/imap/imap_config_service.dart';
 import 'package:command_center/config/services/ipqs/ipqs_service.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/config/services/webshare/webshare_service.dart';
@@ -25,6 +26,7 @@ class AppNavigation extends StatelessWidget {
   final WebshareService? webshareService;
   final IpqsService? ipqsService;
   final AppConfigService? appConfigService;
+  final ImapConfigService? imapConfigService;
 
   const AppNavigation({
     super.key,
@@ -38,6 +40,7 @@ class AppNavigation extends StatelessWidget {
     this.webshareService,
     this.ipqsService,
     this.appConfigService,
+    this.imapConfigService,
   });
 
   @override
@@ -99,6 +102,7 @@ class AppNavigation extends StatelessWidget {
                 webshareService: webshareService,
                 ipqsService: ipqsService,
                 appConfigService: appConfigService,
+                imapConfigService: imapConfigService,
               ),
             ),
           ),

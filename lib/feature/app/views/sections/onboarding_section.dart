@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/feature/app/views/components/setup_checklist_item.dart';
+import 'package:command_center/feature/app/views/dialogs/imap_config_dialog.dart';
 import 'package:command_center/feature/app/views/dialogs/ipqs_onboarding_dialog.dart';
 import 'package:command_center/feature/app/views/dialogs/webshare_config_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -45,7 +46,7 @@ class OnboardingSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Connect your Webshare account to sync proxy slots and start managing your bots.',
+                  'Configure your integrations to start managing proxies and creating accounts.',
                   style: theme.typography.body,
                   textAlign: TextAlign.center,
                 ),
@@ -73,6 +74,7 @@ class OnboardingSection extends StatelessWidget {
     return Obx(() {
       final isWebshareComplete = onboardingService!.isWebshareConfigured.value;
       final isIpqsComplete = onboardingService!.isIpqsConfigured.value;
+      final isImapComplete = onboardingService!.isImapConfigured.value;
 
       return Column(
         children: [
@@ -89,6 +91,14 @@ class OnboardingSection extends StatelessWidget {
             isComplete: isIpqsComplete,
             isEnabled: isWebshareComplete,
             onTap: () => IpqsOnboardingDialog.show(context),
+          ),
+          const SizedBox(height: 12),
+          SetupChecklistItem(
+            title: 'Configure Email (IMAP)',
+            subtitle: 'Set up email verification for account creation',
+            isComplete: isImapComplete,
+            isEnabled: isIpqsComplete,
+            onTap: () => ImapConfigDialog.show(context),
           ),
         ],
       );

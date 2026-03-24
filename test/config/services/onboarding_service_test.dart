@@ -16,6 +16,7 @@ void main() {
       // Manually set flags to true to simulate configured state
       service.isWebshareConfigured.value = true;
       service.isIpqsConfigured.value = true;
+      service.isImapConfigured.value = true;
       service.isInitialSyncComplete.value = true;
       expect(service.isOnboardingComplete, isTrue);
 
@@ -23,19 +24,21 @@ void main() {
 
       expect(service.isWebshareConfigured.value, isFalse);
       expect(service.isIpqsConfigured.value, isFalse);
+      expect(service.isImapConfigured.value, isFalse);
       expect(service.isInitialSyncComplete.value, isFalse);
       expect(service.isOnboardingComplete, isFalse);
     });
 
-    test('isOnboardingComplete requires all three flags', () {
+    test('isOnboardingComplete requires all four flags', () {
       final service = OnboardingService();
 
       service.isWebshareConfigured.value = true;
       service.isIpqsConfigured.value = true;
-      service.isInitialSyncComplete.value = false;
+      service.isImapConfigured.value = false;
+      service.isInitialSyncComplete.value = true;
       expect(service.isOnboardingComplete, isFalse);
 
-      service.isInitialSyncComplete.value = true;
+      service.isImapConfigured.value = true;
       expect(service.isOnboardingComplete, isTrue);
     });
   });
