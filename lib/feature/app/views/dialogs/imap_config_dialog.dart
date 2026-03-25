@@ -64,7 +64,9 @@ class _ImapConfigDialogState extends State<ImapConfigDialog> {
       constraints: const BoxConstraints(maxWidth: 450),
       title: Text(
           _isConfigured ? 'Email Configuration' : 'Configure Email (IMAP)'),
-      content: _isConfigured ? _buildConfiguredContent() : _buildFormContent(context),
+      content: _isConfigured
+          ? _buildConfiguredContent()
+          : _buildFormContent(context),
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
@@ -106,8 +108,7 @@ class _ImapConfigDialogState extends State<ImapConfigDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-            'Configure your IMAP mailbox for Jagex email verification.'),
+        const Text('Configure your IMAP mailbox for Jagex email verification.'),
         const SizedBox(height: 16),
         ..._buildFormFields(),
         const SizedBox(height: 8),

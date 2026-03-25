@@ -6,6 +6,46 @@ import imaplib
 from typing import Optional, Callable
 
 
+def _extract_code(subject: str, body: str) -> Optional[str]:
+    """Extract verification code from email subject or body.
+    Jagex codes are typically 5 alphanumeric characters in the subject line
+    (e.g., '8UJSN is your Jagex verification code')."""
+    # 1. Check subject first — most reliable, no HTML noise
+    subject_match = re.search(
+        r'\b([A-Z0-9]{5,6})\b\s+is\s+your\s+.*verification',
+        subject, re.IGNORECASE,
+    )
+    if subject_match:
+        return subject_match.group(1)
+
+    # 2. Generic subject pattern: code-like token at the start
+    subject_match = re.search(r'^([A-Z0-9]{5,6})\b', subject.strip())
+    if subject_match:
+        return subject_match.group(1)
+
+    # 3. Body: look for code near verification keywords (alphanumeric 5-6 chars)
+    body_match = re.search(
+        r'(?:code|verify|verification)[:\s]*([A-Z0-9]{5,6})\b',
+        body, re.IGNORECASE,
+    )
+    if body_match:
+        return body_match.group(1)
+
+    # 4. Body: look for 6-digit numeric code near keywords
+    body_match = re.search(
+        r'(?:code|verify|verification)[:\s]*(\d{6})', body, re.IGNORECASE,
+    )
+    if body_match:
+        return body_match.group(1)
+
+    # 5. Fallback: any standalone 5-6 alphanumeric token in body
+    body_match = re.search(r'\b([A-Z0-9]{5,6})\b', body)
+    if body_match:
+        return body_match.group(1)
+
+    return None
+
+
 def fetch_verification_code(
     imap_host: str,
     imap_user: str,
@@ -14,7 +54,7 @@ def fetch_verification_code(
     timeout: int = 120,
     log_fn: Callable[[str], None] = print,
 ) -> Optional[str]:
-    """Fetch the 6-digit Jagex verification code from IMAP.
+    """Fetch the Jagex verification code from IMAP.
     Keeps a single connection open across poll iterations."""
     log_fn(f"[INFO] Checking IMAP for verification code (target: {target_email})...")
     start_time = time.time()
@@ -25,7 +65,8 @@ def fetch_verification_code(
             # Connect/reconnect only when needed
             if mail is None:
                 try:
-                    mail = imaplib.IMAP4_SSL(imap_host, 993, timeout=30)
+                    mail = imaplib.IMAP4_SSL(imap_host, 993)
+                    mail.socket().settimeout(30)
                     mail.login(imap_user, imap_pass)
                     log_fn("[INFO] IMAP connected")
                 except Exception as e:
@@ -41,6 +82,7 @@ def fetch_verification_code(
                 if not email_ids:
                     _, messages = mail.search(None, '(FROM "jagex.com" UNSEEN)')
                     email_ids = messages[0].split()
+
                 for eid in reversed(email_ids[-10:]):
                     _, msg_data = mail.fetch(eid, "(RFC822)")
                     if not msg_data or not isinstance(msg_data[0], tuple):
@@ -61,23 +103,26 @@ def fetch_verification_code(
                     if msg.is_multipart():
                         for part in msg.walk():
                             ct = part.get_content_type()
-                            if ct in ("text/html", "text/plain"):
+                            if ct == "text/plain":
                                 payload = part.get_payload(decode=True)
                                 if payload:
                                     body += payload.decode("utf-8", errors="ignore")
+                        # Fall back to HTML if no plain text
+                        if not body:
+                            for part in msg.walk():
+                                ct = part.get_content_type()
+                                if ct == "text/html":
+                                    payload = part.get_payload(decode=True)
+                                    if payload:
+                                        raw = payload.decode("utf-8", errors="ignore")
+                                        body += re.sub(r'<[^>]+>', ' ', raw)
                     else:
                         payload = msg.get_payload(decode=True)
                         if payload:
                             body = payload.decode("utf-8", errors="ignore")
 
-                    # Prefer code near verification keywords
-                    code_match = re.search(
-                        r'(?:code|verify|verification)[:\s]*(\d{6})', body, re.IGNORECASE
-                    )
-                    if not code_match:
-                        code_match = re.search(r"\b(\d{6})\b", body)
-                    if code_match:
-                        code = code_match.group(1)
+                    code = _extract_code(subject, body)
+                    if code:
                         log_fn(f"[INFO] Found verification code: {code}")
                         return code
 

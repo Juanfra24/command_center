@@ -182,13 +182,34 @@ class PythonSetupService extends GetxService {
     }
   }
 
-  /// Install Chromium via Patchright
+  /// Install browser drivers via Patchright.
+  /// Installs Chrome (preferred for Cloudflare bypass) and Chromium (fallback).
   Future<bool> installChromiumDriver() async {
     try {
-      logger.i('Installing Chromium via patchright...');
-
       final python = await PythonResolver.executable;
-      final result = await Process.run(
+
+      // Install Chrome first — much better Cloudflare bypass rate.
+      // --force handles the case where Chrome is already installed
+      // (Patchright refuses to overwrite without it).
+      logger.i('Installing Chrome via patchright...');
+      final chromeResult = await Process.run(
+        python,
+        ['-m', 'patchright', 'install', '--force', 'chrome'],
+        workingDirectory: _scriptsPath,
+      ).timeout(const Duration(minutes: 5), onTimeout: () {
+        return ProcessResult(-1, -1, '', 'Chrome install timed out');
+      });
+
+      if (chromeResult.exitCode == 0) {
+        logger.i('Patchright Chrome installed successfully');
+      } else {
+        logger.w(
+            'Chrome install failed (will use Chromium fallback): ${chromeResult.stderr}');
+      }
+
+      // Always install Chromium as fallback
+      logger.i('Installing Chromium via patchright...');
+      final chromiumResult = await Process.run(
         python,
         ['-m', 'patchright', 'install', 'chromium'],
         workingDirectory: _scriptsPath,
@@ -196,16 +217,17 @@ class PythonSetupService extends GetxService {
         return ProcessResult(-1, -1, '', 'Chromium install timed out');
       });
 
-      if (result.exitCode == 0) {
+      if (chromiumResult.exitCode == 0) {
         logger.i('Patchright Chromium installed successfully');
         isChromiumInstalled = true;
-        return await _verifyChromiumWorks();
       } else {
-        logger.w('Patchright Chromium install returned: ${result.stderr}');
-        return await _verifyChromiumWorks();
+        logger.w(
+            'Patchright Chromium install returned: ${chromiumResult.stderr}');
       }
+
+      return await _verifyChromiumWorks();
     } catch (e) {
-      logger.w('Error installing Patchright Chromium: $e');
+      logger.w('Error installing browser drivers: $e');
       return false;
     }
   }
