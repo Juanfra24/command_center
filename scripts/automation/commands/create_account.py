@@ -472,19 +472,72 @@ async def create_account(
                 expected_ip=expected_ip, actual_ip=actual_ip,
             )
 
-        # Step 13: Confirmation
-        log_fn("[STEP 13/13] Checking for confirmation...")
+        # Step 13: Handle post-submit Turnstile + wait for confirmation
+        log_fn("[STEP 13/13] Waiting for account creation...")
+
+        # After clicking "Create account", Cloudflare may present another
+        # Turnstile challenge. Handle it before checking for confirmation.
         await human_delay(2.0, 3.0)
-        confirmed = False
+        post_submit_cf = False
         try:
-            content = (await page.content()).lower()
-            success_indicators = [
-                "congratulations", "account created", "welcome",
-                "success", "your account", "account is ready",
-            ]
-            confirmed = any(kw in content for kw in success_indicators)
+            title = (await page.title()).lower()
+            content_check = (await page.content()).lower()
+            post_submit_cf = (
+                "just a moment" in title
+                or "are you a robot" in content_check
+                or "challenge-platform" in content_check
+            )
         except Exception:
             pass
+
+        if post_submit_cf:
+            log_fn("[INFO] Post-submit Turnstile detected, solving...")
+            await _handle_turnstile(page, log_fn, max_attempts=3)
+            await human_delay(3.0, 5.0)
+
+        # Wait for the confirmation page to load (can take several seconds)
+        confirmed = False
+        rate_limited = False
+        for wait_round in range(6):
+            await human_delay(2.0, 3.0)
+            try:
+                content = (await page.content()).lower()
+                title = (await page.title()).lower()
+
+                # Check for rate limiting / too many requests
+                if "too many" in content or "rate limit" in content:
+                    log_fn("[WARNING] Rate limited by Cloudflare/Jagex")
+                    rate_limited = True
+                    break
+
+                success_indicators = [
+                    "congratulations", "account created", "welcome",
+                    "success", "your account", "account is ready",
+                    "complete your account", "registration complete",
+                    "complete", "you're all set",
+                ]
+                if any(kw in content or kw in title for kw in success_indicators):
+                    confirmed = True
+                    break
+
+                # Also check URL for success indicators
+                url = page.url.lower()
+                if any(kw in url for kw in [
+                    "complete", "success", "welcome", "manage",
+                ]):
+                    confirmed = True
+                    break
+
+            except Exception:
+                pass
+
+        if rate_limited:
+            log_fn("[STEP 13/13] FAILED - rate limited")
+            return AutomationResult(
+                status=AutomationStatus.CAPTCHA_REQUIRED.value,
+                message="Rate limited by Cloudflare. Wait a few minutes before retrying.",
+                expected_ip=expected_ip, actual_ip=actual_ip,
+            )
 
         dob_str = f"{dob['day']}/{dob['month']}/{dob['year']}"
         log_fn("[INFO] Account creation flow completed")
