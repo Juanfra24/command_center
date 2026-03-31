@@ -26,7 +26,26 @@
       "Bash(awk 'NR>=225 && NR<=379' lib/feature/proxy/views/proxy_screen.dart | wc -l)",
       "Bash(ls /mnt/c/Projects/command_center/lib/feature/proxy/views/helpers/ 2>/dev/null; echo \"exit: $?\")",
       "Bash(git add:*)",
-      "Bash(dart format:*)"
+      "Bash(dart format:*)",
+      "Bash(flutter test:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(dart analyze:*)",
+      "Bash(git fetch:*)",
+      "Bash(~/.local/share/com.example.command_center/python_venv/bin/python -m pip --version 2>&1)",
+      "Bash(dpkg -l python3-venv)",
+      "Bash(~/.local/share/com.example.command_center/python_venv/bin/python -m pip --version)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(rm -rf ~/.local/share/com.example.command_center/python_venv)",
+      "Bash(echo \"PIP EXIT: $?\")",
+      "Bash(/home/juan/.local/share/com.example.command_center/java/jdk-17.0.18+8-jre/bin/java --version)",
+      "Bash(git ls-tree:*)",
+      "Bash(git -C /mnt/c/Projects/Microbot_Frieren remote -v 2)",
+      "Bash(/dev/null git:*)",
+      "Bash(ls /mnt/c/Projects/*.code-workspace)",
+      "Bash(ls /mnt/c/Projects/command_center/*.code-workspace)"
     ]
   }
 }
