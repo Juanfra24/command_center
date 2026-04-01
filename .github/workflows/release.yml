@@ -8,10 +8,18 @@ on:
 permissions:
   contents: write
 
+# Prevent overlapping runs — queue instead of cancel so no release is skipped.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   lint:
     name: Lint & Test
     runs-on: ubuntu-latest
+    # Skip lint+build+release when the CI itself pushed a chore(release) commit —
+    # those commits have no releasable changes and would re-trigger the full pipeline.
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -160,8 +168,8 @@ jobs:
           git commit -m "chore(release): v${{ steps.version.outputs.new_version }}"
           # Force-create tag (handles re-runs where tag exists from a previous failed attempt)
           git tag -fa "v${{ steps.version.outputs.new_version }}" -m "v${{ steps.version.outputs.new_version }}"
-          git push origin main
-          git push origin "v${{ steps.version.outputs.new_version }}" --force
+          # Push commit and tag atomically so no CI run sees the commit without its tag.
+          git push origin main "v${{ steps.version.outputs.new_version }}" --force
 
       - name: Download all build artifacts
         if: steps.version.outputs.skip == 'false'
