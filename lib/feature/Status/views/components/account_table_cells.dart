@@ -3,7 +3,6 @@ import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
-import 'package:command_center/feature/Status/views/dialogs/create_character_dialog.dart';
 import 'package:command_center/feature/Status/views/dialogs/launch_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
@@ -160,10 +159,10 @@ class ActionsCell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Tooltip(
-            message: 'Create Character',
+            message: 'Add Character',
             child: IconButton(
               icon: Icon(FluentIcons.add, size: 14, color: Colors.green),
-              onPressed: () => CreateCharacterDialog.show(context),
+              onPressed: () => _showAddCharacterDialog(context),
             ),
           ),
           if (account.id != null)
@@ -177,6 +176,47 @@ class ActionsCell extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showAddCharacterDialog(BuildContext context) async {
+    if (account.id == null) return;
+    final textController = TextEditingController(text: account.accountName);
+    try {
+      final name = await showDialog<String>(
+        context: context,
+        builder: (ctx) => ContentDialog(
+          title: const Text('Add Character'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Enter the character name for this account:'),
+              const SizedBox(height: 8),
+              TextBox(
+                controller: textController,
+                placeholder: 'Character name',
+                autofocus: true,
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, textController.text.trim()),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      );
+      if (name != null && name.isNotEmpty) {
+        await controller.addCharacterToAccount(account.id!, name);
+      }
+    } finally {
+      textController.dispose();
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context) async {

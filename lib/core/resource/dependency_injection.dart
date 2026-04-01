@@ -16,6 +16,7 @@ import 'package:command_center/config/services/native_commands_linux.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/native_commands_windows.dart';
 import 'package:command_center/config/services/notification_service.dart';
+import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/config/services/onboarding_service.dart';
 import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
 import 'package:command_center/config/services/proxy/proxy_replacement_service.dart';
@@ -196,12 +197,59 @@ class AppBindings extends Bindings {
       return;
     }
 
-    final microbotEngine = MicrobotEngine(
+    late final MicrobotEngine microbotEngine;
+    microbotEngine = MicrobotEngine(
       javaPath: javaPath,
       jarPath: jarPath ?? '',
       profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
       nativeCommands: Get.find<NativeCommandsService>(),
       onLog: (msg) => logger.i(msg),
+      onOutdated: () async {
+        logger
+            .e('Microbot JAR out of date — stopping all clients and updating');
+        final watchdog = Get.find<WatchdogService>();
+        await watchdog.stopAll();
+        final notificationService = Get.find<NotificationService>();
+        await notificationService.createNotification(
+          type: NotificationType.jarOutOfDate,
+          severity: NotificationSeverity.error,
+          title: 'Client Out of Date',
+          message:
+              'Microbot JAR is outdated. All clients stopped. Checking for update...',
+        );
+
+        // Capture version before so we can tell if a real download happened.
+        // ensureJar() only calls saveMicrobotJarVersion() when it actually
+        // downloads a new file — if it returns the cached JAR the version is unchanged.
+        final configService = Get.find<AppConfigService>();
+        final versionBefore = await configService.getMicrobotJarVersion();
+
+        final newJarPath =
+            await Get.find<MicrobotSetupService>().jarDownloader.ensureJar();
+        final versionAfter = await configService.getMicrobotJarVersion();
+        final newlyDownloaded =
+            newJarPath != null && versionBefore != versionAfter;
+
+        if (newlyDownloaded) {
+          microbotEngine.jarPath = newJarPath;
+          microbotEngine.resetOutdated();
+          logger.i(
+              'JAR updated to $versionAfter — clients can now be relaunched');
+        } else if (newJarPath != null) {
+          // ensureJar returned the cached (still outdated) JAR — no new release yet
+          logger.e(
+              'No newer JAR available on GitHub yet — clients remain stopped');
+          await notificationService.createNotification(
+            type: NotificationType.jarOutOfDate,
+            severity: NotificationSeverity.warning,
+            title: 'No Update Available Yet',
+            message:
+                'No new Microbot JAR found. Clients remain stopped until a fix is released.',
+          );
+        } else {
+          logger.e('JAR update check failed — manual update required');
+        }
+      },
     );
     Get.put<BotEngine>(microbotEngine, permanent: true);
 

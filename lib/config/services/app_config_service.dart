@@ -14,7 +14,7 @@ class AppConfigService extends GetxService {
   static const String _keyWebshareApiKey = 'webshare_api_key';
   static const String _keyIsWebshareSetup = 'is_webshare_setup';
   static const String _keyThemeMode = 'theme_mode';
-static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
+  static const String _keyAutoRotationEnabled = 'auto_rotation_enabled';
   static const String _keyAutoRotationThreshold = 'auto_rotation_threshold';
   static const String _keyScriptRegistry = 'script_registry';
   static const String _keyMicrobotJarPath = 'microbot_jar_path';

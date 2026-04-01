@@ -8,6 +8,7 @@ enum NotificationType {
   maxRetriesReached,
   clientRelaunched,
   clientFailed,
+  jarOutOfDate,
   toast, // Toast-originated persistent notifications
 }
 

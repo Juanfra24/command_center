@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python debug_turnstile.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/create_account.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
+      "Bash(dart format:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(python -c \":*)",
+      "Bash(python -m patchright install chrome)",
+      "Bash(java --version)",
+      "Bash(python -c \"import imaplib; help\\(imaplib.IMAP4_SSL.__init__\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/create_account.py''\\).read\\(\\)\\); print\\(''create_account: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/imap_poller.py''\\).read\\(\\)\\); print\\(''imap_poller: OK''\\)\")"
+    ]
+  }
+}

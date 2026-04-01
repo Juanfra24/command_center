@@ -25,4 +25,8 @@ abstract class BotEngine {
   /// Register an externally-discovered PID (e.g. recaptured on startup).
   /// Enables stop() to clean up profiles for processes the engine didn't launch.
   void registerRecapturedPid({required int pid, required int characterId});
+
+  /// True when the engine has detected an out-of-date JAR error.
+  /// While true, the watchdog will not restart or track new clients.
+  bool get isOutdated;
 }

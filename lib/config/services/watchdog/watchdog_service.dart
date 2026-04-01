@@ -91,6 +91,14 @@ class WatchdogService extends GetxService {
 
   /// Start tracking a client (called after launch dialog).
   Future<void> track(TrackedClient client) async {
+    // If the engine is outdated, the client will die immediately — don't track
+    // it or it will enter the restart loop.
+    if (_botEngine.isOutdated) {
+      logger.w(
+          'Skipping track for ${client.characterName} — engine JAR is outdated');
+      return;
+    }
+
     // Check for duplicate character ID already tracked under a different name
     MapEntry<String, TrackedClient>? existingEntry;
     for (final entry in trackedClients.entries) {

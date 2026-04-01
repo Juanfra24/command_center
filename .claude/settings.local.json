@@ -45,7 +45,12 @@
       "Bash(git -C /mnt/c/Projects/Microbot_Frieren remote -v 2)",
       "Bash(/dev/null git:*)",
       "Bash(ls /mnt/c/Projects/*.code-workspace)",
-      "Bash(ls /mnt/c/Projects/command_center/*.code-workspace)"
+      "Bash(ls /mnt/c/Projects/command_center/*.code-workspace)",
+      "Bash(.venv/Scripts/activate)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Read(//c/Users/Juanfra/projects//**)",
+      "Read(//c//**)",
+      "Bash(where.exe java:*)"
     ]
   }
 }

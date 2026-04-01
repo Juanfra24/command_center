@@ -9,13 +9,15 @@ import 'package:path/path.dart' as p;
 
 class MicrobotEngine implements BotEngine {
   final String javaPath;
-  final String jarPath;
+  String jarPath;
   final MicrobotProfileWriter _profileWriter;
   final NativeCommandsService _nativeCommands;
   final void Function(String message) onLog;
+  final void Function()? onOutdated;
 
   final Set<int> _activePids = {};
   final Map<int, int> _pidToCharacterId = {};
+  bool _outdatedSignaled = false;
 
   MicrobotEngine({
     required this.javaPath,
@@ -23,12 +25,19 @@ class MicrobotEngine implements BotEngine {
     required String profilesBasePath,
     required NativeCommandsService nativeCommands,
     required this.onLog,
+    this.onOutdated,
   })  : _profileWriter =
             MicrobotProfileWriter(profilesBasePath: profilesBasePath),
         _nativeCommands = nativeCommands;
 
   @override
   String get engineName => 'Microbot';
+
+  @override
+  bool get isOutdated => _outdatedSignaled;
+
+  /// Reset after a successful JAR update so clients can be relaunched.
+  void resetOutdated() => _outdatedSignaled = false;
 
   @override
   Future<LaunchResult> launch({
@@ -74,6 +83,11 @@ class MicrobotEngine implements BotEngine {
 
     process.stdout.transform(const SystemEncoding().decoder).listen((data) {
       onLog('[Microbot:$characterName] ${_redactCredentials(data)}');
+      if (!_outdatedSignaled &&
+          data.contains('error_game_js5connect_outofdate')) {
+        _outdatedSignaled = true;
+        onOutdated?.call();
+      }
     });
     process.stderr.transform(const SystemEncoding().decoder).listen((data) {
       onLog('[Microbot:$characterName:ERR] ${_redactCredentials(data)}');
@@ -127,7 +141,8 @@ class MicrobotEngine implements BotEngine {
         ? '-Xmx512m'
         : config.jvmArgs!;
     if (jvmArgs.contains('"') || jvmArgs.contains("'")) {
-      logger.w('JVM args contain quotes which may not be split correctly: $jvmArgs');
+      logger.w(
+          'JVM args contain quotes which may not be split correctly: $jvmArgs');
     }
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
     args.addAll(['-jar', jarPath]);

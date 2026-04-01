@@ -63,11 +63,10 @@ async def launch_session(
         else:
             log_fn("[STEP 3/4] WARNING - could not determine IP")
 
-        # Step 4/4: Navigate to Jagex
-        log_fn("[STEP 4/4] Navigating to account.jagex.com...")
-        await page.goto("https://account.jagex.com/", wait_until="domcontentloaded")
-        await human_delay(2.0, 3.0)
-        log_fn("[STEP 4/4] OK - browser is ready. Close the browser window when done.")
+        # Step 4/4: Navigate to a blank page so the user starts fresh
+        log_fn("[STEP 4/4] Browser ready — navigate wherever you like.")
+        await page.goto("https://www.google.com", wait_until="domcontentloaded")
+        log_fn("[STEP 4/4] OK - close the browser window when done.")
 
         # Block until browser is closed by user (max 4 hours to prevent orphans)
         max_duration = 4 * 60 * 60  # 4 hours

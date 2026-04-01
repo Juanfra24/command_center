@@ -8,7 +8,9 @@ import 'package:command_center/config/services/python_setup_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/account.dart';
+import 'package:command_center/domain/entities/character.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
+import 'package:command_center/domain/entities/skills.dart';
 import 'package:get/get.dart';
 
 /// Orchestrates browser automation by delegating process management to
@@ -276,13 +278,24 @@ class AutomationService extends GetxService {
       Map<String, dynamic> data, ProxySlotEntity slot) async {
     try {
       final db = Get.find<DatabaseService>();
+      final accountName = data['accountName'] ?? '';
       final account = AccountEntity(
-        accountName: data['accountName'] ?? '',
+        accountName: accountName,
         email: data['email'] ?? '',
         password: data['password'] ?? '',
         birthday: data['dob'] ?? '',
         proxySlotId: slot.id,
-        characters: const [],
+        characters: accountName.isNotEmpty
+            ? [
+                CharacterEntity(
+                  accountId: 0, // Will be set by repository after insert
+                  name: accountName,
+                  banned: false,
+                  actualSkills: SkillsEntity.empty(),
+                  targetSkills: SkillsEntity.empty(),
+                ),
+              ]
+            : const [],
       );
       final id = await db.accountRepository.insertAccount(account);
       _log('Account persisted to database with ID: $id');
