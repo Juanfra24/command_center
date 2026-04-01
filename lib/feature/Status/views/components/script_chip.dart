@@ -61,7 +61,14 @@ class ScriptChip extends StatelessWidget {
                   banned ? theme.resources.textFillColorDisabled : Colors.blue,
             ),
             const SizedBox(width: 4),
-            Text(scriptName!, style: textStyle),
+            Flexible(
+              child: Text(
+                scriptName!,
+                style: textStyle,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
           ],
         ),
       ),

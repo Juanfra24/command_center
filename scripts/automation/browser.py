@@ -1,7 +1,13 @@
 # scripts/automation/browser.py
 from typing import Optional, Tuple
 
-from patchright.async_api import async_playwright, Browser, BrowserContext, Page, Playwright
+from patchright.async_api import (
+    async_playwright,
+    Browser,
+    BrowserContext,
+    Page,
+    Playwright,
+)
 
 from .proxy import parse_proxy_credentials
 
@@ -10,7 +16,11 @@ async def launch_browser(
     proxy_url: Optional[str] = None,
     headless: bool = False,
 ) -> Tuple[Playwright, Browser, BrowserContext, Page]:
-    """Launch a stealth Patchright browser with optional proxy.
+    """Launch a stealth browser with optional proxy.
+
+    Prefers system Chrome (channel="chrome") for better anti-detection —
+    Cloudflare fingerprints bundled Chromium differently.
+    Falls back to bundled Chromium if Chrome is not installed.
 
     Returns (playwright, browser, context, page) tuple.
     Caller is responsible for closing: await browser.close(); await pw.stop()
@@ -26,11 +36,23 @@ async def launch_browser(
             "--disable-features=IsolateOrigins,site-per-process",
         ]
 
-        # Use bundled Chromium (no channel) — system Chrome may not be installed (e.g. WSL)
-        browser = await pw.chromium.launch(
-            headless=headless,
-            args=launch_args,
-        )
+        # Try system Chrome first — much better Cloudflare bypass rate.
+        # Falls back to bundled Chromium if Chrome is not installed.
+        browser = None
+        for channel in ("chrome", None):
+            try:
+                browser = await pw.chromium.launch(
+                    headless=headless,
+                    channel=channel,
+                    args=launch_args,
+                )
+                label = f"Chrome ({browser.version})" if channel else f"Chromium ({browser.version})"
+                print(f"[browser] Launched {label}", flush=True)
+                break
+            except Exception:
+                if channel is None:
+                    raise  # both failed, propagate
+                # Chrome not installed, try bundled Chromium next
 
         proxy_config = parse_proxy_credentials(proxy_url) if proxy_url else None
 

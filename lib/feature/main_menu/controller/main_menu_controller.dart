@@ -60,6 +60,10 @@ class MainMenuController extends GetxController {
       _workers.add(
         ever(_proxyController!.proxySlots, (_) => _refreshProxyHealth()),
       );
+      // Also refresh when IP addresses change (e.g. after scoring)
+      _workers.add(
+        ever(_proxyController!.ipAddresses, (_) => _refreshProxyHealth()),
+      );
     }
   }
 

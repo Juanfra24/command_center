@@ -173,7 +173,9 @@ class SetupOrchestrator extends GetxService {
 
     _updateStep(i, detail: 'Checking installed dependencies...', progress: 0.1);
     if (await _pythonSetup.checkDependenciesInstalled()) {
-      _updateStep(i, detail: 'Verifying browser driver...', progress: 0.7);
+      _updateStep(i,
+          detail: 'Installing browser drivers (Chrome + Chromium)...',
+          progress: 0.7);
       final browserWorks = await _pythonSetup.installChromiumDriver();
       if (browserWorks) {
         _updateStep(i, detail: 'Python environment ready', progress: 1.0);
@@ -196,6 +198,8 @@ class SetupOrchestrator extends GetxService {
     var javaPath = await _javaInstaller.findJavaPath();
 
     if (javaPath != null) {
+      // Persist the path so initializePostSetup() can find it
+      await _appConfig.saveMicrobotJavaPath(javaPath);
       _updateStep(i, detail: 'Java 17 found at: $javaPath', progress: 1.0);
       return;
     }

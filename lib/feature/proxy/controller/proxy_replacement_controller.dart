@@ -47,29 +47,17 @@ class ProxyReplacementController extends GetxController {
     }
   }
 
-  /// Request IP rotation via Webshare API (legacy v2)
+  /// Request IP rotation via Webshare v3 Proxy Replacement API.
   Future<bool> rotateSlotIp(ProxySlotEntity slot) async {
     if (_replacementService == null ||
-        !_proxyController.isWebshareConfigured.value ||
-        slot.webshareId == null) {
+        !_proxyController.isWebshareConfigured.value) {
       _proxyController.lastSyncError.value =
           'Cannot rotate IP: Webshare not configured or slot not linked';
       return false;
     }
 
-    try {
-      final success = await _replacementService!.rotateSlotIp(slot);
-      if (success) {
-        await _proxyController.syncWithWebshare();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      logger.e('Error rotating IP: $e');
-      _proxyController.lastSyncError.value =
-          'Failed to rotate IP: ${e.toString()}';
-      return false;
-    }
+    final result = await replaceProxyIp(slot, keepSameCountry: true);
+    return result is Success;
   }
 
   /// Replace a proxy IP via the Webshare v3 Proxy Replacement API.

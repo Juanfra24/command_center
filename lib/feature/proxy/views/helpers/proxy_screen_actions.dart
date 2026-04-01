@@ -61,13 +61,31 @@ mixin ProxyScreenActions<T extends StatefulWidget> on State<T> {
       return;
     }
 
+    if (context.mounted) {
+      displayInfoBar(context, builder: (ctx, close) {
+        return InfoBar(
+          title: const Text('Launching browser...'),
+          content: Text('Validating proxy IP for slot #${slot.slotNumber}'),
+          severity: InfoBarSeverity.info,
+          action: const SizedBox(
+            width: 16,
+            height: 16,
+            child: ProgressRing(strokeWidth: 2),
+          ),
+        );
+      });
+    }
+
     final result = await automationService.createAccountSession(slot: slot);
 
     if (context.mounted) {
       displayInfoBar(context, builder: (context, close) {
         return InfoBar(
-          title: Text(result.isSuccess ? 'Browser launched' : 'Launch failed'),
-          content: Text(result.message),
+          title: Text(
+              result.isSuccess ? 'Browser session active' : 'Launch failed'),
+          content: Text(result.isSuccess
+              ? 'Browser is open with proxy. Close the browser window when done.'
+              : result.message),
           severity: result.isSuccess
               ? InfoBarSeverity.success
               : InfoBarSeverity.error,

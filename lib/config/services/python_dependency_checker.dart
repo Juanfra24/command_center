@@ -61,10 +61,11 @@ class PythonDependencyChecker extends GetxService {
     return false;
   }
 
-  /// Verify Patchright Chromium works by launching headless.
+  /// Verify browser works by launching headless.
+  /// Tries Chrome first (preferred for Cloudflare), falls back to Chromium.
   Future<bool> verifyChromiumWorks() async {
     try {
-      logger.i('Opening browser to verify Patchright installation...');
+      logger.i('Verifying browser installation...');
       final python = await PythonResolver.executable;
       final result = await Process.run(
         python,
@@ -76,10 +77,19 @@ from patchright.async_api import async_playwright
 
 async def verify():
     pw = await async_playwright().start()
-    browser = await pw.chromium.launch(headless=True)
+    browser = None
+    channel_used = "unknown"
+    for channel in ("chrome", None):
+        try:
+            browser = await pw.chromium.launch(headless=True, channel=channel)
+            channel_used = channel or "chromium"
+            break
+        except Exception:
+            if channel is None:
+                raise
     page = await browser.new_page()
     await page.goto("about:blank")
-    print("CHROMIUM_OK")
+    print(f"BROWSER_OK:{channel_used}")
     await browser.close()
     await pw.stop()
 
@@ -90,15 +100,17 @@ asyncio.run(verify())
       ).timeout(const Duration(seconds: 60));
 
       final output = result.stdout.toString();
-      if (output.contains('CHROMIUM_OK')) {
-        logger.i('Patchright Chromium verification successful');
+      if (output.contains('BROWSER_OK')) {
+        final channel =
+            output.contains('BROWSER_OK:chrome') ? 'Chrome' : 'Chromium';
+        logger.i('Browser verification successful ($channel)');
         isChromiumInstalled = true;
         return true;
       }
-      logger.w('Chromium verification failed: $output');
+      logger.w('Browser verification failed: $output');
       return false;
     } catch (e) {
-      logger.w('Chromium verification error: $e');
+      logger.w('Browser verification error: $e');
       return false;
     }
   }

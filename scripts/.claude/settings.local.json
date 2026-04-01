@@ -1,6 +1,16 @@
 {
   "permissions": {
     "allow": [
+      "Bash(python debug_turnstile.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/create_account.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
+      "Bash(dart format:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(python -c \":*)",
+      "Bash(python -m patchright install chrome)",
+      "Bash(java --version)",
+      "Bash(python -c \"import imaplib; help\\(imaplib.IMAP4_SSL.__init__\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/create_account.py''\\).read\\(\\)\\); print\\(''create_account: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/imap_poller.py''\\).read\\(\\)\\); print\\(''imap_poller: OK''\\)\")",
       "Bash(bash \"C:\\\\Users\\\\Juanfra\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\5.0.5\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"C:\\\\Users\\\\Juanfra\\\\projects\\\\command_center\")",
       "Bash(flutter test:*)",
       "Read(//c/Users/Juanfra/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.0.1/.claude/skills/ui-ux-pro-max/**)",
@@ -11,8 +21,6 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/proxy.py''\\).read\\(\\)\\); print\\(''proxy.py: OK''\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/browser.py''\\).read\\(\\)\\); print\\(''browser.py: OK''\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/create_account.py''\\).read\\(\\)\\); print\\(''create_account.py: OK''\\)\")",
-      "Bash(flutter analyze:*)",
-      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/create_account.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/automation/commands/session.py''\\).read\\(\\)\\); print\\(''OK''\\)\")"
     ]
   }

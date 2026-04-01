@@ -17,30 +17,90 @@ from ..imap_poller import fetch_verification_code
 
 
 async def _is_past_cloudflare(page, log_fn) -> bool:
-    """Check if we've passed the Cloudflare challenge."""
+    """Check if we've passed the Cloudflare challenge.
+    Returns True if NOT on a Cloudflare challenge page — we don't require
+    specific Jagex indicators since the post-challenge page varies
+    (SSO Portal, Account Management, Log in, etc.)."""
     try:
-        title = await page.title()
-        if "just a moment" in title.lower():
+        title = (await page.title()).lower()
+        if "just a moment" in title:
             return False
 
-        content = await page.content()
-        content_lower = content.lower()
+        content_lower = (await page.content()).lower()
 
-        cf_indicators = ["are you a robot", "verify you are human", "checking your browser"]
+        cf_indicators = [
+            "are you a robot",
+            "verify you are human",
+            "checking your browser",
+            "challenge-platform",
+        ]
         if any(kw in content_lower for kw in cf_indicators):
             return False
 
-        jagex_indicators = [
-            "create an account", "registration", "log in",
-            "jagex account", 'id="email"',
-        ]
-        return any(kw in content_lower for kw in jagex_indicators)
+        # If we're not on a CF challenge page, we're past it
+        return True
     except Exception:
         return False
 
 
+def _find_turnstile_frame(page):
+    """Find the Cloudflare Turnstile frame using page.frames API.
+    CSS selectors (frame_locator) cannot find dynamically injected iframes,
+    but page.frames always reflects the live frame tree."""
+    for frame in page.frames:
+        if "challenges.cloudflare.com" in frame.url:
+            return frame
+    return None
+
+
+async def _wait_for_turnstile_frame(page, log_fn, max_wait: int = 10):
+    """Wait for the Turnstile frame to appear (it loads asynchronously)."""
+    for i in range(max_wait):
+        cf_frame = _find_turnstile_frame(page)
+        if cf_frame:
+            return cf_frame
+        await asyncio.sleep(1)
+    return None
+
+
+async def _click_turnstile(page, cf_frame, log_fn) -> bool:
+    """Try to click the Turnstile widget. Returns True if challenge was solved."""
+    # The Turnstile iframe is dynamically injected — CSS selectors can't find it,
+    # but the frame body locator knows its bounding box on the page.
+    # We try multiple click strategies to handle varying Cloudflare strictness.
+
+    # Strategy 1: Get the frame body's bounding box and click via page.mouse.
+    # This is more reliable than locator.click() which can time out when
+    # Cloudflare overlays interfere with Playwright's actionability checks.
+    try:
+        bbox = await cf_frame.locator("body").bounding_box(timeout=5000)
+        if bbox and bbox['width'] > 0:
+            cx = bbox['x'] + bbox['width'] / 2
+            cy = bbox['y'] + bbox['height'] / 2
+            await page.mouse.click(cx, cy)
+            log_fn(f"[INFO] Clicked Turnstile at ({cx:.0f}, {cy:.0f})")
+        else:
+            log_fn("[WARNING] Turnstile frame has no bounding box")
+    except Exception as e:
+        log_fn(f"[WARNING] Turnstile bbox click failed: {e}")
+        # Fallback: try frame body click with force
+        try:
+            await cf_frame.locator("body").click(timeout=5000, force=True)
+            log_fn("[INFO] Clicked Turnstile frame body (force)")
+        except Exception as e2:
+            log_fn(f"[WARNING] Force click also failed: {e2}")
+
+    # Wait for resolution
+    for i in range(8):
+        await asyncio.sleep(2)
+        if await _is_past_cloudflare(page, log_fn):
+            return True
+
+    return False
+
+
 async def _handle_turnstile(page, log_fn, max_attempts: int = 5) -> bool:
-    """Attempt to pass Cloudflare Turnstile challenge."""
+    """Attempt to pass Cloudflare Turnstile managed challenge."""
     for attempt in range(1, max_attempts + 1):
         log_fn(f"[INFO] Turnstile attempt {attempt}/{max_attempts}")
 
@@ -48,35 +108,15 @@ async def _handle_turnstile(page, log_fn, max_attempts: int = 5) -> bool:
             log_fn("[INFO] Already past Cloudflare")
             return True
 
-        await human_delay(1.0, 2.0)
-
-        # Try to find and click the Turnstile checkbox inside its iframe
-        try:
-            turnstile_frame = page.frame_locator(
-                "iframe[src*='challenges.cloudflare.com']"
-            )
-            checkbox = turnstile_frame.locator("input[type='checkbox'], .cb-lb")
-            await checkbox.click(timeout=5000)
-            log_fn("[INFO] Clicked Turnstile checkbox")
-        except Exception as e:
-            log_fn(f"[WARNING] Turnstile click failed: {e}")
-            # Fallback: try clicking body of iframe
-            try:
-                turnstile_frame = page.frame_locator(
-                    "iframe[src*='challenges.cloudflare.com']"
-                )
-                await turnstile_frame.locator("body").click(timeout=3000)
-                log_fn("[INFO] Clicked Turnstile iframe body")
-            except Exception:
-                pass
-
-        # Wait for verification
-        log_fn("[INFO] Waiting for Turnstile verification...")
-        await human_delay(5.0, 8.0)
-
-        if await _is_past_cloudflare(page, log_fn):
-            log_fn("[INFO] Turnstile solved!")
-            return True
+        # Wait for the Turnstile frame to appear (loads asynchronously)
+        cf_frame = await _wait_for_turnstile_frame(page, log_fn)
+        if cf_frame:
+            log_fn("[INFO] Found Turnstile frame, attempting to solve...")
+            if await _click_turnstile(page, cf_frame, log_fn):
+                log_fn("[INFO] Turnstile solved!")
+                return True
+        else:
+            log_fn("[WARNING] Turnstile frame not found after waiting")
 
         # Retry: reload the page
         if attempt < max_attempts:
@@ -173,12 +213,28 @@ async def create_account(
         log_fn("[STEP 4/13] Handling cookie consent...")
         cookie_selectors = [
             "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+            "#CybotCookiebotDialogBodyButtonAccept",
             "button#CybotCookiebotDialogBodyButtonDecline",
-            "//button[contains(text(), 'Use necessary cookies only')]",
+            "#CybotCookiebotDialogBodyLevelButtonLevelOptinDeclineAll",
             "//button[contains(text(), 'Allow all cookies')]",
+            "//button[contains(text(), 'Use necessary cookies only')]",
+            "//button[contains(text(), 'Accept')]",
+            "//a[contains(text(), 'Allow all cookies')]",
+            "//a[contains(text(), 'Use necessary cookies only')]",
         ]
-        await click_first_match(page, cookie_selectors, timeout=3000, label="Cookie consent handled", log_fn=log_fn)
-        await human_delay(1.0, 2.0)
+        # Cookie dialog may take a moment to appear — retry up to 3 times
+        for cookie_attempt in range(3):
+            dismissed = await click_first_match(
+                page, cookie_selectors, timeout=5000,
+                label="Cookie consent handled", log_fn=log_fn,
+            )
+            if dismissed:
+                await human_delay(1.0, 2.0)
+                break
+            log_fn(f"[INFO] Cookie dialog not found (attempt {cookie_attempt + 1}/3), waiting...")
+            await human_delay(2.0, 3.0)
+        else:
+            log_fn("[WARNING] Cookie consent dialog not found after retries, continuing anyway")
 
         # Step 5: Click 'Create an account'
         log_fn("[STEP 5/13] Clicking 'Create an account'...")
@@ -274,10 +330,13 @@ async def create_account(
         # Step 10: Email verification
         log_fn("[STEP 10/13] Email verification...")
         if imap_host and imap_user and imap_pass:
-            code = await asyncio.to_thread(
-                fetch_verification_code,
-                imap_host, imap_user, imap_pass,
-                generated_email, timeout=120, log_fn=log_fn,
+            loop = asyncio.get_event_loop()
+            code = await loop.run_in_executor(
+                None,
+                lambda: fetch_verification_code(
+                    imap_host, imap_user, imap_pass,
+                    generated_email, timeout=120, log_fn=log_fn,
+                ),
             )
             if code:
                 code_selectors = [
@@ -315,16 +374,17 @@ async def create_account(
                 actual_ip=actual_ip,
             )
 
-        # Step 11: Display name
-        log_fn("[STEP 11/13] Setting display name...")
+        # Step 11: Display name (optional — newer Jagex flow may skip this)
+        log_fn("[STEP 11/13] Checking for display name step...")
         name_selectors = [
             "input[name='displayName']", "input[name='display_name']",
-            "input[name='username']", "input[placeholder*='name' i]",
+            "input[name='username']",
         ]
-        name_filled = False
+        name_found = False
         for sel in name_selectors:
             try:
-                await page.wait_for_selector(sel, timeout=10000, state="visible")
+                await page.wait_for_selector(sel, timeout=5000, state="visible")
+                name_found = True
                 await human_type(page, sel, account_name)
                 log_fn(f"[INFO] Display name entered with: {sel}")
                 await human_delay(0.5, 1.0)
@@ -333,49 +393,70 @@ async def create_account(
                     "text=Set", "text=Next",
                 ], timeout=5000, label="Display name submitted", log_fn=log_fn)
                 await human_delay(3.0, 5.0)
-                name_filled = True
                 break
             except Exception:
                 continue
 
-        if not name_filled:
-            log_fn("[STEP 11/13] FAILED - could not fill display name")
-            return AutomationResult(
-                status=AutomationStatus.BROWSER_ERROR.value,
-                message="Could not find or fill the display name field",
-                expected_ip=expected_ip, actual_ip=actual_ip,
-            )
+        if not name_found:
+            log_fn("[INFO] No display name step found, skipping (newer Jagex flow)")
 
         # Step 12: Set password
         log_fn("[STEP 12/13] Setting password...")
+        # Find ALL password fields on the page
         pwd_selectors = [
-            "input[name='password']", "input[type='password']", "#password",
+            "input[type='password']",
+            "input[name='password']",
+            "#password",
         ]
         password_filled = False
         for sel in pwd_selectors:
             try:
-                await page.wait_for_selector(sel, timeout=10000, state="visible")
-                await human_type(page, sel, generated_password, min_delay=30, max_delay=100)
-                log_fn(f"[INFO] Password entered with: {sel}")
+                pwd_fields = page.locator(sel)
+                count = await pwd_fields.count()
+                if count == 0:
+                    await page.wait_for_selector(sel, timeout=10000, state="visible")
+                    count = await pwd_fields.count()
 
-                # Try confirm password
-                confirm_selectors = [
-                    "input[name='confirmPassword']", "input[name='confirm_password']",
-                    "input[name='passwordConfirm']", "input[placeholder*='confirm' i]",
-                ]
-                for csec in confirm_selectors:
-                    try:
-                        await page.wait_for_selector(csec, timeout=5000, state="visible")
-                        await human_type(page, csec, generated_password, min_delay=30, max_delay=100)
-                        log_fn(f"[INFO] Confirm password entered with: {csec}")
-                        break
-                    except Exception:
-                        continue
+                if count >= 2:
+                    # Two password fields visible: password + confirm
+                    log_fn(f"[INFO] Found {count} password fields (password + confirm)")
+                    await human_type(page, f"{sel} >> nth=0", generated_password, min_delay=30, max_delay=100)
+                    log_fn("[INFO] Password entered")
+                    await human_delay(0.3, 0.5)
+                    await human_type(page, f"{sel} >> nth=1", generated_password, min_delay=30, max_delay=100)
+                    log_fn("[INFO] Confirm password entered")
+                elif count == 1:
+                    # Single password field — look for a separate confirm field
+                    log_fn("[INFO] Found 1 password field")
+                    await human_type(page, sel, generated_password, min_delay=30, max_delay=100)
+                    log_fn("[INFO] Password entered")
+                    # Try confirm field with different selectors
+                    confirm_selectors = [
+                        "input[placeholder*='Confirm' i]",
+                        "input[placeholder*='confirm' i]",
+                        "input[name='confirmPassword']",
+                        "input[name='confirm_password']",
+                        "input[name='passwordConfirm']",
+                    ]
+                    for csec in confirm_selectors:
+                        try:
+                            await page.wait_for_selector(csec, timeout=3000, state="visible")
+                            await human_type(page, csec, generated_password, min_delay=30, max_delay=100)
+                            log_fn(f"[INFO] Confirm password entered with: {csec}")
+                            break
+                        except Exception:
+                            continue
+                else:
+                    continue
 
                 await human_delay(0.5, 1.0)
                 await click_first_match(page, [
-                    "button[type='submit']", "text=Continue",
-                    "text=Set", "text=Submit",
+                    "text=Create account",
+                    "text=Create Account",
+                    "button[type='submit']",
+                    "text=Continue",
+                    "text=Set",
+                    "text=Submit",
                 ], timeout=5000, label="Password submitted", log_fn=log_fn)
                 await human_delay(3.0, 5.0)
                 password_filled = True
@@ -391,19 +472,72 @@ async def create_account(
                 expected_ip=expected_ip, actual_ip=actual_ip,
             )
 
-        # Step 13: Confirmation
-        log_fn("[STEP 13/13] Checking for confirmation...")
+        # Step 13: Handle post-submit Turnstile + wait for confirmation
+        log_fn("[STEP 13/13] Waiting for account creation...")
+
+        # After clicking "Create account", Cloudflare may present another
+        # Turnstile challenge. Handle it before checking for confirmation.
         await human_delay(2.0, 3.0)
-        confirmed = False
+        post_submit_cf = False
         try:
-            content = (await page.content()).lower()
-            success_indicators = [
-                "congratulations", "account created", "welcome",
-                "success", "your account", "account is ready",
-            ]
-            confirmed = any(kw in content for kw in success_indicators)
+            title = (await page.title()).lower()
+            content_check = (await page.content()).lower()
+            post_submit_cf = (
+                "just a moment" in title
+                or "are you a robot" in content_check
+                or "challenge-platform" in content_check
+            )
         except Exception:
             pass
+
+        if post_submit_cf:
+            log_fn("[INFO] Post-submit Turnstile detected, solving...")
+            await _handle_turnstile(page, log_fn, max_attempts=3)
+            await human_delay(3.0, 5.0)
+
+        # Wait for the confirmation page to load (can take several seconds)
+        confirmed = False
+        rate_limited = False
+        for wait_round in range(6):
+            await human_delay(2.0, 3.0)
+            try:
+                content = (await page.content()).lower()
+                title = (await page.title()).lower()
+
+                # Check for rate limiting / too many requests
+                if "too many" in content or "rate limit" in content:
+                    log_fn("[WARNING] Rate limited by Cloudflare/Jagex")
+                    rate_limited = True
+                    break
+
+                success_indicators = [
+                    "congratulations", "account created", "welcome",
+                    "success", "your account", "account is ready",
+                    "complete your account", "registration complete",
+                    "complete", "you're all set",
+                ]
+                if any(kw in content or kw in title for kw in success_indicators):
+                    confirmed = True
+                    break
+
+                # Also check URL for success indicators
+                url = page.url.lower()
+                if any(kw in url for kw in [
+                    "complete", "success", "welcome", "manage",
+                ]):
+                    confirmed = True
+                    break
+
+            except Exception:
+                pass
+
+        if rate_limited:
+            log_fn("[STEP 13/13] FAILED - rate limited")
+            return AutomationResult(
+                status=AutomationStatus.CAPTCHA_REQUIRED.value,
+                message="Rate limited by Cloudflare. Wait a few minutes before retrying.",
+                expected_ip=expected_ip, actual_ip=actual_ip,
+            )
 
         dob_str = f"{dob['day']}/{dob['month']}/{dob['year']}"
         log_fn("[INFO] Account creation flow completed")

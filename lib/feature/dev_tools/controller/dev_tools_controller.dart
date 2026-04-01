@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:command_center/config/services/app_config_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/core/helper/platform_open.dart';
 import 'package:command_center/data/database/app_database.dart';
@@ -119,6 +122,52 @@ class DevToolsController extends GetxController {
       await openInFileManager(dir.path);
     } catch (e) {
       logger.e('Failed to open DB folder: $e');
+    }
+  }
+
+  /// Delete the database file and exit the app so setup re-runs on next launch.
+  Future<void> resetDatabase() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final dbFile = File('${dir.path}/command_center.db');
+      if (await dbFile.exists()) {
+        await dbFile.delete();
+        logger.i('Database deleted: ${dbFile.path}');
+      }
+      // Exit so the app restarts with a fresh DB + setup flow
+      exit(0);
+    } catch (e) {
+      logger.e('Failed to reset database: $e');
+    }
+  }
+
+  /// Clear Java/JAR config, force script re-extraction, and exit
+  /// so setup re-downloads dependencies with latest code.
+  Future<void> rerunSetup() async {
+    try {
+      final appConfig = Get.find<AppConfigService>();
+      await appConfig.saveMicrobotJavaPath('');
+      await appConfig.saveMicrobotJarPath('');
+      await appConfig.saveMicrobotJarVersion('');
+      // Delete scripts version marker to force re-extraction
+      await _deleteScriptsVersionMarker();
+      logger.i('Cleared setup config — restarting');
+      exit(0);
+    } catch (e) {
+      logger.e('Failed to clear setup config: $e');
+    }
+  }
+
+  Future<void> _deleteScriptsVersionMarker() async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final marker = File('${dir.path}/scripts/.scripts_version');
+      if (await marker.exists()) {
+        await marker.delete();
+        logger.i('Deleted scripts version marker');
+      }
+    } catch (e) {
+      logger.w('Could not delete scripts version marker: $e');
     }
   }
 }

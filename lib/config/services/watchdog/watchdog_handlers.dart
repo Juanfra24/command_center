@@ -75,6 +75,13 @@ class WatchdogHandlers {
 
   /// Handle restart with exponential backoff. Returns true if state changed.
   Future<bool> handleRestart(TrackedClient client) async {
+    if (_botEngine.isOutdated) {
+      client.status = ClientStatus.stopped;
+      logger.w(
+          'Stopping ${client.characterName} without restart — engine JAR is outdated');
+      return true;
+    }
+
     if (client.retryCount >= WatchdogService.maxRetries) {
       client.status = ClientStatus.stopped;
       logger.e('Max retries reached for ${client.characterName}');

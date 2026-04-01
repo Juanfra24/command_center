@@ -4,6 +4,7 @@ import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/core/helper/proxy_url_builder.dart';
 import 'package:command_center/data/database_service.dart';
+import 'package:command_center/domain/entities/character.dart';
 import 'package:command_center/domain/entities/skills.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
@@ -298,6 +299,32 @@ class StatusController extends GetxController {
       } catch (_) {}
     } catch (e) {
       logger.e('Failed to delete account: $e');
+    }
+  }
+
+  /// Add a character to an existing account.
+  Future<void> addCharacterToAccount(
+      int accountId, String characterName) async {
+    if (_accountRepository == null) return;
+    try {
+      final account = await _accountRepository!.getAccountById(accountId);
+      if (account == null) return;
+      final updated = account.copyWith(
+        characters: [
+          ...account.characters,
+          CharacterEntity(
+            accountId: accountId,
+            name: characterName,
+            banned: false,
+            actualSkills: SkillsEntity.empty(),
+            targetSkills: SkillsEntity.empty(),
+          ),
+        ],
+      );
+      await _accountRepository!.updateAccount(updated);
+      await getAccountsData();
+    } catch (e) {
+      logger.e('Failed to add character to account: $e');
     }
   }
 

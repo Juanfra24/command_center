@@ -9,7 +9,8 @@ A cross-platform desktop application (Windows + Linux) for managing a RuneScape 
 - **Script Management** - Launch dialog with script/world/covert/render/param selection; bot status badges and farm summary bar
 - **Account Management** - Track multiple RuneScape accounts and characters with proxy assignment
 - **Proxy Management** - Integrated Webshare proxy support with IP rotation, replacement, IPQS fraud scoring, and score-triggered auto-rotation
-- **Browser Automation** - Automated Jagex account creation using Patchright (stealth Chromium) with proxy validation
+- **Browser Automation** - Automated Jagex account creation using Patchright (stealth Chromium) with proxy validation and IMAP-based email verification
+- **IMAP Email Config** - Configure email server credentials (host/user/pass) for automated account creation email polling; onboarding-gated
 - **Dashboard** - System overview with bot status grid, proxy health, and quick actions
 - **Notifications** - Persistent notification system with bell/flyout UI (auto-rotation events, ban alerts, etc.)
 - **Modern UI** - Windows 11 Fluent Design (renders on both platforms) with light/dark theme
@@ -78,6 +79,7 @@ All steps are mandatory with retry on failure. Each step shows detailed progress
 
 1. **Webshare** - Settings > Integrations > Webshare > enter API key > "Connect & Sync"
 2. **IPQualityScore** - Settings > Integrations > IPQS > enter API key
+3. **IMAP Email** - Settings > Integrations > Email > enter IMAP host/username/password (required for account creation email verification)
 
 ### 4. Environment Variables (Security)
 
@@ -193,23 +195,23 @@ flutter build linux --release
 
 # Code generation, tests, analysis
 dart run build_runner build --delete-conflicting-outputs
-flutter test                                                # 36 test files, 315 tests
+flutter test                                                # 37 test files, 326 tests
 flutter analyze
 dart format --set-exit-if-changed .
 ```
 
 ### Test Suite
 
-36 test files, 315 tests covering:
+37 test files, 326 tests covering:
 - Bot engine services (7): engine, JAR downloader, Java installer, profile writer, setup service, bot status, integration
-- Watchdog (1): death classification, restart backoff, ban detection, PID discovery
-- Core services (7): app config, automation, IPQS, notification, proxy auto-rotation, proxy sync, webshare
+- Watchdog (2): launch config, death classification/restart backoff/ban detection
+- Core services (8): app config, automation, IMAP config, IPQS, notification, proxy auto-rotation, proxy sync, webshare
 - Setup (1): scripts extractor
 - Data repositories (4): account, config, notification, proxy
 - Feature controllers (5): status, status selection, dev tools, proxy, proxy scoring
 - Onboarding (1): onboarding service
-- UI components (2): IP history list, IP score indicator
-- Core utilities (6): result, loading button, app data path, proxy URL builder, native commands linux, python runner
+- UI components (3): IP history list, IP score indicator, loading button
+- Core utilities (5): result, app data path, proxy URL builder, native commands linux, python runner
 - Domain entities (1): proxy IP address
 
 ## Release Flow
