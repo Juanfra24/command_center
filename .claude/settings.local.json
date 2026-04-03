@@ -50,7 +50,16 @@
       "Bash(.venv/Scripts/pip install:*)",
       "Read(//c/Users/Juanfra/projects//**)",
       "Read(//c//**)",
-      "Bash(where.exe java:*)"
+      "Bash(where.exe java:*)",
+      "Bash(git:*)",
+      "Bash(./gradlew :runelite-client:compileJava --no-daemon -q)",
+      "Bash(./gradlew :runelite-client:compileJava --no-daemon)",
+      "Bash(./gradlew projects:*)",
+      "Bash(./gradlew :client:compileJava --no-daemon -q)",
+      "Bash(./gradlew :client:compileJava --no-daemon)",
+      "Bash(sed:*)",
+      "Bash(gh pr create --repo Juanfra24/Microbot_Frieren --base main --head dev --title 'feat: add /syncrepo Claude Code slash command with machine-resolutive sync policy' --body ':*)",
+      "Bash(gh api:*)"
     ]
   }
 }
