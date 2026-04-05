@@ -241,6 +241,23 @@ class AccountRepositoryImpl implements AccountRepository {
     ));
   }
 
+  @override
+  Future<void> updateJagexToken({
+    required int accountId,
+    required String refreshToken,
+    required String characterId,
+    required String displayName,
+  }) async {
+    await (_db.update(_db.accountsTable)
+          ..where((tbl) => tbl.id.equals(accountId)))
+        .write(AccountsTableCompanion(
+      jagexRefreshToken: Value(refreshToken),
+      jagexCharacterId: Value(characterId),
+      jagexDisplayName: Value(displayName),
+      lastUpdated: Value(DateTime.now()),
+    ));
+  }
+
   // ============ Mapping Helpers ============
 
   AccountEntity _mapAccountRow(
@@ -257,6 +274,9 @@ class AccountRepositoryImpl implements AccountRepository {
       characters: characters,
       createdAt: row.createdAt,
       lastUpdated: row.lastUpdated,
+      jagexRefreshToken: row.jagexRefreshToken,
+      jagexCharacterId: row.jagexCharacterId,
+      jagexDisplayName: row.jagexDisplayName,
     );
   }
 

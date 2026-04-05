@@ -29,6 +29,15 @@ class AccountsTable extends Table {
   /// When this account was last updated
   DateTimeColumn get lastUpdated =>
       dateTime().withDefault(currentDateAndTime)();
+
+  /// OAuth refresh token for Jagex account (long-lived, weeks/months)
+  TextColumn get jagexRefreshToken => text().nullable()();
+
+  /// Jagex account character ID from game-session API
+  TextColumn get jagexCharacterId => text().nullable()();
+
+  /// Jagex display name from game-session API
+  TextColumn get jagexDisplayName => text().nullable()();
 }
 
 /// Table for storing game characters belonging to accounts
