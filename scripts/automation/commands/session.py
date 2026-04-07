@@ -68,20 +68,18 @@ async def launch_session(
         await page.goto("https://www.google.com", wait_until="domcontentloaded")
         log_fn("[STEP 4/4] OK - close the browser window when done.")
 
-        # Block until browser is closed by user (max 4 hours to prevent orphans)
+        # Block until browser is closed by user (max 4 hours to prevent orphans).
+        # Use browser.is_connected() instead of page.title() — the latter throws
+        # "Frame was detached" on every navigation, which caused premature exit.
         max_duration = 4 * 60 * 60  # 4 hours
         start_time = time.monotonic()
         try:
-            while True:
+            while browser.is_connected():
                 await asyncio.sleep(2)
                 if time.monotonic() - start_time > max_duration:
                     log_fn("[INFO] Session reached maximum duration (4h), closing")
                     break
-                try:
-                    await page.title()
-                except Exception:
-                    log_fn("[INFO] Browser closed by user")
-                    break
+            log_fn("[INFO] Browser closed by user")
         except (KeyboardInterrupt, asyncio.CancelledError):
             log_fn("[INFO] Session ended by signal")
 

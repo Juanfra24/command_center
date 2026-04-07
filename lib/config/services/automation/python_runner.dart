@@ -151,42 +151,21 @@ class PythonRunner {
     }
   }
 
-  /// Start a long-running session process (browser stays open).
-  /// Returns early after [warmup] delay with captured output so far.
-  Future<({String output, bool exited})> startSession(
+  /// Launch a browser session fully detached from this process.
+  /// The child process survives app close — no stdout/stderr in detached mode.
+  Future<void> launchDetached(
     List<String> args, {
     required String workingDirectory,
-    Duration warmup = const Duration(seconds: 8),
     Map<String, String>? environment,
   }) async {
-    final outputBuffer = StringBuffer();
-
     final python = await PythonResolver.executable;
-    _currentProcess = await Process.start(python, ['-u', ...args],
-        workingDirectory: workingDirectory, environment: environment);
-
-    _currentProcess!.stdout.transform(utf8.decoder).listen((data) {
-      outputBuffer.write(data);
-      onLog(redact(data.trim()));
-    });
-
-    _currentProcess!.stderr.transform(utf8.decoder).listen((data) {
-      onLog('[stderr] ${redact(data.trim())}');
-    });
-
-    // Wait for the browser to start and proxy to connect
-    await Future.delayed(warmup);
-
-    final output = outputBuffer.toString();
-    final exited = output.contains('=== RESULT ===');
-
-    // Track the detached PID for cleanup on app close
-    if (_currentProcess != null) {
-      _detachedSessionPids.add(_currentProcess!.pid);
-    }
-    // Keep _currentProcess alive so cancel() can kill it if the session is still running
-
-    return (output: output, exited: exited);
+    await Process.start(
+      python,
+      ['-u', ...args],
+      workingDirectory: workingDirectory,
+      environment: environment,
+      mode: ProcessStartMode.detached,
+    );
   }
 
   /// Cancel the currently running process

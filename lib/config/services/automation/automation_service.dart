@@ -260,39 +260,25 @@ class AutomationService extends GetxService {
         },
       );
 
-  /// Launch a long-running browser session with validated proxy.
+  /// Launch a browser session detached from the app process.
+  /// The browser runs independently — closing the app does not kill it.
   Future<AutomationResult> createAccountSession({
     required ProxySlotEntity slot,
   }) =>
       _executeTask(
-        taskName: 'Creating account session',
+        taskName: 'Launching browser session',
         slot: slot,
         body: (ip, proxy) async {
-          final args = [
-            _runner.scriptFile,
-            'session',
-            ip,
-            '--keep-open',
-            '--debug',
-          ];
+          final args = [_runner.scriptFile, 'session', ip, '--debug'];
           _runner.logCommand(args);
-          final session = await _runner.startSession(
+          await _runner.launchDetached(
             args,
             workingDirectory: _runner.scriptsPath,
             environment: _buildSecureEnv(proxy),
           );
-          if (session.exited) {
-            final json = ResultParser.extractJsonResult(session.output);
-            if (json != null) {
-              final r = AutomationResult.fromJson(json);
-              lastResult.value = r;
-              return r;
-            }
-          }
           final r = AutomationResult(
             status: AutomationStatus.success,
-            message:
-                'Browser launched with proxy - close browser window when done',
+            message: 'Browser launched — close the window when done.',
             expectedIp: ip,
           );
           lastResult.value = r;
