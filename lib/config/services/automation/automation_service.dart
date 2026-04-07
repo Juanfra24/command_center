@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:command_center/config/services/automation/automation_result.dart';
 import 'package:command_center/config/services/automation/python_runner.dart';
 import 'package:command_center/config/services/automation/result_parser.dart';
 import 'package:command_center/config/services/imap/imap_config_service.dart';
 import 'package:command_center/config/services/python_setup_service.dart';
+import 'package:command_center/config/services/jagex/jagex_token_service.dart';
 import 'package:command_center/core/helper/logger.dart';
 import 'package:command_center/data/database_service.dart';
 import 'package:command_center/domain/entities/account.dart';
@@ -228,7 +230,31 @@ class AutomationService extends GetxService {
           );
           if (result.isAccountCreated && result.data != null) {
             _log('Account email: ${result.data!['email'] ?? 'N/A'}');
-            await _persistAccount(result.data!, slot);
+            final accountId = await _persistAccount(result.data!, slot);
+            // Acquire and store Jagex OAuth token immediately so first
+            // launch uses HTTP refresh instead of slow browser auth.
+            if (accountId != null) {
+              try {
+                final tokenService = Get.find<JagexTokenService>();
+                final tempDir =
+                    Directory.systemTemp.createTempSync('jagex_auth_');
+                try {
+                  await tokenService.seedToken(
+                    accountId: accountId,
+                    email: result.data!['email'] as String? ?? '',
+                    password: result.data!['password'] as String? ?? '',
+                    profileDir: tempDir.path,
+                  );
+                  _log(
+                      'Jagex token acquired and stored for account $accountId');
+                } finally {
+                  tempDir.deleteSync(recursive: true);
+                }
+              } catch (e) {
+                _log(
+                    'Warning: Failed to acquire Jagex token: $e (will retry at first launch)');
+              }
+            }
           }
           return result;
         },
@@ -274,7 +300,7 @@ class AutomationService extends GetxService {
         },
       );
 
-  Future<void> _persistAccount(
+  Future<int?> _persistAccount(
       Map<String, dynamic> data, ProxySlotEntity slot) async {
     try {
       final db = Get.find<DatabaseService>();
@@ -299,8 +325,10 @@ class AutomationService extends GetxService {
       );
       final id = await db.accountRepository.insertAccount(account);
       _log('Account persisted to database with ID: $id');
+      return id;
     } catch (e) {
       _log('Warning: Failed to persist account to database: $e');
+      return null;
     }
   }
 }
