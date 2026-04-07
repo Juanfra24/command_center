@@ -165,9 +165,9 @@ class MicrobotEngine implements BotEngine {
           'JVM args contain quotes which may not be split correctly: $jvmArgs');
     }
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
+    args.add('-Djagex.userhome=${p.join(profileDir, 'jagex')}');
     args.addAll(['-jar', jarPath]);
     args.add('--cc-profile-dir=$profileDir');
-    args.add('-Djagex.userhome=${p.join(profileDir, 'jagex')}');
     args.add('--status-port-file=${p.join(profileDir, 'status.port')}');
     if (proxyUrl != null) {
       args.add('--proxy=$proxyUrl');

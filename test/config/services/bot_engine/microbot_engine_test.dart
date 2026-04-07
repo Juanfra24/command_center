@@ -40,8 +40,10 @@ void main() {
       );
       final expectedProfileDir = p.join('/profiles', 'bot-42');
       expect(args[0], '-Xmx384m');
-      expect(args[1], '-jar');
-      expect(args[2], '/app/microbot-shaded.jar');
+      expect(
+          args[1], '-Djagex.userhome=${p.join(expectedProfileDir, 'jagex')}');
+      expect(args[2], '-jar');
+      expect(args[3], '/app/microbot-shaded.jar');
       expect(args, contains('--cc-profile-dir=$expectedProfileDir'));
       expect(
           args,
@@ -124,6 +126,12 @@ void main() {
           args,
           contains(
               '-Djagex.userhome=${p.join('/profiles', 'bot-42', 'jagex')}'));
+      final jarIndex = args.indexOf('-jar');
+      final jagexIndex =
+          args.indexWhere((a) => a.startsWith('-Djagex.userhome'));
+      expect(jagexIndex, isNot(-1), reason: '-Djagex.userhome flag missing');
+      expect(jagexIndex, lessThan(jarIndex),
+          reason: '-Djagex.userhome must appear before -jar');
     });
   });
 }

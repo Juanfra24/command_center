@@ -78,7 +78,8 @@ class JagexTokenService {
       try {
         logger
             .i('[JagexToken] Refreshing token via HTTP for account $accountId');
-        final idToken = await _httpRefreshIdToken(account.jagexRefreshToken!);
+        final (idToken, newRefreshToken) =
+            await _httpRefreshIdToken(account.jagexRefreshToken!);
         final session = await _getGameSession(idToken);
         await writeCredentialsFile(
           profileDir: profileDir,
@@ -86,6 +87,15 @@ class JagexTokenService {
           characterId: account.jagexCharacterId ?? session.$2,
           displayName: account.jagexDisplayName ?? session.$3,
         );
+        // Persist rotated refresh token so next refresh still works
+        if (newRefreshToken != null) {
+          await _db.accountRepository.updateJagexToken(
+            accountId: accountId,
+            refreshToken: newRefreshToken,
+            characterId: account.jagexCharacterId ?? session.$2,
+            displayName: account.jagexDisplayName ?? session.$3,
+          );
+        }
         logger.i('[JagexToken] Token seeded via HTTP refresh');
         return;
       } catch (e) {
@@ -108,7 +118,8 @@ class JagexTokenService {
 
   // ── Private ───────────────────────────────────────────────────────────────
 
-  Future<String> _httpRefreshIdToken(String refreshToken) async {
+  /// Returns (idToken, newRefreshToken). newRefreshToken may be null if not rotated.
+  Future<(String, String?)> _httpRefreshIdToken(String refreshToken) async {
     final response = await http.post(
       Uri.parse(_tokenUrl),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -127,7 +138,8 @@ class JagexTokenService {
     if (idToken == null) {
       throw Exception('id_token missing from refresh response');
     }
-    return idToken;
+    final newRefreshToken = json['refresh_token'] as String?;
+    return (idToken, newRefreshToken);
   }
 
   /// Returns (sessionId, characterId, displayName).
