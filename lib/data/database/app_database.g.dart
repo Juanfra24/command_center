@@ -2545,6 +2545,24 @@ class $AccountsTableTable extends AccountsTable
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _jagexRefreshTokenMeta =
+      const VerificationMeta('jagexRefreshToken');
+  @override
+  late final GeneratedColumn<String> jagexRefreshToken =
+      GeneratedColumn<String>('jagex_refresh_token', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _jagexCharacterIdMeta =
+      const VerificationMeta('jagexCharacterId');
+  @override
+  late final GeneratedColumn<String> jagexCharacterId = GeneratedColumn<String>(
+      'jagex_character_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _jagexDisplayNameMeta =
+      const VerificationMeta('jagexDisplayName');
+  @override
+  late final GeneratedColumn<String> jagexDisplayName = GeneratedColumn<String>(
+      'jagex_display_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2554,7 +2572,10 @@ class $AccountsTableTable extends AccountsTable
         password,
         proxySlotId,
         createdAt,
-        lastUpdated
+        lastUpdated,
+        jagexRefreshToken,
+        jagexCharacterId,
+        jagexDisplayName
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2609,6 +2630,24 @@ class $AccountsTableTable extends AccountsTable
           lastUpdated.isAcceptableOrUnknown(
               data['last_updated']!, _lastUpdatedMeta));
     }
+    if (data.containsKey('jagex_refresh_token')) {
+      context.handle(
+          _jagexRefreshTokenMeta,
+          jagexRefreshToken.isAcceptableOrUnknown(
+              data['jagex_refresh_token']!, _jagexRefreshTokenMeta));
+    }
+    if (data.containsKey('jagex_character_id')) {
+      context.handle(
+          _jagexCharacterIdMeta,
+          jagexCharacterId.isAcceptableOrUnknown(
+              data['jagex_character_id']!, _jagexCharacterIdMeta));
+    }
+    if (data.containsKey('jagex_display_name')) {
+      context.handle(
+          _jagexDisplayNameMeta,
+          jagexDisplayName.isAcceptableOrUnknown(
+              data['jagex_display_name']!, _jagexDisplayNameMeta));
+    }
     return context;
   }
 
@@ -2634,6 +2673,12 @@ class $AccountsTableTable extends AccountsTable
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       lastUpdated: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_updated'])!,
+      jagexRefreshToken: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}jagex_refresh_token']),
+      jagexCharacterId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}jagex_character_id']),
+      jagexDisplayName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}jagex_display_name']),
     );
   }
 
@@ -2668,6 +2713,15 @@ class AccountsTableData extends DataClass
 
   /// When this account was last updated
   final DateTime lastUpdated;
+
+  /// OAuth refresh token for Jagex account (long-lived, weeks/months)
+  final String? jagexRefreshToken;
+
+  /// Jagex account character ID from game-session API
+  final String? jagexCharacterId;
+
+  /// Jagex display name from game-session API
+  final String? jagexDisplayName;
   const AccountsTableData(
       {required this.id,
       required this.accountName,
@@ -2676,7 +2730,10 @@ class AccountsTableData extends DataClass
       required this.password,
       this.proxySlotId,
       required this.createdAt,
-      required this.lastUpdated});
+      required this.lastUpdated,
+      this.jagexRefreshToken,
+      this.jagexCharacterId,
+      this.jagexDisplayName});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2690,6 +2747,15 @@ class AccountsTableData extends DataClass
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_updated'] = Variable<DateTime>(lastUpdated);
+    if (!nullToAbsent || jagexRefreshToken != null) {
+      map['jagex_refresh_token'] = Variable<String>(jagexRefreshToken);
+    }
+    if (!nullToAbsent || jagexCharacterId != null) {
+      map['jagex_character_id'] = Variable<String>(jagexCharacterId);
+    }
+    if (!nullToAbsent || jagexDisplayName != null) {
+      map['jagex_display_name'] = Variable<String>(jagexDisplayName);
+    }
     return map;
   }
 
@@ -2705,6 +2771,15 @@ class AccountsTableData extends DataClass
           : Value(proxySlotId),
       createdAt: Value(createdAt),
       lastUpdated: Value(lastUpdated),
+      jagexRefreshToken: jagexRefreshToken == null && nullToAbsent
+          ? const Value.absent()
+          : Value(jagexRefreshToken),
+      jagexCharacterId: jagexCharacterId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(jagexCharacterId),
+      jagexDisplayName: jagexDisplayName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(jagexDisplayName),
     );
   }
 
@@ -2720,6 +2795,10 @@ class AccountsTableData extends DataClass
       proxySlotId: serializer.fromJson<int?>(json['proxySlotId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      jagexRefreshToken:
+          serializer.fromJson<String?>(json['jagexRefreshToken']),
+      jagexCharacterId: serializer.fromJson<String?>(json['jagexCharacterId']),
+      jagexDisplayName: serializer.fromJson<String?>(json['jagexDisplayName']),
     );
   }
   @override
@@ -2734,6 +2813,9 @@ class AccountsTableData extends DataClass
       'proxySlotId': serializer.toJson<int?>(proxySlotId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'jagexRefreshToken': serializer.toJson<String?>(jagexRefreshToken),
+      'jagexCharacterId': serializer.toJson<String?>(jagexCharacterId),
+      'jagexDisplayName': serializer.toJson<String?>(jagexDisplayName),
     };
   }
 
@@ -2745,7 +2827,10 @@ class AccountsTableData extends DataClass
           String? password,
           Value<int?> proxySlotId = const Value.absent(),
           DateTime? createdAt,
-          DateTime? lastUpdated}) =>
+          DateTime? lastUpdated,
+          Value<String?> jagexRefreshToken = const Value.absent(),
+          Value<String?> jagexCharacterId = const Value.absent(),
+          Value<String?> jagexDisplayName = const Value.absent()}) =>
       AccountsTableData(
         id: id ?? this.id,
         accountName: accountName ?? this.accountName,
@@ -2755,6 +2840,15 @@ class AccountsTableData extends DataClass
         proxySlotId: proxySlotId.present ? proxySlotId.value : this.proxySlotId,
         createdAt: createdAt ?? this.createdAt,
         lastUpdated: lastUpdated ?? this.lastUpdated,
+        jagexRefreshToken: jagexRefreshToken.present
+            ? jagexRefreshToken.value
+            : this.jagexRefreshToken,
+        jagexCharacterId: jagexCharacterId.present
+            ? jagexCharacterId.value
+            : this.jagexCharacterId,
+        jagexDisplayName: jagexDisplayName.present
+            ? jagexDisplayName.value
+            : this.jagexDisplayName,
       );
   AccountsTableData copyWithCompanion(AccountsTableCompanion data) {
     return AccountsTableData(
@@ -2769,6 +2863,15 @@ class AccountsTableData extends DataClass
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastUpdated:
           data.lastUpdated.present ? data.lastUpdated.value : this.lastUpdated,
+      jagexRefreshToken: data.jagexRefreshToken.present
+          ? data.jagexRefreshToken.value
+          : this.jagexRefreshToken,
+      jagexCharacterId: data.jagexCharacterId.present
+          ? data.jagexCharacterId.value
+          : this.jagexCharacterId,
+      jagexDisplayName: data.jagexDisplayName.present
+          ? data.jagexDisplayName.value
+          : this.jagexDisplayName,
     );
   }
 
@@ -2782,14 +2885,27 @@ class AccountsTableData extends DataClass
           ..write('password: $password, ')
           ..write('proxySlotId: $proxySlotId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('jagexRefreshToken: $jagexRefreshToken, ')
+          ..write('jagexCharacterId: $jagexCharacterId, ')
+          ..write('jagexDisplayName: $jagexDisplayName')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, accountName, birthday, email, password,
-      proxySlotId, createdAt, lastUpdated);
+  int get hashCode => Object.hash(
+      id,
+      accountName,
+      birthday,
+      email,
+      password,
+      proxySlotId,
+      createdAt,
+      lastUpdated,
+      jagexRefreshToken,
+      jagexCharacterId,
+      jagexDisplayName);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2801,7 +2917,10 @@ class AccountsTableData extends DataClass
           other.password == this.password &&
           other.proxySlotId == this.proxySlotId &&
           other.createdAt == this.createdAt &&
-          other.lastUpdated == this.lastUpdated);
+          other.lastUpdated == this.lastUpdated &&
+          other.jagexRefreshToken == this.jagexRefreshToken &&
+          other.jagexCharacterId == this.jagexCharacterId &&
+          other.jagexDisplayName == this.jagexDisplayName);
 }
 
 class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
@@ -2813,6 +2932,9 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
   final Value<int?> proxySlotId;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastUpdated;
+  final Value<String?> jagexRefreshToken;
+  final Value<String?> jagexCharacterId;
+  final Value<String?> jagexDisplayName;
   const AccountsTableCompanion({
     this.id = const Value.absent(),
     this.accountName = const Value.absent(),
@@ -2822,6 +2944,9 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
     this.proxySlotId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
+    this.jagexRefreshToken = const Value.absent(),
+    this.jagexCharacterId = const Value.absent(),
+    this.jagexDisplayName = const Value.absent(),
   });
   AccountsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -2832,6 +2957,9 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
     this.proxySlotId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
+    this.jagexRefreshToken = const Value.absent(),
+    this.jagexCharacterId = const Value.absent(),
+    this.jagexDisplayName = const Value.absent(),
   })  : accountName = Value(accountName),
         email = Value(email),
         password = Value(password);
@@ -2844,6 +2972,9 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
     Expression<int>? proxySlotId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastUpdated,
+    Expression<String>? jagexRefreshToken,
+    Expression<String>? jagexCharacterId,
+    Expression<String>? jagexDisplayName,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2854,6 +2985,9 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
       if (proxySlotId != null) 'proxy_slot_id': proxySlotId,
       if (createdAt != null) 'created_at': createdAt,
       if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (jagexRefreshToken != null) 'jagex_refresh_token': jagexRefreshToken,
+      if (jagexCharacterId != null) 'jagex_character_id': jagexCharacterId,
+      if (jagexDisplayName != null) 'jagex_display_name': jagexDisplayName,
     });
   }
 
@@ -2865,7 +2999,10 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
       Value<String>? password,
       Value<int?>? proxySlotId,
       Value<DateTime>? createdAt,
-      Value<DateTime>? lastUpdated}) {
+      Value<DateTime>? lastUpdated,
+      Value<String?>? jagexRefreshToken,
+      Value<String?>? jagexCharacterId,
+      Value<String?>? jagexDisplayName}) {
     return AccountsTableCompanion(
       id: id ?? this.id,
       accountName: accountName ?? this.accountName,
@@ -2875,6 +3012,9 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
       proxySlotId: proxySlotId ?? this.proxySlotId,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      jagexRefreshToken: jagexRefreshToken ?? this.jagexRefreshToken,
+      jagexCharacterId: jagexCharacterId ?? this.jagexCharacterId,
+      jagexDisplayName: jagexDisplayName ?? this.jagexDisplayName,
     );
   }
 
@@ -2905,6 +3045,15 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
     if (lastUpdated.present) {
       map['last_updated'] = Variable<DateTime>(lastUpdated.value);
     }
+    if (jagexRefreshToken.present) {
+      map['jagex_refresh_token'] = Variable<String>(jagexRefreshToken.value);
+    }
+    if (jagexCharacterId.present) {
+      map['jagex_character_id'] = Variable<String>(jagexCharacterId.value);
+    }
+    if (jagexDisplayName.present) {
+      map['jagex_display_name'] = Variable<String>(jagexDisplayName.value);
+    }
     return map;
   }
 
@@ -2918,7 +3067,10 @@ class AccountsTableCompanion extends UpdateCompanion<AccountsTableData> {
           ..write('password: $password, ')
           ..write('proxySlotId: $proxySlotId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('jagexRefreshToken: $jagexRefreshToken, ')
+          ..write('jagexCharacterId: $jagexCharacterId, ')
+          ..write('jagexDisplayName: $jagexDisplayName')
           ..write(')'))
         .toString();
   }
@@ -5204,6 +5356,9 @@ typedef $$AccountsTableTableCreateCompanionBuilder = AccountsTableCompanion
   Value<int?> proxySlotId,
   Value<DateTime> createdAt,
   Value<DateTime> lastUpdated,
+  Value<String?> jagexRefreshToken,
+  Value<String?> jagexCharacterId,
+  Value<String?> jagexDisplayName,
 });
 typedef $$AccountsTableTableUpdateCompanionBuilder = AccountsTableCompanion
     Function({
@@ -5215,6 +5370,9 @@ typedef $$AccountsTableTableUpdateCompanionBuilder = AccountsTableCompanion
   Value<int?> proxySlotId,
   Value<DateTime> createdAt,
   Value<DateTime> lastUpdated,
+  Value<String?> jagexRefreshToken,
+  Value<String?> jagexCharacterId,
+  Value<String?> jagexDisplayName,
 });
 
 final class $$AccountsTableTableReferences extends BaseReferences<_$AppDatabase,
@@ -5285,6 +5443,18 @@ class $$AccountsTableTableFilterComposer
 
   ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
       column: $table.lastUpdated, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get jagexRefreshToken => $composableBuilder(
+      column: $table.jagexRefreshToken,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get jagexCharacterId => $composableBuilder(
+      column: $table.jagexCharacterId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get jagexDisplayName => $composableBuilder(
+      column: $table.jagexDisplayName,
+      builder: (column) => ColumnFilters(column));
 
   $$ProxySlotsTableTableFilterComposer get proxySlotId {
     final $$ProxySlotsTableTableFilterComposer composer = $composerBuilder(
@@ -5358,6 +5528,18 @@ class $$AccountsTableTableOrderingComposer
   ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
       column: $table.lastUpdated, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get jagexRefreshToken => $composableBuilder(
+      column: $table.jagexRefreshToken,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get jagexCharacterId => $composableBuilder(
+      column: $table.jagexCharacterId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get jagexDisplayName => $composableBuilder(
+      column: $table.jagexDisplayName,
+      builder: (column) => ColumnOrderings(column));
+
   $$ProxySlotsTableTableOrderingComposer get proxySlotId {
     final $$ProxySlotsTableTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5408,6 +5590,15 @@ class $$AccountsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
       column: $table.lastUpdated, builder: (column) => column);
+
+  GeneratedColumn<String> get jagexRefreshToken => $composableBuilder(
+      column: $table.jagexRefreshToken, builder: (column) => column);
+
+  GeneratedColumn<String> get jagexCharacterId => $composableBuilder(
+      column: $table.jagexCharacterId, builder: (column) => column);
+
+  GeneratedColumn<String> get jagexDisplayName => $composableBuilder(
+      column: $table.jagexDisplayName, builder: (column) => column);
 
   $$ProxySlotsTableTableAnnotationComposer get proxySlotId {
     final $$ProxySlotsTableTableAnnotationComposer composer = $composerBuilder(
@@ -5482,6 +5673,9 @@ class $$AccountsTableTableTableManager extends RootTableManager<
             Value<int?> proxySlotId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> lastUpdated = const Value.absent(),
+            Value<String?> jagexRefreshToken = const Value.absent(),
+            Value<String?> jagexCharacterId = const Value.absent(),
+            Value<String?> jagexDisplayName = const Value.absent(),
           }) =>
               AccountsTableCompanion(
             id: id,
@@ -5492,6 +5686,9 @@ class $$AccountsTableTableTableManager extends RootTableManager<
             proxySlotId: proxySlotId,
             createdAt: createdAt,
             lastUpdated: lastUpdated,
+            jagexRefreshToken: jagexRefreshToken,
+            jagexCharacterId: jagexCharacterId,
+            jagexDisplayName: jagexDisplayName,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5502,6 +5699,9 @@ class $$AccountsTableTableTableManager extends RootTableManager<
             Value<int?> proxySlotId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> lastUpdated = const Value.absent(),
+            Value<String?> jagexRefreshToken = const Value.absent(),
+            Value<String?> jagexCharacterId = const Value.absent(),
+            Value<String?> jagexDisplayName = const Value.absent(),
           }) =>
               AccountsTableCompanion.insert(
             id: id,
@@ -5512,6 +5712,9 @@ class $$AccountsTableTableTableManager extends RootTableManager<
             proxySlotId: proxySlotId,
             createdAt: createdAt,
             lastUpdated: lastUpdated,
+            jagexRefreshToken: jagexRefreshToken,
+            jagexCharacterId: jagexCharacterId,
+            jagexDisplayName: jagexDisplayName,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

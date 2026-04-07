@@ -112,6 +112,7 @@ class WatchdogHandlers {
     try {
       final result = await _botEngine.launch(
         characterId: client.characterId,
+        accountId: client.accountId,
         characterName: client.characterName,
         email: client.email,
         password: client.password,

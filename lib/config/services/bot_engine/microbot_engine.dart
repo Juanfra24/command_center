@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_profile_writer.dart';
+import 'package:command_center/config/services/jagex/jagex_token_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/core/helper/logger.dart';
@@ -12,6 +13,7 @@ class MicrobotEngine implements BotEngine {
   String jarPath;
   final MicrobotProfileWriter _profileWriter;
   final NativeCommandsService _nativeCommands;
+  final JagexTokenService _jagexTokenService;
   final void Function(String message) onLog;
   final void Function()? onOutdated;
 
@@ -24,11 +26,13 @@ class MicrobotEngine implements BotEngine {
     required this.jarPath,
     required String profilesBasePath,
     required NativeCommandsService nativeCommands,
+    required JagexTokenService jagexTokenService,
     required this.onLog,
     this.onOutdated,
   })  : _profileWriter =
             MicrobotProfileWriter(profilesBasePath: profilesBasePath),
-        _nativeCommands = nativeCommands;
+        _nativeCommands = nativeCommands,
+        _jagexTokenService = jagexTokenService;
 
   @override
   String get engineName => 'Microbot';
@@ -42,12 +46,30 @@ class MicrobotEngine implements BotEngine {
   @override
   Future<LaunchResult> launch({
     required int characterId,
+    required int accountId,
     required String characterName,
     required String email,
     required String password,
     required String? proxyUrl,
     required LaunchConfig config,
   }) async {
+    final profileDir = _profileWriter.profilePath(characterId: characterId);
+
+    // Seed Jagex token before writing profile
+    try {
+      await _jagexTokenService.seedToken(
+        accountId: accountId,
+        email: email,
+        password: password,
+        profileDir: profileDir,
+        skipBrowserFallback:
+            true, // browser auth is only triggered on account creation
+      );
+    } catch (e) {
+      // Log but don't fail launch — legacy accounts don't need Jagex token
+      onLog('[MicrobotEngine] Warning: Jagex token seeding failed: $e');
+    }
+
     await _profileWriter.writeProfile(
       characterId: characterId,
       email: email,
@@ -145,6 +167,7 @@ class MicrobotEngine implements BotEngine {
           'JVM args contain quotes which may not be split correctly: $jvmArgs');
     }
     args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
+    args.add('-Djagex.userhome=${p.join(profileDir, 'jagex')}');
     args.addAll(['-jar', jarPath]);
     args.add('--cc-profile-dir=$profileDir');
     args.add('--status-port-file=${p.join(profileDir, 'status.port')}');

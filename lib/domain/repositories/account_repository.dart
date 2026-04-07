@@ -33,4 +33,12 @@ abstract class AccountRepository {
   /// Update a character's default script name by character ID
   Future<void> updateCharacterDefaultScript(
       int characterId, String? scriptName);
+
+  /// Store Jagex OAuth token data for an account
+  Future<void> updateJagexToken({
+    required int accountId,
+    required String refreshToken,
+    required String characterId,
+    required String displayName,
+  });
 }

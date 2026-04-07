@@ -300,6 +300,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: any(named: 'characterId'),
+            accountId: any(named: 'accountId'),
             characterName: any(named: 'characterName'),
             email: any(named: 'email'),
             password: any(named: 'password'),
@@ -326,6 +327,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: any(named: 'characterId'),
+            accountId: any(named: 'accountId'),
             characterName: any(named: 'characterName'),
             email: any(named: 'email'),
             password: any(named: 'password'),
@@ -353,6 +355,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: any(named: 'characterId'),
+            accountId: any(named: 'accountId'),
             characterName: any(named: 'characterName'),
             email: any(named: 'email'),
             password: any(named: 'password'),
@@ -401,6 +404,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: any(named: 'characterId'),
+            accountId: any(named: 'accountId'),
             characterName: any(named: 'characterName'),
             email: any(named: 'email'),
             password: any(named: 'password'),
@@ -426,6 +430,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: any(named: 'characterId'),
+            accountId: any(named: 'accountId'),
             characterName: any(named: 'characterName'),
             email: any(named: 'email'),
             password: any(named: 'password'),
@@ -448,6 +453,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: any(named: 'characterId'),
+            accountId: any(named: 'accountId'),
             characterName: any(named: 'characterName'),
             email: any(named: 'email'),
             password: any(named: 'password'),
@@ -479,6 +485,7 @@ void main() {
 
       when(() => mockBotEngine.launch(
             characterId: 42,
+            accountId: 100,
             characterName: 'MyChar',
             email: 'user@example.com',
             password: 'secret',
@@ -490,6 +497,7 @@ void main() {
 
       verify(() => mockBotEngine.launch(
             characterId: 42,
+            accountId: 100,
             characterName: 'MyChar',
             email: 'user@example.com',
             password: 'secret',

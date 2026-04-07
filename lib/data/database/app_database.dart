@@ -27,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -135,6 +135,11 @@ class AppDatabase extends _$AppDatabase {
             'CREATE INDEX IF NOT EXISTS idx_notif_is_read '
             'ON notifications_table (is_read)',
           );
+        }
+        if (from < 8) {
+          await _addColumnIfMissing('accounts_table', 'jagex_refresh_token');
+          await _addColumnIfMissing('accounts_table', 'jagex_character_id');
+          await _addColumnIfMissing('accounts_table', 'jagex_display_name');
         }
       },
       beforeOpen: (details) async {

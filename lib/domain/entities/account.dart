@@ -14,6 +14,9 @@ class AccountEntity extends Equatable {
   final List<CharacterEntity> characters;
   final DateTime? createdAt;
   final DateTime? lastUpdated;
+  final String? jagexRefreshToken;
+  final String? jagexCharacterId;
+  final String? jagexDisplayName;
 
   const AccountEntity({
     this.id,
@@ -25,6 +28,9 @@ class AccountEntity extends Equatable {
     required this.characters,
     this.createdAt,
     this.lastUpdated,
+    this.jagexRefreshToken,
+    this.jagexCharacterId,
+    this.jagexDisplayName,
   });
 
   factory AccountEntity.empty() {
@@ -55,6 +61,9 @@ class AccountEntity extends Equatable {
     List<CharacterEntity>? characters,
     DateTime? createdAt,
     DateTime? lastUpdated,
+    String? jagexRefreshToken,
+    String? jagexCharacterId,
+    String? jagexDisplayName,
   }) {
     return AccountEntity(
       id: id ?? this.id,
@@ -66,6 +75,9 @@ class AccountEntity extends Equatable {
       characters: characters ?? this.characters,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      jagexRefreshToken: jagexRefreshToken ?? this.jagexRefreshToken,
+      jagexCharacterId: jagexCharacterId ?? this.jagexCharacterId,
+      jagexDisplayName: jagexDisplayName ?? this.jagexDisplayName,
     );
   }
 
@@ -80,5 +92,8 @@ class AccountEntity extends Equatable {
         characters,
         createdAt,
         lastUpdated,
+        jagexRefreshToken,
+        jagexCharacterId,
+        jagexDisplayName,
       ];
 }

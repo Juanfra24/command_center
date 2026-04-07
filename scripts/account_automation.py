@@ -74,6 +74,12 @@ def build_parser() -> argparse.ArgumentParser:
     session_p.add_argument("--keep-open", action="store_true")
     session_p.add_argument("--debug", action="store_true")
 
+    jagex_auth_p = subparsers.add_parser("jagex-auth", help="Acquire Jagex OAuth token and write credentials.properties")
+    jagex_auth_p.add_argument("--email", required=True, help="Jagex account email")
+    jagex_auth_p.add_argument("--profile-dir", required=True, help="Path to write credentials.properties")
+    jagex_auth_p.add_argument("--imap-host", help="IMAP server hostname")
+    jagex_auth_p.add_argument("--debug", action="store_true")
+
     return parser
 
 
@@ -113,6 +119,20 @@ async def run(args) -> AutomationResult:
             proxy_url=proxy_url,
             expected_ip=args.expected_ip,
             keep_open=getattr(args, "keep_open", False),
+            debug=getattr(args, "debug", False),
+            log_fn=_log,
+        )
+    elif args.command == "jagex-auth":
+        import os
+        imap_user, imap_pass = _get_imap_creds(args)
+        from automation.commands.jagex_auth import jagex_auth
+        return await jagex_auth(
+            email=args.email,
+            password=os.environ.get("CC_ACCOUNT_PASS", ""),
+            profile_dir=args.profile_dir,
+            imap_host=getattr(args, "imap_host", None),
+            imap_user=imap_user,
+            imap_pass=imap_pass,
             debug=getattr(args, "debug", False),
             log_fn=_log,
         )
