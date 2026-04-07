@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-07
+
+### Features
+
+- register JagexTokenService in Phase 2 async init (di)
+- acquire Jagex token immediately after account creation (automation)
+- add jagex.userhome JVM flag and pre-launch token seeding (engine)
+- add JagexTokenService for OAuth token lifecycle (jagex)
+- add jagex-auth command for OAuth token acquisition (scripts)
+- migration v8 — add Jagex OAuth token columns to accounts (db)
+
+### Bug Fixes
+
+- skip browser fallback for legacy accounts at launch time (jagex)
+- move userhome flag before -jar, persist rotated refresh token (jagex)
+- remove unnecessary null assertion flagged by dart analyze (ci)
+- fix cascading trigger, race condition, and add concurrency guard (ci)
+- add IMAP email integration and update onboarding checklist (setup)
+- add loading state and double-click protection to IP rotation dialog (proxy)
+- handle post-submit Turnstile and rate limiting (automation)
+- use v3 API for IP rotation, remove dead v2 code (proxy)
+- Turnstile bypass, account creation flow, and multiple bugfixes
 ## [0.10.0] - 2026-03-24
 
 ### Features
