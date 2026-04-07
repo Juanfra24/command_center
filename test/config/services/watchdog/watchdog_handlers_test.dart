@@ -88,6 +88,7 @@ void main() {
     mockAccountRepo = MockAccountRepository();
     mockProxyRepo = MockProxyRepository();
 
+    when(() => mockBotEngine.isOutdated).thenReturn(false);
     when(() => mockNotificationService.createNotification(
           type: any(named: 'type'),
           severity: any(named: 'severity'),
