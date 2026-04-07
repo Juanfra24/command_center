@@ -5,12 +5,15 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
 import 'package:command_center/config/services/bot_engine/microbot_profile_writer.dart';
+import 'package:command_center/config/services/jagex/jagex_token_service.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/core/helper/proxy_url_builder.dart';
 
 class _MockNativeCommands extends Mock implements NativeCommandsService {}
+
+class _MockJagexTokenService extends Mock implements JagexTokenService {}
 
 void main() {
   group('Bot Engine Integration', () {
@@ -86,6 +89,7 @@ void main() {
         jarPath: '/app/microbot-shaded.jar',
         profilesBasePath: tempDir.path,
         nativeCommands: _MockNativeCommands(),
+        jagexTokenService: _MockJagexTokenService(),
         onLog: (_) {},
       );
 

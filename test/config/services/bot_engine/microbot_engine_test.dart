@@ -1,11 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:command_center/config/services/bot_engine/microbot_engine.dart';
+import 'package:command_center/config/services/jagex/jagex_token_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockNativeCommands extends Mock implements NativeCommandsService {}
+
+class _MockJagexTokenService extends Mock implements JagexTokenService {}
 
 MicrobotEngine _makeEngine({
   String jarPath = '/app/microbot-shaded.jar',
@@ -16,6 +19,7 @@ MicrobotEngine _makeEngine({
     jarPath: jarPath,
     profilesBasePath: profilesBasePath,
     nativeCommands: _MockNativeCommands(),
+    jagexTokenService: _MockJagexTokenService(),
     onLog: (_) {},
   );
 }
@@ -105,6 +109,21 @@ void main() {
       final engine = _makeEngine();
       engine.registerRecapturedPid(pid: 1234, characterId: 42);
       expect(engine.activePids, contains(1234));
+    });
+
+    test(
+        'buildLaunchArgs includes -Djagex.userhome pointing to profileDir/jagex',
+        () {
+      final engine = _makeEngine(profilesBasePath: '/profiles');
+      final args = engine.buildLaunchArgs(
+        characterId: 42,
+        proxyUrl: null,
+        config: const LaunchConfig(scriptName: 'Test'),
+      );
+      expect(
+          args,
+          contains(
+              '-Djagex.userhome=${p.join('/profiles', 'bot-42', 'jagex')}'));
     });
   });
 }

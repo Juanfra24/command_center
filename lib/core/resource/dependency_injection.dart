@@ -1,7 +1,9 @@
 import 'package:command_center/config/services/app_config_service.dart';
+import 'package:command_center/config/services/automation/python_runner.dart';
 import 'package:command_center/config/services/bot_engine/java_installer.dart';
 import 'package:command_center/config/services/bot_engine/microbot_jar_downloader.dart';
 import 'package:command_center/config/services/bot_engine/microbot_setup_service.dart';
+import 'package:command_center/config/services/jagex/jagex_token_service.dart';
 import 'package:command_center/config/services/setup/scripts_extractor.dart';
 import 'package:command_center/config/services/setup/setup_orchestrator.dart';
 import 'package:command_center/core/helper/logger.dart';
@@ -197,12 +199,19 @@ class AppBindings extends Bindings {
       return;
     }
 
+    final jagexTokenService = JagexTokenService(
+      db: Get.find<DatabaseService>(),
+      pythonRunner: PythonRunner(onLog: (msg) => logger.i(msg)),
+    );
+    Get.put<JagexTokenService>(jagexTokenService, permanent: true);
+
     late final MicrobotEngine microbotEngine;
     microbotEngine = MicrobotEngine(
       javaPath: javaPath,
       jarPath: jarPath ?? '',
       profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
       nativeCommands: Get.find<NativeCommandsService>(),
+      jagexTokenService: jagexTokenService,
       onLog: (msg) => logger.i(msg),
       onOutdated: () async {
         logger

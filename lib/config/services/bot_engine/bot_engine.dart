@@ -9,6 +9,7 @@ abstract class BotEngine {
   /// Launch a bot instance. Returns PID and optional Status API port.
   Future<LaunchResult> launch({
     required int characterId,
+    required int accountId,
     required String characterName,
     required String email,
     required String password,

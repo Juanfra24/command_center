@@ -163,6 +163,7 @@ class StatusController extends GetxController {
 
     final result = await _botEngine!.launch(
       characterId: character.id!,
+      accountId: account.id!,
       characterName: character.name,
       email: account.email,
       password: account.password,
