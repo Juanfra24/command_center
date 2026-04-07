@@ -62,6 +62,8 @@ class JagexTokenService {
 
   /// Seed the Jagex credentials file before launching a bot.
   /// Tries HTTP refresh first; falls back to full Patchright browser auth.
+  /// Set [skipBrowserFallback] to true to disable the slow browser auth path
+  /// (e.g. during bot launches where first-time auth is not expected).
   Future<void> seedToken({
     required int accountId,
     required String email,
@@ -70,6 +72,7 @@ class JagexTokenService {
     String? imapHost,
     String? imapUser,
     String? imapPass,
+    bool skipBrowserFallback = false,
   }) async {
     final account = await _db.accountRepository.getAccountById(accountId);
     if (account == null) throw Exception('Account $accountId not found');
@@ -102,6 +105,12 @@ class JagexTokenService {
         logger.w(
             '[JagexToken] HTTP refresh failed ($e), falling back to browser auth');
       }
+    }
+
+    if (skipBrowserFallback) {
+      logger.w(
+          '[JagexToken] No refresh token stored and browser fallback disabled — skipping');
+      return;
     }
 
     logger.i('[JagexToken] Running browser auth for account $accountId');

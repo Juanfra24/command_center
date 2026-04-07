@@ -62,6 +62,8 @@ class MicrobotEngine implements BotEngine {
         email: email,
         password: password,
         profileDir: profileDir,
+        skipBrowserFallback:
+            true, // browser auth is only triggered on account creation
       );
     } catch (e) {
       // Log but don't fail launch — legacy accounts don't need Jagex token
