@@ -178,6 +178,16 @@ class AppBindings extends Bindings {
     );
     Get.put<SetupOrchestrator>(setupOrchestrator, permanent: true);
 
+    // 10. JagexTokenService (depends on DatabaseService + PythonRunner)
+    Get.lazyPut<JagexTokenService>(
+      () => JagexTokenService(
+        db: Get.find<DatabaseService>(),
+        pythonRunner:
+            PythonRunner(onLog: (msg) => logger.i('[JagexToken] $msg')),
+      ),
+      fenix: true,
+    );
+
     // NOTE: WatchdogService moved to initializePostSetup() — it depends on
     // BotEngine which requires SetupOrchestrator.run() to download dependencies first.
   }
@@ -199,19 +209,13 @@ class AppBindings extends Bindings {
       return;
     }
 
-    final jagexTokenService = JagexTokenService(
-      db: Get.find<DatabaseService>(),
-      pythonRunner: PythonRunner(onLog: (msg) => logger.i(msg)),
-    );
-    Get.put<JagexTokenService>(jagexTokenService, permanent: true);
-
     late final MicrobotEngine microbotEngine;
     microbotEngine = MicrobotEngine(
       javaPath: javaPath,
       jarPath: jarPath ?? '',
       profilesBasePath: AppDataPath.joinPath(basePath, 'microbot_profiles'),
       nativeCommands: Get.find<NativeCommandsService>(),
-      jagexTokenService: jagexTokenService,
+      jagexTokenService: Get.find<JagexTokenService>(),
       onLog: (msg) => logger.i(msg),
       onOutdated: () async {
         logger
