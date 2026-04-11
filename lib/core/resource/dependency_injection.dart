@@ -59,46 +59,18 @@ class AppBindings extends Bindings {
     Get.lazyPut<StatusSelectionController>(() => StatusSelectionController(),
         fenix: true);
     Get.lazyPut<ProxyController>(() => ProxyController(), fenix: true);
-    Get.lazyPut<ProxyScoringController>(
-      () => ProxyScoringController(
-        Get.find<DatabaseService>().proxyRepository,
-        Get.find<IpqsService>(),
-        Get.find<ProxyController>(),
-      ),
-      fenix: true,
-    );
     Get.lazyPut<ProxyReplacementController>(
       () => ProxyReplacementController(Get.find<ProxyController>()),
       fenix: true,
     );
-    Get.lazyPut<NotificationController>(
-      () => NotificationController(Get.find<NotificationService>()),
-      fenix: true,
-    );
-    Get.lazyPut<ProxyReplacementService>(
-      () => ProxyReplacementService(Get.find<WebshareService>()),
-      fenix: true,
-    );
-    Get.lazyPut<ProxySyncService>(
-      () => ProxySyncService(
-        Get.find<DatabaseService>().proxyRepository,
-        Get.find<WebshareService>(),
-        Get.find<DatabaseService>().database,
-      ),
-      fenix: true,
-    );
-    Get.lazyPut<ProxyAutoRotationService>(
-      () => ProxyAutoRotationService(
-        replacementService: Get.find<ProxyReplacementService>(),
-        webshareService: Get.find<WebshareService>(),
-        ipqsService: Get.find<IpqsService>(),
-        proxyRepository: Get.find<DatabaseService>().proxyRepository,
-        syncService: Get.find<ProxySyncService>(),
-        notificationService: Get.find<NotificationService>(),
-        configService: Get.find<AppConfigService>(),
-      ),
-      fenix: true,
-    );
+    // NOTE: ProxyScoringController, ProxyReplacementService, ProxySyncService,
+    // ProxyAutoRotationService, and NotificationController all depend on
+    // services that are only available after initializeAsyncServices() runs
+    // (DatabaseService, WebshareService, IpqsService, NotificationService,
+    // AppConfigService). Registering their factories here would allow callers
+    // to Get.find() them before Phase 2 completes and blow up with a
+    // "service not found" at an unexpected moment. They are registered in
+    // initializeAsyncServices() instead, after their dependencies are ready.
 
     // Dev tools (debug only)
     if (kDebugMode) {
@@ -146,6 +118,46 @@ class AppBindings extends Bindings {
         NotificationService(databaseService.notificationRepository);
     await notificationService.init();
     Get.put<NotificationService>(notificationService, permanent: true);
+
+    // 8b. Register lazy factories that depend on Phase 2 services now that
+    // those services exist. Using fenix keeps them re-creatable after
+    // controller disposal without reintroducing the Phase-1 ordering bug.
+    Get.lazyPut<ProxyScoringController>(
+      () => ProxyScoringController(
+        Get.find<DatabaseService>().proxyRepository,
+        Get.find<IpqsService>(),
+        Get.find<ProxyController>(),
+      ),
+      fenix: true,
+    );
+    Get.lazyPut<NotificationController>(
+      () => NotificationController(Get.find<NotificationService>()),
+      fenix: true,
+    );
+    Get.lazyPut<ProxyReplacementService>(
+      () => ProxyReplacementService(Get.find<WebshareService>()),
+      fenix: true,
+    );
+    Get.lazyPut<ProxySyncService>(
+      () => ProxySyncService(
+        Get.find<DatabaseService>().proxyRepository,
+        Get.find<WebshareService>(),
+        Get.find<DatabaseService>().database,
+      ),
+      fenix: true,
+    );
+    Get.lazyPut<ProxyAutoRotationService>(
+      () => ProxyAutoRotationService(
+        replacementService: Get.find<ProxyReplacementService>(),
+        webshareService: Get.find<WebshareService>(),
+        ipqsService: Get.find<IpqsService>(),
+        proxyRepository: Get.find<DatabaseService>().proxyRepository,
+        syncService: Get.find<ProxySyncService>(),
+        notificationService: Get.find<NotificationService>(),
+        configService: Get.find<AppConfigService>(),
+      ),
+      fenix: true,
+    );
 
     // 9. MicrobotSetupService (orchestrates dependency downloads)
     final appDataPath = Get.find<AppDataPath>();

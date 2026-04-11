@@ -29,6 +29,7 @@ async def validate_proxy_ip(
     log_fn("[STEP 1/4] OK")
 
     pw = browser = None
+    context = None
     try:
         # Step 2/4: Launch browser
         log_fn("[STEP 2/4] Launching browser...")
@@ -96,4 +97,4 @@ async def validate_proxy_ip(
         )
     finally:
         if browser and pw:
-            await close_browser(pw, browser)
+            await close_browser(pw, browser, context)
