@@ -45,11 +45,14 @@ def _get_proxy_url(args) -> str:
 
 
 def _get_imap_creds(args) -> tuple:
-    """Resolve IMAP user/pass from env vars (preferred) or CLI args (fallback)."""
+    """Resolve IMAP user/pass from env vars only.
+
+    Never read credentials from argv — on Linux, any user can read another
+    process's command line via /proc/<pid>/cmdline, which would leak the
+    IMAP password.
+    """
     import os
-    user = os.environ.get("CC_IMAP_USER") or getattr(args, "imap_user", None)
-    passwd = os.environ.get("CC_IMAP_PASS") or getattr(args, "imap_pass", None)
-    return user, passwd
+    return os.environ.get("CC_IMAP_USER"), os.environ.get("CC_IMAP_PASS")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -66,8 +69,9 @@ def build_parser() -> argparse.ArgumentParser:
     create_p.add_argument("--headless", action="store_true")
     create_p.add_argument("--debug", action="store_true")
     create_p.add_argument("--imap-host", help="IMAP server hostname")
-    create_p.add_argument("--imap-user", help="IMAP username/email (prefer CC_IMAP_USER env var)")
-    create_p.add_argument("--imap-pass", help="IMAP password (prefer CC_IMAP_PASS env var)")
+    # IMAP credentials intentionally NOT accepted as CLI args — pass
+    # CC_IMAP_USER and CC_IMAP_PASS via environment to avoid leaking them
+    # through /proc/<pid>/cmdline.
 
     session_p = subparsers.add_parser("session", help="Open browser session with proxy")
     session_p.add_argument("expected_ip", help="Expected IP address")

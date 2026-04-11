@@ -69,15 +69,22 @@ class AppDatabase extends _$AppDatabase {
                   .toUpperCase()
                   .contains('CASCADE');
           if (needsRecreate) {
+            // Use explicit column lists so later schema additions (e.g.,
+            // default_script_name added in v5) don't cause a SELECT *
+            // column-count mismatch when a user upgrades from v1/v2
+            // directly to the current version.
+            const preV3Cols =
+                'id, account_id, name, banned, actual_skills_json, '
+                'target_skills_json, created_at, last_updated';
             await customStatement(
               'CREATE TABLE characters_backup '
-              'AS SELECT * FROM characters_table',
+              'AS SELECT $preV3Cols FROM characters_table',
             );
             await customStatement('DROP TABLE characters_table');
             await m.createTable(charactersTable);
             await customStatement(
-              'INSERT INTO characters_table '
-              'SELECT * FROM characters_backup',
+              'INSERT INTO characters_table ($preV3Cols) '
+              'SELECT $preV3Cols FROM characters_backup',
             );
             await customStatement('DROP TABLE characters_backup');
           }

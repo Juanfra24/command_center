@@ -139,8 +139,10 @@ class JagexTokenService {
       },
     );
     if (response.statusCode != 200) {
-      throw Exception(
-          'Token refresh HTTP ${response.statusCode}: ${response.body}');
+      // Do NOT include response.body — Jagex's token endpoint may echo
+      // the submitted refresh_token back in error payloads, which would
+      // then be written to disk logs via the caller's catch block.
+      throw Exception('Token refresh HTTP ${response.statusCode}');
     }
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final idToken = json['id_token'] as String?;
@@ -242,6 +244,25 @@ class JagexTokenService {
       characterId: characterId,
       displayName: displayName,
     );
+
+    // Exchange the freshly-acquired refresh token for a game session and
+    // write credentials.properties so the first bot launch can log in.
+    final (idToken, rotatedRefreshToken) = await _httpRefreshIdToken(refreshToken);
+    final session = await _getGameSession(idToken);
+    await writeCredentialsFile(
+      profileDir: profileDir,
+      sessionId: session.$1,
+      characterId: characterId,
+      displayName: displayName,
+    );
+    if (rotatedRefreshToken != null && rotatedRefreshToken != refreshToken) {
+      await _db.accountRepository.updateJagexToken(
+        accountId: accountId,
+        refreshToken: rotatedRefreshToken,
+        characterId: characterId,
+        displayName: displayName,
+      );
+    }
 
     logger.i('[JagexToken] Token stored in DB and credentials file written');
   }

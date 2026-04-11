@@ -218,7 +218,12 @@ class WatchdogHandlers {
           launchConfig: const LaunchConfig(scriptName: 'Unknown'),
           pid: process.processId,
           status: ClientStatus.running,
-          launchedAt: DateTime.now(),
+          // Sentinel in the past: a recaptured process has already been
+          // running before the app restart, so the first post-recapture
+          // death must NOT be classified as a quick death (which would
+          // falsely start the ban escalation counter).
+          launchedAt: DateTime.now()
+              .subtract(WatchdogService.quickDeathThreshold * 2),
         );
         recapturedCharacterIds.add(characterId);
         _botEngine.registerRecapturedPid(
@@ -270,8 +275,11 @@ class WatchdogHandlers {
         }
       }
     } catch (e) {
+      // Don't fall through to `failed` — the restart loop would pick it up
+      // and re-ban immediately, creating an infinite ban-restart cycle.
+      // The account is already known banned; stop the client definitively.
       logger.e('Failed to handle ban for ${client.characterName}: $e');
-      client.status = ClientStatus.failed;
+      client.status = ClientStatus.stopped;
     }
   }
 

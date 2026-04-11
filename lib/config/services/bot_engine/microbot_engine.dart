@@ -148,7 +148,22 @@ class MicrobotEngine implements BotEngine {
     _activePids.remove(pid);
     _pidToCharacterId.remove(pid);
     if (characterId != null) {
-      await _profileWriter.deleteProfile(characterId: characterId);
+      // Give the JVM a moment to release file handles before deleting the
+      // profile directory — on Windows in particular, deleting while the
+      // process still holds handles will fail. Retry a couple of times
+      // before giving up, since an error here should not fail the stop.
+      for (var attempt = 0; attempt < 3; attempt++) {
+        await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+        try {
+          await _profileWriter.deleteProfile(characterId: characterId);
+          break;
+        } catch (e) {
+          if (attempt == 2) {
+            logger.w(
+                'Failed to delete profile for characterId=$characterId after retries: $e');
+          }
+        }
+      }
     }
   }
 
@@ -162,11 +177,7 @@ class MicrobotEngine implements BotEngine {
     final jvmArgs = (config.jvmArgs == null || config.jvmArgs!.isEmpty)
         ? '-Xmx512m'
         : config.jvmArgs!;
-    if (jvmArgs.contains('"') || jvmArgs.contains("'")) {
-      logger.w(
-          'JVM args contain quotes which may not be split correctly: $jvmArgs');
-    }
-    args.addAll(jvmArgs.split(' ').where((s) => s.isNotEmpty));
+    args.addAll(_splitShellArgs(jvmArgs));
     args.add('-Djagex.userhome=${p.join(profileDir, 'jagex')}');
     args.addAll(['-jar', jarPath]);
     args.add('--cc-profile-dir=$profileDir');
@@ -179,9 +190,39 @@ class MicrobotEngine implements BotEngine {
       args.add('--script-params=${config.scriptParams}');
     }
     if (config.advancedFlags.isNotEmpty) {
-      args.addAll(config.advancedFlags.split(' ').where((s) => s.isNotEmpty));
+      args.addAll(_splitShellArgs(config.advancedFlags));
     }
     return args;
+  }
+
+  /// Quote-aware argument splitter. Supports single and double quotes so
+  /// values containing spaces (e.g. `-Dfoo="bar baz"`) survive splitting.
+  /// Quote characters are stripped from the final tokens.
+  static List<String> _splitShellArgs(String input) {
+    final tokens = <String>[];
+    final buffer = StringBuffer();
+    String? quote;
+    for (var i = 0; i < input.length; i++) {
+      final ch = input[i];
+      if (quote != null) {
+        if (ch == quote) {
+          quote = null;
+        } else {
+          buffer.write(ch);
+        }
+      } else if (ch == '"' || ch == "'") {
+        quote = ch;
+      } else if (ch == ' ' || ch == '\t') {
+        if (buffer.isNotEmpty) {
+          tokens.add(buffer.toString());
+          buffer.clear();
+        }
+      } else {
+        buffer.write(ch);
+      }
+    }
+    if (buffer.isNotEmpty) tokens.add(buffer.toString());
+    return tokens;
   }
 
   Future<void> cleanStaleProfiles(Set<int> liveCharacterIds) async {

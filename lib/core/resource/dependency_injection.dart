@@ -220,8 +220,14 @@ class AppBindings extends Bindings {
       onOutdated: () async {
         logger
             .e('Microbot JAR out of date — stopping all clients and updating');
-        final watchdog = Get.find<WatchdogService>();
-        await watchdog.stopAll();
+        // WatchdogService is registered after MicrobotEngine in this same
+        // method, so the callback could in principle fire before the
+        // service exists. Guard the lookup so an early outdated signal
+        // doesn't throw and silently kill the JAR update flow.
+        final watchdog = Get.isRegistered<WatchdogService>()
+            ? Get.find<WatchdogService>()
+            : null;
+        await watchdog?.stopAll();
         final notificationService = Get.find<NotificationService>();
         await notificationService.createNotification(
           type: NotificationType.jarOutOfDate,

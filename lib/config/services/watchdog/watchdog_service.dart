@@ -134,6 +134,8 @@ class WatchdogService extends GetxService {
     }
     trackedClients.remove(characterName);
     trackedClients.refresh();
+    // Downshift to slow polling when no clients remain
+    if (trackedClients.isEmpty) _startPolling();
     logger.i('Stopped $characterName');
   }
 
@@ -185,9 +187,20 @@ class WatchdogService extends GetxService {
           } else {
             client.incrementDiscoveryMisses();
             if (client.discoveryMisses >= _maxDiscoveryMisses) {
-              client.status = ClientStatus.failed;
+              // Treat repeated discovery failures as a quick death so that
+              // repeatedly unlaunchable bots escalate to banned instead of
+              // silently consuming their 5 retries with no escalation path.
+              client.consecutiveQuickDeaths++;
               client.lastDeathAt = DateTime.now();
-              logger.e('Discovery timeout for ${client.characterName}');
+              if (client.consecutiveQuickDeaths >= banEscalationThreshold) {
+                client.status = ClientStatus.banned;
+                logger.e('Discovery timeout ban for ${client.characterName} '
+                    '(${client.consecutiveQuickDeaths} consecutive failures)');
+              } else {
+                client.status = ClientStatus.failed;
+                logger.e('Discovery timeout for ${client.characterName} '
+                    '(${client.consecutiveQuickDeaths}/$banEscalationThreshold)');
+              }
               changed = true;
             }
           }
