@@ -156,17 +156,17 @@ class AccountRepositoryImpl implements AccountRepository {
 
   @override
   Stream<List<AccountEntity>> watchAllAccounts() {
-    return _db.select(_db.accountsTable).watch().asyncMap((accounts) async {
-      final allCharacters = await _db.select(_db.charactersTable).get();
-      final charsByAccountId = <int, List<CharacterEntity>>{};
-      for (final charRow in allCharacters) {
-        final entity = _mapCharacterRow(charRow);
-        charsByAccountId.putIfAbsent(charRow.accountId, () => []).add(entity);
-      }
-      return accounts
-          .map((a) => _mapAccountRow(a, charsByAccountId[a.id] ?? []))
-          .toList();
-    });
+    // React to changes in BOTH accounts and characters tables. Watching
+    // only accountsTable misses character-only updates (e.g. banning a
+    // character, updating skills), leaving the UI with stale character
+    // data until the next account-level write.
+    return _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {_db.accountsTable, _db.charactersTable},
+        )
+        .watch()
+        .asyncMap((_) => getAllAccounts());
   }
 
   @override
@@ -177,11 +177,12 @@ class AccountRepositoryImpl implements AccountRepository {
 
     if (accounts.isEmpty) return [];
 
-    final accountIds = accounts.map((a) => a.id).toSet();
-    final allChars = await _db.select(_db.charactersTable).get();
+    final accountIds = accounts.map((a) => a.id).toList();
+    final charQuery = _db.select(_db.charactersTable)
+      ..where((tbl) => tbl.accountId.isIn(accountIds));
+    final scopedChars = await charQuery.get();
     final charsByAccountId = <int, List<CharacterEntity>>{};
-    for (final charRow
-        in allChars.where((c) => accountIds.contains(c.accountId))) {
+    for (final charRow in scopedChars) {
       charsByAccountId
           .putIfAbsent(charRow.accountId, () => [])
           .add(_mapCharacterRow(charRow));

@@ -91,6 +91,7 @@ class MicrobotJarDownloader {
       final response = await request.close();
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
+        await response.drain<void>();
         throw Exception('JAR download failed with HTTP ${response.statusCode}');
       }
 
@@ -145,13 +146,18 @@ class MicrobotJarDownloader {
       request.headers.set('Authorization', 'Bearer $token');
       final response = await request.close();
 
+      // Drain unconsumed response bodies before throwing so the underlying
+      // socket on the keep-alive connection is left in a clean state.
       if (response.statusCode == 401) {
+        await response.drain<void>();
         throw Exception('GitHub PAT invalid or expired');
       }
       if (response.statusCode == 403 || response.statusCode == 429) {
+        await response.drain<void>();
         throw Exception('GitHub API rate limited');
       }
       if (response.statusCode == 404) {
+        await response.drain<void>();
         throw Exception(
             'Release not found — check repo URL and PAT permissions');
       }

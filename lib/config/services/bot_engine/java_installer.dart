@@ -74,6 +74,7 @@ class JavaInstaller {
       final response = await request.close();
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
+        await response.drain<void>();
         throw Exception(
             'Java download failed with HTTP ${response.statusCode}');
       }

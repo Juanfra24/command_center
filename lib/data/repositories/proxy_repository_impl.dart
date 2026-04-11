@@ -37,8 +37,11 @@ class ProxyRepositoryImpl implements ProxyRepository {
 
   @override
   Future<ProxySlotEntity?> getSlotByWebshareId(String webshareId) async {
+    // Exclude soft-deleted rows so upsertSlot doesn't silently revive a
+    // deleted slot when Webshare sync runs again with the same webshareId.
     final query = _db.select(_db.proxySlotsTable)
-      ..where((tbl) => tbl.webshareId.equals(webshareId));
+      ..where((tbl) =>
+          tbl.webshareId.equals(webshareId) & tbl.isDeleted.equals(false));
     final result = await query.getSingleOrNull();
     return result != null ? _mapProxySlotRow(result) : null;
   }
@@ -135,13 +138,15 @@ class ProxyRepositoryImpl implements ProxyRepository {
 
   @override
   Future<void> deleteSlot(int id) async {
-    // First delete related IP addresses
-    await (_db.delete(_db.proxyIpAddressesTable)
-          ..where((tbl) => tbl.slotId.equals(id)))
-        .go();
-    // Then delete the slot
-    await (_db.delete(_db.proxySlotsTable)..where((tbl) => tbl.id.equals(id)))
-        .go();
+    // Wrap in a transaction so a crash between the two deletes cannot
+    // leave orphaned IP rows referencing a slot that no longer exists.
+    await _db.transaction(() async {
+      await (_db.delete(_db.proxyIpAddressesTable)
+            ..where((tbl) => tbl.slotId.equals(id)))
+          .go();
+      await (_db.delete(_db.proxySlotsTable)..where((tbl) => tbl.id.equals(id)))
+          .go();
+    });
   }
 
   @override
