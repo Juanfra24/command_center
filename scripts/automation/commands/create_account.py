@@ -510,20 +510,27 @@ async def create_account(
                     rate_limited = True
                     break
 
+                # Narrow Jagex-specific success phrases. Broad keywords like
+                # "complete", "welcome", or "manage" match generic pages
+                # (e.g. existing-account dashboards) and caused false
+                # success reports.
                 success_indicators = [
-                    "congratulations", "account created", "welcome",
-                    "success", "your account", "account is ready",
-                    "complete your account", "registration complete",
-                    "complete", "you're all set",
+                    "congratulations",
+                    "account created",
+                    "account is ready",
+                    "registration complete",
+                    "you're all set",
                 ]
                 if any(kw in content or kw in title for kw in success_indicators):
                     confirmed = True
                     break
 
-                # Also check URL for success indicators
+                # Narrow URL check — require Jagex-specific confirmation paths.
                 url = page.url.lower()
                 if any(kw in url for kw in [
-                    "complete", "success", "welcome", "manage",
+                    "registration-complete",
+                    "account-created",
+                    "registration/complete",
                 ]):
                     confirmed = True
                     break

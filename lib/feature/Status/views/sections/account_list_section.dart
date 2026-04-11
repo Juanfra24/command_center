@@ -34,7 +34,9 @@ class AccountListSection extends StatelessWidget {
 
   List<_AccountRow> _buildFilteredRows() {
     final selectionCtrl = Get.find<StatusSelectionController>();
-    final watchdog = Get.find<WatchdogService>();
+    final watchdog = Get.isRegistered<WatchdogService>()
+        ? Get.find<WatchdogService>()
+        : null;
     final query = selectionCtrl.searchQuery.value.toLowerCase();
     final statusF = selectionCtrl.statusFilter.value;
     final scriptF = selectionCtrl.scriptFilter.value;
@@ -60,7 +62,7 @@ class AccountListSection extends StatelessWidget {
       }
       // Status filter
       if (statusF != 'all' && row.character != null) {
-        final tracked = watchdog.trackedClients[row.character!.name];
+        final tracked = watchdog?.trackedClients[row.character!.name];
         final status = tracked?.status;
         switch (statusF) {
           case 'running':

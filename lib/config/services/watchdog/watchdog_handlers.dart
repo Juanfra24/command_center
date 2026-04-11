@@ -270,8 +270,11 @@ class WatchdogHandlers {
         }
       }
     } catch (e) {
+      // Don't fall through to `failed` — the restart loop would pick it up
+      // and re-ban immediately, creating an infinite ban-restart cycle.
+      // The account is already known banned; stop the client definitively.
       logger.e('Failed to handle ban for ${client.characterName}: $e');
-      client.status = ClientStatus.failed;
+      client.status = ClientStatus.stopped;
     }
   }
 

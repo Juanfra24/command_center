@@ -243,6 +243,25 @@ class JagexTokenService {
       displayName: displayName,
     );
 
+    // Exchange the freshly-acquired refresh token for a game session and
+    // write credentials.properties so the first bot launch can log in.
+    final (idToken, rotatedRefreshToken) = await _httpRefreshIdToken(refreshToken);
+    final session = await _getGameSession(idToken);
+    await writeCredentialsFile(
+      profileDir: profileDir,
+      sessionId: session.$1,
+      characterId: characterId,
+      displayName: displayName,
+    );
+    if (rotatedRefreshToken != null && rotatedRefreshToken != refreshToken) {
+      await _db.accountRepository.updateJagexToken(
+        accountId: accountId,
+        refreshToken: rotatedRefreshToken,
+        characterId: characterId,
+        displayName: displayName,
+      );
+    }
+
     logger.i('[JagexToken] Token stored in DB and credentials file written');
   }
 }

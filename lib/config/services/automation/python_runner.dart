@@ -159,13 +159,14 @@ class PythonRunner {
     Map<String, String>? environment,
   }) async {
     final python = await PythonResolver.executable;
-    await Process.start(
+    final process = await Process.start(
       python,
       ['-u', ...args],
       workingDirectory: workingDirectory,
       environment: environment,
       mode: ProcessStartMode.detached,
     );
+    _detachedSessionPids.add(process.pid);
   }
 
   /// Cancel the currently running process
