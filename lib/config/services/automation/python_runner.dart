@@ -88,6 +88,10 @@ class PythonRunner {
     _currentProcess = await Process.start(python, ['-u', ...args],
         workingDirectory: workingDirectory, environment: environment);
 
+    // We never write to stdin — close it so the script can't block
+    // waiting on input() and leave the process hung past its timeout.
+    unawaited(_currentProcess!.stdin.close().catchError((_) {}));
+
     // Listen to stdout/stderr and forward to logs in real-time.
     // Suppress all lines after the === RESULT === marker (contains credentials in JSON).
     var seenResultMarker = false;

@@ -59,7 +59,13 @@
       "Bash(./gradlew :client:compileJava --no-daemon)",
       "Bash(sed:*)",
       "Bash(gh pr create --repo Juanfra24/Microbot_Frieren --base main --head dev --title 'feat: add /syncrepo Claude Code slash command with machine-resolutive sync policy' --body ':*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(wc -l /mnt/c/Projects/command_center/lib/feature/proxy/views/components/*.dart)",
+      "Bash(wc:*)",
+      "Bash(dart pub:*)",
+      "Bash(cp \"/mnt/c/Users/Juan Francisco/flutter/bin/internal/shared.sh\" /tmp/shared.sh.bak)",
+      "Bash(tr -d '\\\\r')",
+      "Bash(\"/mnt/c/Users/Juan Francisco/flutter/bin/flutter\" --version)"
     ]
   }
 }

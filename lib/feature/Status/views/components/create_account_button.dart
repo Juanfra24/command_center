@@ -71,7 +71,7 @@ class CreateAccountButton extends StatelessWidget {
       if (createResult.isAccountCreated) {
         await statusController.getAccountsData();
 
-        // ignore: use_build_context_synchronously
+        if (!context.mounted) return;
         Navigator.pop(context);
 
         final data = createResult.data ?? {};
@@ -82,7 +82,6 @@ class CreateAccountButton extends StatelessWidget {
             ? '${password.substring(0, 2)}${'*' * (password.length - 4)}${password.substring(password.length - 2)}'
             : '****';
         displayInfoBar(
-          // ignore: use_build_context_synchronously
           context,
           duration: const Duration(seconds: 10),
           builder: (ctx, close) {

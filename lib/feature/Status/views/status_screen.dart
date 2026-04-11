@@ -113,14 +113,18 @@ class StatusScreen extends GetView<StatusController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Obx(() {
-            final w = Get.find<WatchdogService>();
-            w.trackedClients.length;
+            // WatchdogService is registered in Phase 3 after setup completes;
+            // during early boot (or if Java setup failed) it may be missing.
+            final w = Get.isRegistered<WatchdogService>()
+                ? Get.find<WatchdogService>()
+                : null;
+            w?.trackedClients.length;
             final chars = controller.accountList
                 .fold<int>(0, (s, a) => s + a.characters.length);
             return SummaryCards(
               totalAccounts: controller.accountList.length,
               totalCharacters: chars,
-              runningProcesses: w.runningCount,
+              runningProcesses: w?.runningCount ?? 0,
             );
           }),
           const SizedBox(height: 16),

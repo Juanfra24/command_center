@@ -54,11 +54,23 @@ class NativeCommandsLinux implements NativeCommandsService {
   @override
   Future<void> killProcess(int pid) async {
     try {
-      // Send SIGTERM first for graceful shutdown
-      await Process.run('kill', ['-15', '$pid']);
-      // Wait briefly for process to exit
+      // Send SIGTERM first for graceful shutdown.
+      // Process.run does not throw on non-zero exit — check exitCode so we
+      // can surface "no such process" (already exited) and skip the SIGKILL.
+      final term = await Process.run('kill', ['-15', '$pid']);
+      if (term.exitCode != 0) {
+        // ESRCH / permission denied — bail out instead of racing to SIGKILL
+        // a recycled PID that could belong to an unrelated process.
+        logger.w('SIGTERM to $pid returned ${term.exitCode}: ${term.stderr}');
+        return;
+      }
       await Future.delayed(const Duration(seconds: 2));
-      // Force kill if still alive
+      // Probe with kill -0 before SIGKILL. Between the 2s wait above and
+      // here the PID may have been reused by the kernel — escalating blindly
+      // would kill an unrelated process. kill -0 returns 0 only if the PID
+      // is still valid and signalable by us.
+      final probe = await Process.run('kill', ['-0', '$pid']);
+      if (probe.exitCode != 0) return; // already gone
       await Process.run('kill', ['-9', '$pid']);
     } catch (e) {
       logger.e('Failed to kill process $pid: $e');
