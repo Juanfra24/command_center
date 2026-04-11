@@ -177,11 +177,12 @@ class AccountRepositoryImpl implements AccountRepository {
 
     if (accounts.isEmpty) return [];
 
-    final accountIds = accounts.map((a) => a.id).toSet();
-    final allChars = await _db.select(_db.charactersTable).get();
+    final accountIds = accounts.map((a) => a.id).toList();
+    final charQuery = _db.select(_db.charactersTable)
+      ..where((tbl) => tbl.accountId.isIn(accountIds));
+    final scopedChars = await charQuery.get();
     final charsByAccountId = <int, List<CharacterEntity>>{};
-    for (final charRow
-        in allChars.where((c) => accountIds.contains(c.accountId))) {
+    for (final charRow in scopedChars) {
       charsByAccountId
           .putIfAbsent(charRow.accountId, () => [])
           .add(_mapCharacterRow(charRow));

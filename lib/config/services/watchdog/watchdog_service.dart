@@ -134,6 +134,8 @@ class WatchdogService extends GetxService {
     }
     trackedClients.remove(characterName);
     trackedClients.refresh();
+    // Downshift to slow polling when no clients remain
+    if (trackedClients.isEmpty) _startPolling();
     logger.i('Stopped $characterName');
   }
 

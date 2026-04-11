@@ -139,8 +139,10 @@ class JagexTokenService {
       },
     );
     if (response.statusCode != 200) {
-      throw Exception(
-          'Token refresh HTTP ${response.statusCode}: ${response.body}');
+      // Do NOT include response.body — Jagex's token endpoint may echo
+      // the submitted refresh_token back in error payloads, which would
+      // then be written to disk logs via the caller's catch block.
+      throw Exception('Token refresh HTTP ${response.statusCode}');
     }
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final idToken = json['id_token'] as String?;

@@ -246,8 +246,12 @@ class ProxyScoringController extends GetxController {
         }
       }
 
+      if (isClosed) return successCount;
+
       // Single reload after all scoring is done
       await _proxyController.loadIpAddresses();
+
+      if (isClosed) return successCount;
 
       // Refresh selected slot history
       if (_proxyController.selectedSlot.value != null &&
@@ -257,7 +261,7 @@ class ProxyScoringController extends GetxController {
       }
 
       // Trigger auto-rotation for all scored IPs
-      if (_autoRotationService != null) {
+      if (_autoRotationService != null && !isClosed) {
         final results = <ScoredIpResult>[];
         for (final slot in _proxyController.proxySlots) {
           final currentIp = _proxyController.getCurrentIpForSlot(slot);
@@ -270,6 +274,7 @@ class ProxyScoringController extends GetxController {
           }
         }
         await _autoRotationService!.processScoreResults(results);
+        if (isClosed) return successCount;
         // Reload after auto-rotation may have changed IPs
         await _proxyController.loadIpAddresses();
       }
@@ -280,7 +285,7 @@ class ProxyScoringController extends GetxController {
       return successCount;
     } finally {
       _scoringLock = false;
-      isScoring.value = false;
+      if (!isClosed) isScoring.value = false;
     }
   }
 
