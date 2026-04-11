@@ -151,7 +151,7 @@ async def create_account(
     generated_email = generate_email(account_name)
     generated_password = generate_password()
     dob = generate_random_dob()
-    log_fn(f"[INFO] Account: {account_name}, Email: {generated_email}")
+    log_fn(f"[INFO] Account: {account_name}")
     log_fn(f"[INFO] DOB: {dob['day']}/{dob['month']}/{dob['year']}")
 
     pw = browser = None

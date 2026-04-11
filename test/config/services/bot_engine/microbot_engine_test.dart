@@ -31,11 +31,10 @@ void main() {
       expect(engine.engineName, 'Microbot');
     });
 
-    test('buildLaunchArgs constructs correct argument list with proxy', () {
+    test('buildLaunchArgs constructs correct argument list', () {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 42,
-        proxyUrl: 'socks5://user:pass@1.2.3.4:1080',
         config: const LaunchConfig(scriptName: 'Tutorial', jvmArgs: '-Xmx384m'),
       );
       final expectedProfileDir = p.join('/profiles', 'bot-42');
@@ -49,24 +48,22 @@ void main() {
           args,
           contains(
               '--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
-      expect(args, contains('--proxy=socks5://user:pass@1.2.3.4:1080'));
       expect(args, contains('--safe-mode'));
     });
 
-    test('buildLaunchArgs omits --proxy when proxyUrl is null', () {
+    test('buildLaunchArgs never contains proxy credentials in argv', () {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
           characterId: 7,
-          proxyUrl: null,
           config: const LaunchConfig(scriptName: 'Test'));
-      expect(args.any((a) => a.startsWith('--proxy')), isFalse);
+      expect(args.any((a) => a.contains('--proxy')), isFalse);
+      expect(args.any((a) => a.contains('socks5://')), isFalse);
     });
 
     test('buildLaunchArgs uses default -Xmx512m when jvmArgs is null', () {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
           characterId: 1,
-          proxyUrl: null,
           config: const LaunchConfig(scriptName: 'Test'));
       expect(args[0], '-Xmx512m');
     });
@@ -75,7 +72,6 @@ void main() {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 1,
-        proxyUrl: null,
         config: const LaunchConfig(
             scriptName: 'Test', advancedFlags: '-fps 15 --low-detail'),
       );
@@ -90,7 +86,6 @@ void main() {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 1,
-        proxyUrl: null,
         config: const LaunchConfig(scriptName: 'Test', scriptParams: '1,2,3'),
       );
       expect(args, contains('--script-params=1,2,3'));
@@ -101,7 +96,6 @@ void main() {
       final engine = _makeEngine();
       final args = engine.buildLaunchArgs(
         characterId: 1,
-        proxyUrl: null,
         config: const LaunchConfig(scriptName: 'Test', scriptParams: ''),
       );
       expect(args.any((a) => a.startsWith('--script-params')), isFalse);
@@ -119,7 +113,6 @@ void main() {
       final engine = _makeEngine(profilesBasePath: '/profiles');
       final args = engine.buildLaunchArgs(
         characterId: 42,
-        proxyUrl: null,
         config: const LaunchConfig(scriptName: 'Test'),
       );
       expect(

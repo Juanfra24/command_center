@@ -79,7 +79,9 @@ def build_parser() -> argparse.ArgumentParser:
     session_p.add_argument("--debug", action="store_true")
 
     jagex_auth_p = subparsers.add_parser("jagex-auth", help="Acquire Jagex OAuth token and write credentials.properties")
-    jagex_auth_p.add_argument("--email", required=True, help="Jagex account email")
+    # Email is read from the CC_ACCOUNT_EMAIL env var, never as a CLI arg —
+    # /proc/<pid>/cmdline is readable by any local user and the email is a
+    # login identifier.
     jagex_auth_p.add_argument("--profile-dir", required=True, help="Path to write credentials.properties")
     jagex_auth_p.add_argument("--imap-host", help="IMAP server hostname")
     jagex_auth_p.add_argument("--debug", action="store_true")
@@ -129,9 +131,15 @@ async def run(args) -> AutomationResult:
     elif args.command == "jagex-auth":
         import os
         imap_user, imap_pass = _get_imap_creds(args)
+        email = os.environ.get("CC_ACCOUNT_EMAIL", "")
+        if not email:
+            return AutomationResult(
+                status=AutomationStatus.UNKNOWN_ERROR.value,
+                message="jagex-auth requires CC_ACCOUNT_EMAIL environment variable",
+            )
         from automation.commands.jagex_auth import jagex_auth
         return await jagex_auth(
-            email=args.email,
+            email=email,
             password=os.environ.get("CC_ACCOUNT_PASS", ""),
             profile_dir=args.profile_dir,
             imap_host=getattr(args, "imap_host", None),

@@ -15,6 +15,12 @@ class BotFarmSummaryBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // WatchdogService is registered in Phase 3 DI (after splash setup). Before
+    // then — or if bot engine setup failed — the service is absent and
+    // Get.find throws. Hide the bar in that state.
+    if (!Get.isRegistered<WatchdogService>()) {
+      return const SizedBox.shrink();
+    }
     final watchdog = Get.find<WatchdogService>();
 
     return Obx(() {
