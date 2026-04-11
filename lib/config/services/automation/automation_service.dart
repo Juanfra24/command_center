@@ -231,29 +231,39 @@ class AutomationService extends GetxService {
           if (result.isAccountCreated && result.data != null) {
             _log('Account email: ${result.data!['email'] ?? 'N/A'}');
             final accountId = await _persistAccount(result.data!, slot);
+            // Strict success rule: if the account cannot be persisted to
+            // the DB, the bot farm has no record of it — treat the entire
+            // operation as an error so the UI reflects the real state.
+            if (accountId == null) {
+              final errorResult = AutomationResult.error(
+                'Account created in browser but failed to persist to '
+                'database. The account may exist on Jagex but is not '
+                'tracked locally. Check logs for details.',
+              );
+              lastResult.value = errorResult;
+              return errorResult;
+            }
             // Acquire and store Jagex OAuth token immediately so first
             // launch uses HTTP refresh instead of slow browser auth.
-            if (accountId != null) {
+            try {
+              final tokenService = Get.find<JagexTokenService>();
+              final tempDir =
+                  Directory.systemTemp.createTempSync('jagex_auth_');
               try {
-                final tokenService = Get.find<JagexTokenService>();
-                final tempDir =
-                    Directory.systemTemp.createTempSync('jagex_auth_');
-                try {
-                  await tokenService.seedToken(
-                    accountId: accountId,
-                    email: result.data!['email'] as String? ?? '',
-                    password: result.data!['password'] as String? ?? '',
-                    profileDir: tempDir.path,
-                  );
-                  _log(
-                      'Jagex token acquired and stored for account $accountId');
-                } finally {
-                  tempDir.deleteSync(recursive: true);
-                }
-              } catch (e) {
+                await tokenService.seedToken(
+                  accountId: accountId,
+                  email: result.data!['email'] as String? ?? '',
+                  password: result.data!['password'] as String? ?? '',
+                  profileDir: tempDir.path,
+                );
                 _log(
-                    'Warning: Failed to acquire Jagex token: $e (will retry at first launch)');
+                    'Jagex token acquired and stored for account $accountId');
+              } finally {
+                tempDir.deleteSync(recursive: true);
               }
+            } catch (e) {
+              _log(
+                  'Warning: Failed to acquire Jagex token: $e (will retry at first launch)');
             }
           }
           return result;

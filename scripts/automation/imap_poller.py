@@ -62,18 +62,28 @@ def fetch_verification_code(
 
     try:
         while time.time() - start_time < timeout:
+            # Keep blocking IMAP calls bounded by the remaining deadline so a
+            # stuck fetch can't run tens of seconds past `timeout` and delay
+            # SIGTERM-triggered cancellation on the parent process.
+            remaining = max(1, int(timeout - (time.time() - start_time)))
+            socket_timeout = min(30, remaining)
             # Connect/reconnect only when needed
             if mail is None:
                 try:
                     mail = imaplib.IMAP4_SSL(imap_host, 993)
-                    mail.socket().settimeout(30)
+                    mail.socket().settimeout(socket_timeout)
                     mail.login(imap_user, imap_pass)
                     log_fn("[INFO] IMAP connected")
                 except Exception as e:
                     log_fn(f"[WARNING] IMAP connect error: {e}")
                     mail = None
-                    time.sleep(5)
+                    time.sleep(min(5, remaining))
                     continue
+            else:
+                try:
+                    mail.socket().settimeout(socket_timeout)
+                except Exception:
+                    pass
 
             try:
                 mail.select("INBOX")
@@ -133,14 +143,17 @@ def fetch_verification_code(
                 except Exception:
                     pass
                 mail = None
-                time.sleep(5)
+                time.sleep(min(5, max(0, int(timeout - (time.time() - start_time)))))
                 continue
 
+            remaining_after = int(timeout - (time.time() - start_time))
+            if remaining_after <= 0:
+                break
             log_fn(
                 f"[INFO] No code yet, retrying in 5s... "
                 f"({int(time.time() - start_time)}s elapsed)"
             )
-            time.sleep(5)
+            time.sleep(min(5, remaining_after))
 
     finally:
         if mail is not None:
