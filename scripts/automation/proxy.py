@@ -35,10 +35,9 @@ def clean_proxy(proxy: Optional[str]) -> Optional[str]:
 
 
 def validate_proxy_format(proxy: str) -> Optional[str]:
-    """Return error message if proxy format is invalid, None if OK."""
+    """Return error message if proxy format is invalid, None if OK.
+    Expects a cleaned proxy (no scheme) — see clean_proxy()."""
     if not proxy:
-        return None
-    if proxy.startswith(("socks4://", "socks5://")):
         return None
     if proxy.count("@") > 1:
         return f"Proxy contains multiple '@': {mask_proxy(proxy)}. URL-encode the password."

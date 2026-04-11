@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:command_center/config/services/automation/automation_result.dart';
-import 'package:command_center/config/services/automation/python_runner.dart';
 import 'package:command_center/core/helper/logger.dart';
 
 class ResultParser {
@@ -65,7 +64,7 @@ class ResultParser {
       if (stderr.contains('ModuleNotFoundError') ||
           stderr.contains('No module named')) {
         return AutomationResult.error(
-          'Python dependency error: ${PythonRunner.redact(stderr)}\n\n'
+          'Python dependency error. See log file for details.\n\n'
           'Please ensure Python dependencies are installed correctly. '
           'Try running: python -m pip install -r scripts/requirements.txt',
         );
@@ -82,15 +81,17 @@ class ResultParser {
       return result;
     }
 
-    // No JSON found — fall back to exit code + stderr
+    // No JSON found — fall back to exit code only. stderr is logged above
+    // but intentionally NOT included in the user-facing message since it may
+    // contain credentials from Python tracebacks even after redaction.
     if (exitCode != 0) {
       return AutomationResult.error(
-        'Script failed with exit code $exitCode:\n${PythonRunner.redact(stderr)}',
+        'Script failed with exit code $exitCode. See log file for details.',
       );
     }
 
     return AutomationResult.error(
-      'Could not parse script output: $stdout',
+      'Could not parse script output. See log file for details.',
     );
   }
 }

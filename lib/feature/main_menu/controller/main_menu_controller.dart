@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/proxy/controller/proxy_controller.dart';
@@ -26,6 +28,7 @@ class MainMenuController extends GetxController {
 
   // Workers for disposal
   final List<Worker> _workers = [];
+  Timer? _watchdogWiringTimer;
 
   @override
   void onInit() {
@@ -39,18 +42,9 @@ class MainMenuController extends GetxController {
     try {
       _scoringController = Get.find<ProxyScoringController>();
     } catch (_) {}
-    try {
-      _watchdogService = Get.find<WatchdogService>();
-    } catch (_) {}
+    _tryWireWatchdog();
 
     _refreshData();
-
-    // Re-compute when tracked clients change
-    if (_watchdogService != null) {
-      _workers.add(
-        ever(_watchdogService!.trackedClients, (_) => _refreshBotTiles()),
-      );
-    }
     if (_statusController != null) {
       _workers.add(
         ever(_statusController!.accountList, (_) => _refreshBotTiles()),
@@ -69,10 +63,32 @@ class MainMenuController extends GetxController {
 
   @override
   void onClose() {
+    _watchdogWiringTimer?.cancel();
     for (final w in _workers) {
       w.dispose();
     }
     super.onClose();
+  }
+
+  /// Attempt to locate WatchdogService and wire up its worker.
+  /// WatchdogService is registered in Phase 3 DI (after splash setup)
+  /// which may be later than MainMenuController's onInit. Retry until found.
+  void _tryWireWatchdog() {
+    if (_watchdogService != null) return;
+    if (Get.isRegistered<WatchdogService>()) {
+      _watchdogService = Get.find<WatchdogService>();
+      _workers.add(
+        ever(_watchdogService!.trackedClients, (_) => _refreshBotTiles()),
+      );
+      _refreshBotTiles();
+      _watchdogWiringTimer?.cancel();
+      _watchdogWiringTimer = null;
+      return;
+    }
+    _watchdogWiringTimer ??= Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _tryWireWatchdog(),
+    );
   }
 
   void _refreshData() {

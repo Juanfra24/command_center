@@ -28,21 +28,26 @@ class NotificationController extends GetxController {
   }
 
   Future<void> loadNotifications() async {
+    if (isClosed) return;
     isLoading.value = true;
     try {
-      notifications.value = await _notificationService.getUnreadNotifications();
+      final result = await _notificationService.getUnreadNotifications();
+      if (isClosed) return;
+      notifications.value = result;
     } finally {
-      isLoading.value = false;
+      if (!isClosed) isLoading.value = false;
     }
   }
 
   Future<void> markAsRead(int id) async {
     await _notificationService.markAsRead(id);
+    if (isClosed) return;
     notifications.removeWhere((n) => n.id == id);
   }
 
   Future<void> markAllAsRead() async {
     await _notificationService.markAllAsRead();
+    if (isClosed) return;
     notifications.clear();
   }
 }
