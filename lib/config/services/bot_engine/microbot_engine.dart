@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
@@ -19,6 +20,7 @@ class MicrobotEngine implements BotEngine {
 
   final Set<int> _activePids = {};
   final Map<int, int> _pidToCharacterId = {};
+  final Map<int, List<StreamSubscription<String>>> _pidSubscriptions = {};
   bool _outdatedSignaled = false;
 
   MicrobotEngine({
@@ -97,13 +99,25 @@ class MicrobotEngine implements BotEngine {
       await staleFile.delete();
     }
 
-    final process = await Process.start(javaPath, args);
+    final Process process;
+    try {
+      process = await Process.start(javaPath, args);
+    } catch (e, st) {
+      logger.e('Failed to start Microbot process for $characterName: $e',
+          error: e, stackTrace: st);
+      rethrow;
+    }
     final pid = process.pid;
+
+    // Close stdin immediately — Microbot does not read from it, and leaving
+    // it open can cause the child to block on stdin reads.
+    unawaited(process.stdin.close().catchError((_) {}));
 
     _activePids.add(pid);
     _pidToCharacterId[pid] = characterId;
 
-    process.stdout.transform(const SystemEncoding().decoder).listen((data) {
+    final stdoutSub =
+        process.stdout.transform(const SystemEncoding().decoder).listen((data) {
       onLog('[Microbot:$characterName] ${_redactCredentials(data)}');
       if (!_outdatedSignaled &&
           data.contains('error_game_js5connect_outofdate')) {
@@ -111,14 +125,22 @@ class MicrobotEngine implements BotEngine {
         onOutdated?.call();
       }
     });
-    process.stderr.transform(const SystemEncoding().decoder).listen((data) {
+    final stderrSub =
+        process.stderr.transform(const SystemEncoding().decoder).listen((data) {
       onLog('[Microbot:$characterName:ERR] ${_redactCredentials(data)}');
     });
+    _pidSubscriptions[pid] = [stdoutSub, stderrSub];
 
-    process.exitCode.then((_) {
+    unawaited(process.exitCode.then((_) {
       _activePids.remove(pid);
       _pidToCharacterId.remove(pid);
-    });
+      final subs = _pidSubscriptions.remove(pid);
+      if (subs != null) {
+        for (final sub in subs) {
+          sub.cancel().catchError((_) {});
+        }
+      }
+    }));
     int? statusPort;
     for (int i = 0; i < 20; i++) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -147,6 +169,12 @@ class MicrobotEngine implements BotEngine {
     await _nativeCommands.killProcess(pid);
     _activePids.remove(pid);
     _pidToCharacterId.remove(pid);
+    final subs = _pidSubscriptions.remove(pid);
+    if (subs != null) {
+      for (final sub in subs) {
+        await sub.cancel().catchError((_) {});
+      }
+    }
     if (characterId != null) {
       // Give the JVM a moment to release file handles before deleting the
       // profile directory — on Windows in particular, deleting while the

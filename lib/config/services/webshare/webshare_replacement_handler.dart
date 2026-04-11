@@ -71,7 +71,24 @@ class WebshareReplacementHandler {
           return Result.failure('Replacement failed: $error');
         }
         // States: validating, validated, processing — keep polling
+      } on WebshareApiException catch (e) {
+        // Fail fast on permanent errors (auth/not-found) instead of
+        // polling for the full 60s timeout window.
+        if (e.statusCode == 401 || e.statusCode == 403) {
+          logger.e('Replacement poll auth failure: HTTP ${e.statusCode}');
+          return Result.failure(
+              'Replacement poll failed: authentication rejected (HTTP ${e.statusCode})',
+              e);
+        }
+        if (e.statusCode == 404) {
+          logger.e('Replacement $replacementId not found (HTTP 404)');
+          return Result.failure(
+              'Replacement not found — it may have been cancelled', e);
+        }
+        // Transient (5xx, network blips surfaced as API exception) — keep polling.
+        logger.w('Transient polling error HTTP ${e.statusCode}: ${e.responseBody}');
       } catch (e) {
+        // Unknown/network — keep polling but log.
         logger.w('Error polling replacement: $e');
       }
     }

@@ -155,6 +155,7 @@ async def create_account(
     log_fn(f"[INFO] DOB: {dob['day']}/{dob['month']}/{dob['year']}")
 
     pw = browser = None
+    context = None
     try:
         pw, browser, context, page = await launch_browser(
             proxy_url=cleaned_proxy,
@@ -583,4 +584,4 @@ async def create_account(
         )
     finally:
         if browser and pw:
-            await close_browser(pw, browser)
+            await close_browser(pw, browser, context)

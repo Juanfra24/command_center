@@ -31,7 +31,7 @@ class AutomationService extends GetxService {
 
   @override
   void onClose() {
-    _runner.cleanupDetachedSessions();
+    unawaited(_runner.cleanupDetachedSessions());
     super.onClose();
   }
 
@@ -229,6 +229,22 @@ class AutomationService extends GetxService {
                 _buildSecureEnv(proxy, imapUser: imapUser, imapPass: imapPass),
           );
           if (result.isAccountCreated && result.data != null) {
+            // Strict success rule (per product): only treat as success when
+            // Python confirmed the account + character were fully created.
+            // Anything else is a partial failure the user needs to see.
+            final confirmed = result.data!['confirmed'] == true;
+            final accountName = result.data!['accountName'] as String? ?? '';
+            if (!confirmed || accountName.isEmpty) {
+              _log('Account creation reported but not confirmed — '
+                  'rejecting as error (confirmed=$confirmed, '
+                  'accountName="$accountName")');
+              final errorResult = AutomationResult.error(
+                'Account creation did not complete: Jagex never confirmed '
+                'the account + character. Check browser logs.',
+              );
+              lastResult.value = errorResult;
+              return errorResult;
+            }
             _log('Account email: ${result.data!['email'] ?? 'N/A'}');
             final accountId = await _persistAccount(result.data!, slot);
             // Strict success rule: if the account cannot be persisted to

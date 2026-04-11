@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show HttpClient, HttpClientResponse;
+import 'dart:io' show HttpClient, HttpClientRequest, HttpClientResponse;
 
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/bot_status.dart';
@@ -222,9 +222,10 @@ class WatchdogService extends GetxService {
           }
           // Poll Status API if port is known
           if (client.statusPort != null) {
+            HttpClientRequest? request;
             HttpClientResponse? statusResponse;
             try {
-              final request = await _statusHttpClient
+              request = await _statusHttpClient
                   .getUrl(
                       Uri.parse('http://127.0.0.1:${client.statusPort}/status'))
                   .timeout(const Duration(seconds: 2));
@@ -246,7 +247,13 @@ class WatchdogService extends GetxService {
                 client.lastStatus = null;
               }
             } catch (_) {
-              // Drain response body to release connection back to pool
+              // Abort the request so the socket does not leak when
+              // getUrl/close timeout before the response completes.
+              try {
+                request?.abort();
+              } catch (_) {}
+              // Drain response body if we got one, to release the
+              // connection back to the pool.
               try {
                 await statusResponse?.drain<void>();
               } catch (_) {}

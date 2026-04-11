@@ -88,6 +88,10 @@ class PythonRunner {
     _currentProcess = await Process.start(python, ['-u', ...args],
         workingDirectory: workingDirectory, environment: environment);
 
+    // We never write to stdin — close it so the script can't block
+    // waiting on input() and leave the process hung past its timeout.
+    unawaited(_currentProcess!.stdin.close().catchError((_) {}));
+
     // Listen to stdout/stderr and forward to logs in real-time.
     // Suppress all lines after the === RESULT === marker (contains credentials in JSON).
     var seenResultMarker = false;
@@ -159,6 +163,10 @@ class PythonRunner {
     Map<String, String>? environment,
   }) async {
     final python = await PythonResolver.executable;
+    // ProcessStartMode.detachedWithStdio gives us exitCode, detached gives
+    // nothing. We use detached for true orphaning, and accept we can't watch
+    // for exit — but we can at least probe liveness on cleanup (see
+    // cleanupDetachedSessions) so we don't SIGTERM a recycled PID.
     final process = await Process.start(
       python,
       ['-u', ...args],
@@ -191,9 +199,18 @@ class PythonRunner {
 
   /// Clean up any detached session processes.
   /// Call this on app close to avoid orphaned browser processes.
-  void cleanupDetachedSessions() {
+  Future<void> cleanupDetachedSessions() async {
     for (final pid in _detachedSessionPids) {
       try {
+        // On Linux, probe with `kill -0` before sending SIGTERM so we don't
+        // signal a recycled PID belonging to an unrelated process. Detached
+        // browsers outlive the app, so the delay between launch and cleanup
+        // is large enough for the kernel to reuse the PID once the browser
+        // has exited.
+        if (Platform.isLinux) {
+          final probe = await Process.run('kill', ['-0', '$pid']);
+          if (probe.exitCode != 0) continue;
+        }
         Process.killPid(pid, ProcessSignal.sigterm);
       } catch (_) {
         // Process may have already exited

@@ -98,6 +98,7 @@ async def jagex_auth(
     """
     pw = None
     browser = None
+    _context = None
     captured_tokens: dict = {}
 
     try:
@@ -219,4 +220,4 @@ async def jagex_auth(
         )
     finally:
         if browser and pw:
-            await close_browser(pw, browser)
+            await close_browser(pw, browser, _context)

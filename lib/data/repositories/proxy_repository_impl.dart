@@ -29,8 +29,10 @@ class ProxyRepositoryImpl implements ProxyRepository {
 
   @override
   Future<ProxySlotEntity?> getSlotById(int id) async {
+    // Exclude soft-deleted rows so callers don't unknowingly act on a
+    // slot that has been logically removed.
     final query = _db.select(_db.proxySlotsTable)
-      ..where((tbl) => tbl.id.equals(id));
+      ..where((tbl) => tbl.id.equals(id) & tbl.isDeleted.equals(false));
     final result = await query.getSingleOrNull();
     return result != null ? _mapProxySlotRow(result) : null;
   }
@@ -48,8 +50,11 @@ class ProxyRepositoryImpl implements ProxyRepository {
 
   @override
   Future<ProxySlotEntity?> getSlotByNumber(int slotNumber) async {
+    // Exclude soft-deleted rows so callers don't unknowingly act on a
+    // slot that has been logically removed.
     final query = _db.select(_db.proxySlotsTable)
-      ..where((tbl) => tbl.slotNumber.equals(slotNumber));
+      ..where(
+          (tbl) => tbl.slotNumber.equals(slotNumber) & tbl.isDeleted.equals(false));
     final result = await query.getSingleOrNull();
     return result != null ? _mapProxySlotRow(result) : null;
   }

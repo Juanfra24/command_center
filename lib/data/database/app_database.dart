@@ -50,8 +50,16 @@ class AppDatabase extends _$AppDatabase {
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
-          await _addColumnIfMissing('proxy_slots_table', 'is_deleted');
-          await _addColumnIfMissing('proxy_slots_table', 'deleted_at');
+          await _addColumnIfMissing(
+            'proxy_slots_table',
+            'is_deleted',
+            'INTEGER NOT NULL DEFAULT 0',
+          );
+          await _addColumnIfMissing(
+            'proxy_slots_table',
+            'deleted_at',
+            'INTEGER NULL',
+          );
         }
         if (from < 3) {
           // Recreate characters_table with ON DELETE CASCADE on accountId.
@@ -99,21 +107,38 @@ class AppDatabase extends _$AppDatabase {
           }
         }
         if (from < 5) {
-          // Add new IPQS columns to proxy_ip_addresses (idempotent)
-          await _addColumnIfMissing('proxy_ip_addresses_table', 'is_crawler');
+          // Add new IPQS columns to proxy_ip_addresses (idempotent).
+          // Types must match the Drift schema exactly — hardcoding TEXT for
+          // boolean/integer columns causes silent data corruption on upgraders.
+          await _addColumnIfMissing(
+            'proxy_ip_addresses_table',
+            'is_crawler',
+            'INTEGER NULL',
+          );
           await _addColumnIfMissing(
             'proxy_ip_addresses_table',
             'connection_type',
+            'TEXT NULL',
           );
-          await _addColumnIfMissing('proxy_ip_addresses_table', 'isp');
+          await _addColumnIfMissing(
+            'proxy_ip_addresses_table',
+            'isp',
+            'TEXT NULL',
+          );
           await _addColumnIfMissing(
             'proxy_ip_addresses_table',
             'organization',
+            'TEXT NULL',
           );
-          await _addColumnIfMissing('proxy_ip_addresses_table', 'region');
+          await _addColumnIfMissing(
+            'proxy_ip_addresses_table',
+            'region',
+            'TEXT NULL',
+          );
           await _addColumnIfMissing(
             'proxy_ip_addresses_table',
             'recent_abuse',
+            'INTEGER NULL',
           );
           // Populate recentAbuse from abuseConfidence (safe to re-run)
           await customStatement(
@@ -124,10 +149,18 @@ class AppDatabase extends _$AppDatabase {
             'WHERE recent_abuse IS NULL',
           );
           // Add defaultScriptName to characters
-          await _addColumnIfMissing('characters_table', 'default_script_name');
+          await _addColumnIfMissing(
+            'characters_table',
+            'default_script_name',
+            'TEXT NULL',
+          );
         }
         if (from < 6) {
-          await _addColumnIfMissing('proxy_slots_table', 'socks_port');
+          await _addColumnIfMissing(
+            'proxy_slots_table',
+            'socks_port',
+            'INTEGER NULL',
+          );
         }
         if (from < 7) {
           await customStatement(
@@ -144,9 +177,21 @@ class AppDatabase extends _$AppDatabase {
           );
         }
         if (from < 8) {
-          await _addColumnIfMissing('accounts_table', 'jagex_refresh_token');
-          await _addColumnIfMissing('accounts_table', 'jagex_character_id');
-          await _addColumnIfMissing('accounts_table', 'jagex_display_name');
+          await _addColumnIfMissing(
+            'accounts_table',
+            'jagex_refresh_token',
+            'TEXT NULL',
+          );
+          await _addColumnIfMissing(
+            'accounts_table',
+            'jagex_character_id',
+            'TEXT NULL',
+          );
+          await _addColumnIfMissing(
+            'accounts_table',
+            'jagex_display_name',
+            'TEXT NULL',
+          );
         }
       },
       beforeOpen: (details) async {
@@ -158,12 +203,20 @@ class AppDatabase extends _$AppDatabase {
 
   /// Idempotent column addition — skips if column already exists.
   /// Prevents crashes when a previous migration was interrupted.
-  Future<void> _addColumnIfMissing(String table, String column) async {
+  /// [typeAndConstraints] must be a valid SQLite column type + constraints,
+  /// e.g. `'INTEGER NOT NULL DEFAULT 0'` or `'TEXT NULL'`. Must match the
+  /// Drift schema for the column exactly, otherwise upgraders will end up
+  /// with a type mismatch against the codegen-generated rowclass.
+  Future<void> _addColumnIfMissing(
+    String table,
+    String column,
+    String typeAndConstraints,
+  ) async {
     final cols = await customSelect('PRAGMA table_info($table)').get();
     final exists = cols.any((row) => row.data['name'] == column);
     if (!exists) {
       await customStatement(
-        'ALTER TABLE "$table" ADD COLUMN "$column" TEXT NULL',
+        'ALTER TABLE "$table" ADD COLUMN "$column" $typeAndConstraints',
       );
     }
   }

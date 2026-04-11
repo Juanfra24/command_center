@@ -26,6 +26,8 @@ async def launch_browser(
     Caller is responsible for closing: await browser.close(); await pw.stop()
     """
     pw = await async_playwright().start()
+    browser: Optional[Browser] = None
+    context: Optional[BrowserContext] = None
 
     try:
         launch_args = [
@@ -38,7 +40,6 @@ async def launch_browser(
 
         # Try system Chrome first — much better Cloudflare bypass rate.
         # Falls back to bundled Chromium if Chrome is not installed.
-        browser = None
         for channel in ("chrome", None):
             try:
                 browser = await pw.chromium.launch(
@@ -66,12 +67,36 @@ async def launch_browser(
         page = await context.new_page()
         return pw, browser, context, page
     except Exception:
-        await pw.stop()
+        # Tear down everything that was partially initialized so a failure
+        # path doesn't leak a BrowserContext or Browser process.
+        if context is not None:
+            try:
+                await context.close()
+            except Exception:
+                pass
+        if browser is not None:
+            try:
+                await browser.close()
+            except Exception:
+                pass
+        try:
+            await pw.stop()
+        except Exception:
+            pass
         raise
 
 
-async def close_browser(pw: Playwright, browser: Browser):
-    """Cleanly shut down browser and playwright."""
+async def close_browser(
+    pw: Playwright,
+    browser: Browser,
+    context: Optional[BrowserContext] = None,
+):
+    """Cleanly shut down browser context, browser, and playwright."""
+    if context is not None:
+        try:
+            await context.close()
+        except Exception:
+            pass
     try:
         await browser.close()
     except Exception:
