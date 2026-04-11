@@ -31,7 +31,7 @@ class AutomationService extends GetxService {
 
   @override
   void onClose() {
-    _runner.cleanupDetachedSessions();
+    unawaited(_runner.cleanupDetachedSessions());
     super.onClose();
   }
 
