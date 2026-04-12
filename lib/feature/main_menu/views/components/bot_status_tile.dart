@@ -12,29 +12,38 @@ class BotStatusTile extends StatelessWidget {
     final theme = FluentTheme.of(context);
     final borderColor = _statusColor(context);
 
-    Widget card = Container(
-      width: 200,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border(
-          left: BorderSide(color: borderColor, width: 4),
-          top: BorderSide(color: theme.resources.controlStrokeColorDefault),
-          right: BorderSide(color: theme.resources.controlStrokeColorDefault),
-          bottom: BorderSide(color: theme.resources.controlStrokeColorDefault),
+    Widget card = ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 200,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          border: Border.all(color: theme.resources.controlStrokeColorDefault),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildHeader(theme),
-          const SizedBox(height: 6),
-          _buildProxyRow(theme),
-          const SizedBox(height: 4),
-          _buildFooter(theme, borderColor),
-        ],
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: borderColor),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(theme),
+                      const SizedBox(height: 6),
+                      _buildProxyRow(theme),
+                      const SizedBox(height: 4),
+                      _buildFooter(theme, borderColor),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
 

@@ -6,7 +6,6 @@ import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/bot_engine/bot_status.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
-import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_handlers.dart';
 import 'package:command_center/core/helper/logger.dart';
@@ -38,7 +37,6 @@ class WatchdogService extends GetxService {
     required NativeCommandsService nativeCommandsService,
     required BotEngine botEngine,
     required NotificationService notificationService,
-    required ProxyAutoRotationService autoRotationService,
     required AccountRepository accountRepository,
     required ProxyRepository proxyRepository,
   })  : _nativeCommandsService = nativeCommandsService,
@@ -47,7 +45,6 @@ class WatchdogService extends GetxService {
       botEngine: botEngine,
       nativeCommandsService: nativeCommandsService,
       notificationService: notificationService,
-      autoRotationService: autoRotationService,
       accountRepository: accountRepository,
       proxyRepository: proxyRepository,
     );

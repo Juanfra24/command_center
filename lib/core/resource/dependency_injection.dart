@@ -292,7 +292,6 @@ class AppBindings extends Bindings {
         nativeCommandsService: Get.find<NativeCommandsService>(),
         botEngine: Get.find<BotEngine>(),
         notificationService: Get.find<NotificationService>(),
-        autoRotationService: Get.find<ProxyAutoRotationService>(),
         accountRepository: databaseService.accountRepository,
         proxyRepository: databaseService.proxyRepository,
       ),

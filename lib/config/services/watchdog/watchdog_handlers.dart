@@ -1,7 +1,6 @@
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
-import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
@@ -20,7 +19,6 @@ class WatchdogHandlers {
   final BotEngine _botEngine;
   final NativeCommandsService _nativeCommandsService;
   final NotificationService _notificationService;
-  final ProxyAutoRotationService _autoRotationService;
   final AccountRepository _accountRepository;
   final ProxyRepository _proxyRepository;
 
@@ -28,13 +26,11 @@ class WatchdogHandlers {
     required BotEngine botEngine,
     required NativeCommandsService nativeCommandsService,
     required NotificationService notificationService,
-    required ProxyAutoRotationService autoRotationService,
     required AccountRepository accountRepository,
     required ProxyRepository proxyRepository,
   })  : _botEngine = botEngine,
         _nativeCommandsService = nativeCommandsService,
         _notificationService = notificationService,
-        _autoRotationService = autoRotationService,
         _accountRepository = accountRepository,
         _proxyRepository = proxyRepository;
 
@@ -52,9 +48,16 @@ class WatchdogHandlers {
       client.consecutiveQuickDeaths++;
       if (client.consecutiveQuickDeaths >=
           WatchdogService.banEscalationThreshold) {
-        client.status = ClientStatus.banned;
-        logger.e('Ban detected for ${client.characterName} '
-            '(${client.consecutiveQuickDeaths} consecutive quick deaths)');
+        client.status = ClientStatus.stopped;
+        logger.e('${client.characterName} stopped after '
+            '${client.consecutiveQuickDeaths} consecutive quick deaths');
+        _notificationService.createNotification(
+          type: NotificationType.maxRetriesReached,
+          severity: NotificationSeverity.error,
+          title: 'Client Stopped',
+          message: '${client.characterName} stopped after '
+              '${client.consecutiveQuickDeaths} consecutive quick deaths.',
+        );
       } else {
         client.status = ClientStatus.failed;
         logger.w(
@@ -222,8 +225,8 @@ class WatchdogHandlers {
           // running before the app restart, so the first post-recapture
           // death must NOT be classified as a quick death (which would
           // falsely start the ban escalation counter).
-          launchedAt: DateTime.now()
-              .subtract(WatchdogService.quickDeathThreshold * 2),
+          launchedAt:
+              DateTime.now().subtract(WatchdogService.quickDeathThreshold * 2),
         );
         recapturedCharacterIds.add(characterId);
         _botEngine.registerRecapturedPid(
@@ -260,20 +263,8 @@ class WatchdogHandlers {
         type: NotificationType.banDetected,
         severity: NotificationSeverity.error,
         title: 'Ban Detected',
-        message: '${client.characterName} banned after '
-            '${client.consecutiveQuickDeaths} consecutive quick deaths.',
+        message: '${client.characterName} has been marked as banned.',
       );
-
-      if (client.proxySlotId != null) {
-        final rotated =
-            await _autoRotationService.rotateSlot(client.proxySlotId!);
-        if (rotated) {
-          final newProxyUrl = await _buildProxyUrl(client.proxySlotId!);
-          if (newProxyUrl != null) {
-            client.proxyUrl = newProxyUrl;
-          }
-        }
-      }
     } catch (e) {
       // Don't fall through to `failed` — the restart loop would pick it up
       // and re-ban immediately, creating an infinite ban-restart cycle.
