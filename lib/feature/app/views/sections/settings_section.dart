@@ -202,16 +202,16 @@ class SettingsSection extends StatelessWidget {
     if (ipqs == null) {
       return IntegrationTile(
         icon: FluentIcons.shield,
-        title: 'IPQualityScore',
-        description: 'IP scoring and fraud detection service',
+        title: 'ProxyCheck',
+        description: 'IP scoring and proxy detection service',
         isConfigured: false,
         onConfigure: () => IpqsConfigDialog.show(context),
       );
     }
     return Obx(() => IntegrationTile(
           icon: FluentIcons.shield,
-          title: 'IPQualityScore',
-          description: 'IP scoring and fraud detection service',
+          title: 'ProxyCheck',
+          description: 'IP scoring and proxy detection service',
           isConfigured: ipqs.isConfigured.value,
           onConfigure: () => IpqsConfigDialog.show(context),
         ));

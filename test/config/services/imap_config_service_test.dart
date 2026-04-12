@@ -66,11 +66,11 @@ void main() {
 
     test('init seeds default host and sets isConfigured false', () {
       expect(service.isConfigured.value, isFalse);
-      expect(service.cachedHost, 'mail.privateemail.com');
+      expect(service.cachedHost, 'imap.gmail.com');
     });
 
     test('getHost returns seeded default', () async {
-      expect(await service.getHost(), 'mail.privateemail.com');
+      expect(await service.getHost(), 'imap.gmail.com');
     });
 
     test('getUser returns null when not configured', () async {
@@ -107,10 +107,10 @@ void main() {
 
       expect(result, isA<Success>());
       expect(service.isConfigured.value, isFalse);
-      expect(service.cachedHost, 'mail.privateemail.com');
+      expect(service.cachedHost, 'imap.gmail.com');
       expect(await service.getUser(), isNull);
       expect(await service.getPass(), isNull);
-      expect(await service.getHost(), 'mail.privateemail.com');
+      expect(await service.getHost(), 'imap.gmail.com');
     });
 
     test('isConfigured persists across re-init', () async {

@@ -1,0 +1,642 @@
+- generic [ref=e2]:
+  - region
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e9]:
+        - button "Toggle navigation" [ref=e11] [cursor=pointer]
+        - link "Homepage" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+        - generic [ref=e20]:
+          - link "Sign in" [ref=e21] [cursor=pointer]:
+            - /url: /login?return_to=https%3A%2F%2Fgithub.com%2Frunelite%2Frunelite%2Fwiki%2F
+          - button "Appearance settings" [ref=e24] [cursor=pointer]:
+            - img
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e32]:
+          - img [ref=e33]
+          - link "runelite" [ref=e36] [cursor=pointer]:
+            - /url: /runelite
+          - generic [ref=e37]: /
+          - strong [ref=e38]:
+            - link "runelite" [ref=e39] [cursor=pointer]:
+              - /url: /runelite/runelite
+          - generic [ref=e40]: Public
+        - generic [ref=e41]:
+          - list:
+            - listitem
+            - listitem [ref=e42]:
+              - link "You must be signed in to change notification settings" [ref=e43] [cursor=pointer]:
+                - /url: /login?return_to=%2Frunelite%2Frunelite
+                - img [ref=e44]
+                - text: Notifications
+            - listitem [ref=e46]:
+              - link "Fork 5.7k" [ref=e47] [cursor=pointer]:
+                - /url: /login?return_to=%2Frunelite%2Frunelite
+                - img [ref=e48]
+                - text: Fork
+                - generic "5,683" [ref=e50]: 5.7k
+            - listitem [ref=e51]:
+              - link "You must be signed in to star a repository" [ref=e53] [cursor=pointer]:
+                - /url: /login?return_to=%2Frunelite%2Frunelite
+                - img [ref=e54]
+                - text: Star
+                - generic "5340 users starred this repository" [ref=e56]: 5.3k
+      - navigation "Repository" [ref=e57]:
+        - list [ref=e58]:
+          - listitem [ref=e59]:
+            - link "Code" [ref=e60] [cursor=pointer]:
+              - /url: /runelite/runelite
+              - img [ref=e61]
+              - generic [ref=e63]: Code
+          - listitem [ref=e64]:
+            - link "Issues 1.6k" [ref=e65] [cursor=pointer]:
+              - /url: /runelite/runelite/issues
+              - img [ref=e66]
+              - generic [ref=e69]: Issues
+              - generic "1,608" [ref=e70]: 1.6k
+          - listitem [ref=e71]:
+            - link "Pull requests 731" [ref=e72] [cursor=pointer]:
+              - /url: /runelite/runelite/pulls
+              - img [ref=e73]
+              - generic [ref=e75]: Pull requests
+              - generic "731" [ref=e76]
+          - listitem [ref=e77]:
+            - link "Discussions" [ref=e78] [cursor=pointer]:
+              - /url: /runelite/runelite/discussions
+              - img [ref=e79]
+              - generic [ref=e81]: Discussions
+          - listitem [ref=e82]:
+            - link "Actions" [ref=e83] [cursor=pointer]:
+              - /url: /runelite/runelite/actions
+              - img [ref=e84]
+              - generic [ref=e86]: Actions
+          - listitem [ref=e87]:
+            - link "Wiki" [ref=e88] [cursor=pointer]:
+              - /url: /runelite/runelite/wiki
+              - img [ref=e89]
+              - generic [ref=e91]: Wiki
+          - listitem [ref=e92]
+          - listitem [ref=e93]
+        - button "Additional navigation options" [ref=e97] [cursor=pointer]:
+          - img
+    - generic [ref=e100]:
+      - heading "Home" [level=1] [ref=e102]
+      - generic [ref=e103]:
+        - text: YvesW edited this page Sep 21, 2024on Sep 21, 2024 ·
+        - link "20 revisions" [ref=e104] [cursor=pointer]:
+          - /url: /runelite/runelite/wiki/Home/_history
+      - generic [ref=e106]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - paragraph [ref=e110]
+            - generic [ref=e111]:
+              - heading "Welcome to the RuneLite wiki!" [level=2] [ref=e112]:
+                - text: Welcome to the
+                - link "RuneLite" [ref=e113] [cursor=pointer]:
+                  - /url: http://www.runelite.net
+                - text: wiki!
+              - 'link "Permalink: Welcome to the RuneLite wiki!" [ref=e114] [cursor=pointer]':
+                - /url: "#welcome-to-the-runelite-wiki"
+                - img [ref=e115]
+            - paragraph [ref=e117]: This wiki is used to answer commonly-asked questions about the client. See the sidebar on the right side for links to plugin and guides. Developers scroll further down for documentation and resources.
+            - paragraph [ref=e118]:
+              - text: Feel free to ask any questions you may have on our
+              - link "Discord" [ref=e119] [cursor=pointer]:
+                - /url: https://runelite.net/discord
+              - text: where we are most of the time, alternatively join our IRC channel at
+              - 'link "irc.rizon.net #runelite" [ref=e120] [cursor=pointer]':
+                - /url: http://qchat.rizon.net/?channels=runelite&uio=d4
+              - text: .
+          - paragraph [ref=e124]:
+            - text: Please join our
+            - link "Discord" [ref=e125] [cursor=pointer]:
+              - /url: https://runelite.net/discord
+            - text: if you notice anything wrong or would like to discuss an addition to the wiki. Changes can be
+            - link "submitted to our wiki repository" [ref=e126] [cursor=pointer]:
+              - /url: https://github.com/runelite/wiki
+            - text: .
+        - generic [ref=e128]:
+          - navigation "Pages 153" [ref=e129]:
+            - heading "Toggle table of contents Pages 153" [level=2] [ref=e132] [cursor=pointer]:
+              - button "Toggle table of contents" [ref=e133]:
+                - img
+              - generic [ref=e134]:
+                - text: Pages
+                - generic "153" [ref=e135]
+          - generic [ref=e138]:
+            - heading "Table of Contents" [level=1] [ref=e140]
+            - paragraph [ref=e141]:
+              - strong [ref=e142]: User Guide
+            - list [ref=e143]:
+              - listitem [ref=e144]:
+                - link "FAQ" [ref=e145] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/FAQ
+              - listitem [ref=e146]:
+                - link "GPU FAQ" [ref=e147] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/GPU-FAQ
+              - listitem [ref=e148]:
+                - link "RuneLite Launcher Configuration" [ref=e149] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/RuneLite-Launcher-Configuration
+              - listitem [ref=e150]:
+                - link "Verifying Launcher Authenticity" [ref=e151] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Verifying-Launcher-Authenticity
+              - listitem [ref=e152]:
+                - link "Troubleshooting problems with the client" [ref=e153] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Troubleshooting-problems-with-the-client
+              - listitem [ref=e154]:
+                - link "Disable Hardware Acceleration" [ref=e155] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Disable-Hardware-Acceleration
+              - listitem [ref=e156]:
+                - link "Change DPI Scaling (Ubuntu 20 w/ Gnome)" [ref=e157] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Change-DPI-Scaling-%28Ubuntu-20-w--Gnome%29
+              - listitem [ref=e158]:
+                - link "Information about the Plugin Hub" [ref=e159] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Information-about-the-Plugin-Hub
+              - listitem [ref=e160]:
+                - link "General Features" [ref=e161] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/General-Features
+              - listitem [ref=e162]:
+                - strong [ref=e163]: Plugin Configuration
+                - list [ref=e164]:
+                  - listitem [ref=e165]:
+                    - link "Agility" [ref=e166] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Agility
+                  - listitem [ref=e167]:
+                    - link "Ammo" [ref=e168] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Ammo
+                  - listitem [ref=e169]:
+                    - link "Animation Smoothing" [ref=e170] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Animation-Smoothing
+                  - listitem [ref=e171]:
+                    - link "Anti Drag" [ref=e172] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Anti-Drag
+                  - listitem [ref=e173]:
+                    - link "Attack Styles" [ref=e174] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Attack-Styles
+                  - listitem [ref=e175]:
+                    - link "Bank" [ref=e176] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Bank
+                  - listitem [ref=e177]:
+                    - link "Bank Tags" [ref=e178] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Bank-Tags
+                  - listitem [ref=e179]:
+                    - link "Barbarian Assault" [ref=e180] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Barbarian-Assault
+                  - listitem [ref=e181]:
+                    - link "Barrows Brothers" [ref=e182] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Barrows-Brothers
+                  - listitem [ref=e183]:
+                    - link "Blast Furnace" [ref=e184] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Blast-Furnace
+                  - listitem [ref=e185]:
+                    - link "Blast Mine" [ref=e186] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Blast-Mine
+                  - listitem [ref=e187]:
+                    - link "Boosts Information" [ref=e188] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Boosts-Information
+                  - listitem [ref=e189]:
+                    - link "Boss Timers" [ref=e190] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Boss-Timers
+                  - listitem [ref=e191]:
+                    - link "Camera" [ref=e192] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Camera
+                  - listitem [ref=e193]:
+                    - link "Cannon" [ref=e194] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Cannon
+                  - listitem [ref=e195]:
+                    - link "Chambers of Xeric" [ref=e196] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chambers-of-Xeric
+                  - listitem [ref=e197]:
+                    - link "Chat Channels" [ref=e198] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-Channels
+                  - listitem [ref=e199]:
+                    - link "Chat Color" [ref=e200] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-Color
+                  - listitem [ref=e201]:
+                    - link "Chat Commands" [ref=e202] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-Commands
+                  - listitem [ref=e203]:
+                    - link "Chat Filter" [ref=e204] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-Filter
+                  - listitem [ref=e205]:
+                    - link "Chat History" [ref=e206] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-History
+                  - listitem [ref=e207]:
+                    - link "Chat Notifications" [ref=e208] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-Notifications
+                  - listitem [ref=e209]:
+                    - link "Chat Timestamps" [ref=e210] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Chat-Timestamps
+                  - listitem [ref=e211]:
+                    - link "Clue Scroll" [ref=e212] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Clue-Scroll
+                  - listitem [ref=e213]:
+                    - link "Combat Level" [ref=e214] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Combat-Level
+                  - listitem [ref=e215]:
+                    - link "Cooking" [ref=e216] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Cooking
+                  - listitem [ref=e217]:
+                    - link "Corporeal Beast" [ref=e218] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Corporeal-Beast
+                  - listitem [ref=e219]:
+                    - link "Custom Cursor" [ref=e220] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Custom-Cursor
+                  - listitem [ref=e221]:
+                    - link "Daily Task Indicator" [ref=e222] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Daily-Task-Indicator
+                  - listitem [ref=e223]:
+                    - link "Default World" [ref=e224] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Default-World
+                  - listitem [ref=e225]:
+                    - link "Diary Requirements" [ref=e226] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Diary-Requirements
+                  - listitem [ref=e227]:
+                    - link "Discord" [ref=e228] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Discord
+                  - listitem [ref=e229]:
+                    - link "DPS Counter" [ref=e230] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/DPS-Counter
+                  - listitem [ref=e231]:
+                    - link "Emojis" [ref=e232] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Emojis
+                  - listitem [ref=e233]:
+                    - link "Entity Hider" [ref=e234] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Entity-Hider
+                  - listitem [ref=e235]:
+                    - link "Examine" [ref=e236] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Examine
+                  - listitem [ref=e237]:
+                    - link "FPS Control" [ref=e238] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/FPS-Control
+                  - listitem [ref=e239]:
+                    - link "Fairy Rings" [ref=e240] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Fairy-Rings
+                  - listitem [ref=e241]:
+                    - link "Fishing" [ref=e242] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Fishing
+                  - listitem [ref=e243]:
+                    - link "Friend List" [ref=e244] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Friend-List
+                  - listitem [ref=e245]:
+                    - link "Friend Notes" [ref=e246] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Friend-Notes
+                  - listitem [ref=e247]:
+                    - link "GPU" [ref=e248] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/GPU
+                  - listitem [ref=e249]:
+                    - link "Grand Exchange" [ref=e250] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Grand-Exchange
+                  - listitem [ref=e251]:
+                    - link "Ground Items" [ref=e252] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Ground-Items
+                  - listitem [ref=e253]:
+                    - link "Ground Markers" [ref=e254] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Ground-Markers
+                  - listitem [ref=e255]:
+                    - link "Herbiboar" [ref=e256] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Herbiboar
+                  - listitem [ref=e257]:
+                    - link "HiScore" [ref=e258] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/HiScore
+                  - listitem [ref=e259]:
+                    - link "Hunter" [ref=e260] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Hunter
+                  - listitem [ref=e261]:
+                    - link "Idle Notifier" [ref=e262] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Idle-Notifier
+                  - listitem [ref=e263]:
+                    - link "Implings" [ref=e264] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Implings
+                  - listitem [ref=e265]:
+                    - link "Info Panel" [ref=e266] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Info-Panel
+                  - listitem [ref=e267]:
+                    - link "Instance Map" [ref=e268] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Instance-Map
+                  - listitem [ref=e269]:
+                    - link "Interface Styles" [ref=e270] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Interface-Styles
+                  - listitem [ref=e271]:
+                    - link "Inventory Grid" [ref=e272] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Inventory-Grid
+                  - listitem [ref=e273]:
+                    - link "Inventory Tags" [ref=e274] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Inventory-Tags
+                  - listitem [ref=e275]:
+                    - link "Inventory Viewer" [ref=e276] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Inventory-Viewer
+                  - listitem [ref=e277]:
+                    - link "Item Charges" [ref=e278] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Item-Charges
+                  - listitem [ref=e279]:
+                    - link "Item Identification" [ref=e280] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Item-Identification
+                  - listitem [ref=e281]:
+                    - link "Item Prices" [ref=e282] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Item-Prices
+                  - listitem [ref=e283]:
+                    - link "Item Stats" [ref=e284] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Item-Stats
+                  - listitem [ref=e285]:
+                    - link "Key Remapping" [ref=e286] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Key-Remapping
+                  - listitem [ref=e287]:
+                    - link "Kingdom of Miscellania" [ref=e288] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Kingdom-of-Miscellania
+                  - listitem [ref=e289]:
+                    - link "Kourend Library" [ref=e290] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Kourend-Library
+                  - listitem [ref=e291]:
+                    - link "Login Screen" [ref=e292] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Login-Screen
+                  - listitem [ref=e293]:
+                    - link "Loot Tracker" [ref=e294] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Loot-Tracker
+                  - listitem [ref=e295]:
+                    - link "Low Detail" [ref=e296] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Low-Detail
+                  - listitem [ref=e297]:
+                    - link "Mage Training Arena" [ref=e298] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Mage-Training-Arena
+                  - listitem [ref=e299]:
+                    - link "Menu Entry Swapper" [ref=e300] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Menu-Entry-Swapper
+                  - listitem [ref=e301]:
+                    - link "Metronome" [ref=e302] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Metronome
+                  - listitem [ref=e303]:
+                    - link "Minimap" [ref=e304] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Minimap
+                  - listitem [ref=e305]:
+                    - link "Mining" [ref=e306] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Mining
+                  - listitem [ref=e307]:
+                    - link "Motherlode Mine" [ref=e308] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Motherlode-Mine
+                  - listitem [ref=e309]:
+                    - link "Mouse Tooltips" [ref=e310] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Mouse-Tooltips
+                  - listitem [ref=e311]:
+                    - link "Music" [ref=e312] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Music
+                  - listitem [ref=e313]:
+                    - link "NPC Aggression Timer" [ref=e314] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/NPC-Aggression-Timer
+                  - listitem [ref=e315]:
+                    - link "NPC Indicators" [ref=e316] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/NPC-Indicators
+                  - listitem [ref=e317]:
+                    - link "Nightmare Zone" [ref=e318] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Nightmare-Zone
+                  - listitem [ref=e319]:
+                    - link "Notes" [ref=e320] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Notes
+                  - listitem [ref=e321]:
+                    - link "Object Markers" [ref=e322] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Object-Markers
+                  - listitem [ref=e323]:
+                    - link "Opponent Information" [ref=e324] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Opponent-Information
+                  - listitem [ref=e325]:
+                    - link "Party" [ref=e326] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Party
+                  - listitem [ref=e327]:
+                    - link "Pest Control" [ref=e328] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Pest-Control
+                  - listitem [ref=e329]:
+                    - link "Player Indicators" [ref=e330] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Player-Indicators
+                  - listitem [ref=e331]:
+                    - link "Player-owned House" [ref=e332] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Player-owned-House
+                  - listitem [ref=e333]:
+                    - link "Poison" [ref=e334] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Poison
+                  - listitem [ref=e335]:
+                    - link "Prayer" [ref=e336] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Prayer
+                  - listitem [ref=e337]:
+                    - link "Puzzle Solver" [ref=e338] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Puzzle-Solver
+                  - listitem [ref=e339]:
+                    - link "Pyramid Plunder" [ref=e340] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Pyramid-Plunder
+                  - listitem [ref=e341]:
+                    - link "Quest List" [ref=e342] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Quest-List
+                  - listitem [ref=e343]:
+                    - link "Random Events" [ref=e344] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Random-Events
+                  - listitem [ref=e345]:
+                    - link "Regeneration Meter" [ref=e346] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Regeneration-Meter
+                  - listitem [ref=e347]:
+                    - link "Report Button" [ref=e348] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Report-Button
+                  - listitem [ref=e349]:
+                    - link "Run Energy" [ref=e350] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Run-Energy
+                  - listitem [ref=e351]:
+                    - link "Rune Pouch" [ref=e352] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Rune-Pouch
+                  - listitem [ref=e353]:
+                    - link "RuneLite" [ref=e354] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/RuneLite
+                  - listitem [ref=e355]:
+                    - link "Runecraft" [ref=e356] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Runecraft
+                  - listitem [ref=e357]:
+                    - link "Screen Markers" [ref=e358] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Screen-Markers
+                  - listitem [ref=e359]:
+                    - link "Screenshot" [ref=e360] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Screenshot
+                  - listitem [ref=e361]:
+                    - link "Skill Calculator" [ref=e362] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Skill-Calculator
+                  - listitem [ref=e363]:
+                    - link "Skybox" [ref=e364] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Skybox
+                  - listitem [ref=e365]:
+                    - link "Slayer" [ref=e366] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Slayer
+                  - listitem [ref=e367]:
+                    - link "Smelting" [ref=e368] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Smelting
+                  - listitem [ref=e369]:
+                    - link "Special Attack Counter" [ref=e370] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Special-Attack-Counter
+                  - listitem [ref=e371]:
+                    - link "Spellbook" [ref=e372] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Spellbook
+                  - listitem [ref=e373]:
+                    - link "Status Bars" [ref=e374] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Status-Bars
+                  - listitem [ref=e375]:
+                    - link "Stretched Mode" [ref=e376] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Stretched-Mode
+                  - listitem [ref=e377]:
+                    - link "Team" [ref=e378] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Team
+                  - listitem [ref=e379]:
+                    - link "Tears Of Guthix" [ref=e380] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Tears-Of-Guthix
+                  - listitem [ref=e381]:
+                    - link "Tile Indicators" [ref=e382] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Tile-Indicators
+                  - listitem [ref=e383]:
+                    - link "Time Tracking" [ref=e384] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Time-Tracking
+                  - listitem [ref=e385]:
+                    - link "Timers & Buffs" [ref=e386] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Timers-%26-Buffs
+                  - listitem [ref=e387]:
+                    - link "Tithe Farm" [ref=e388] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Tithe-Farm
+                  - listitem [ref=e389]:
+                    - link "Twitch" [ref=e390] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Twitch
+                  - listitem [ref=e391]:
+                    - link "Virtual Levels" [ref=e392] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Virtual-Levels
+                  - listitem [ref=e393]:
+                    - link "Wiki" [ref=e394] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Wiki
+                  - listitem [ref=e395]:
+                    - link "Wintertodt" [ref=e396] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Wintertodt
+                  - listitem [ref=e397]:
+                    - link "Woodcutting" [ref=e398] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Woodcutting
+                  - listitem [ref=e399]:
+                    - link "World Hopper" [ref=e400] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/World-Hopper
+                  - listitem [ref=e401]:
+                    - link "World Map" [ref=e402] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/World-Map
+                  - listitem [ref=e403]:
+                    - link "XP Drop" [ref=e404] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/XP-Drop
+                  - listitem [ref=e405]:
+                    - link "XP Globes" [ref=e406] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/XP-Globes
+                  - listitem [ref=e407]:
+                    - link "XP Tracker" [ref=e408] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/XP-Tracker
+                  - listitem [ref=e409]:
+                    - link "XP Updater" [ref=e410] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/XP-Updater
+                  - listitem [ref=e411]:
+                    - link "Zalcano" [ref=e412] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Zalcano
+            - paragraph [ref=e413]:
+              - strong [ref=e414]: Developer's Guide
+            - list [ref=e415]:
+              - listitem [ref=e416]:
+                - strong [ref=e417]: Plugin Development
+                - list [ref=e418]:
+                  - listitem [ref=e419]:
+                    - link "Developer Guide" [ref=e420] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Developer-Guide
+                  - listitem [ref=e421]:
+                    - link "Creating Plugin Hub Plugins" [ref=e422] [cursor=pointer]:
+                      - /url: https://github.com/runelite/plugin-hub/blob/master/README.md
+                  - listitem [ref=e423]:
+                    - link "Creating plugin config panels" [ref=e424] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Creating-plugin-config-panels
+                  - listitem [ref=e425]:
+                    - link "Plugin Development Logging" [ref=e426] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Plugin-Development-Logging
+                  - listitem [ref=e427]:
+                    - link "API Javadoc" [ref=e428] [cursor=pointer]:
+                      - /url: https://static.runelite.net/runelite-api/apidocs/
+                  - listitem [ref=e429]:
+                    - link "Client Javadoc" [ref=e430] [cursor=pointer]:
+                      - /url: https://static.runelite.net/runelite-client/apidocs/
+                  - listitem [ref=e431]:
+                    - link "Plugin takeover policy" [ref=e432] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Plugin-takeover-policy
+              - listitem [ref=e433]:
+                - strong [ref=e434]: RuneLite Core Development
+                - list [ref=e435]:
+                  - listitem [ref=e436]:
+                    - link "Building with IntelliJ IDEA" [ref=e437] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Building-with-IntelliJ-IDEA
+                  - listitem [ref=e438]:
+                    - link "Code Conventions" [ref=e439] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Code-Conventions
+              - listitem [ref=e440]:
+                - strong [ref=e441]: Using Git with RuneLite
+                - list [ref=e442]:
+                  - listitem [ref=e443]:
+                    - link "Beginner's Guide To Git" [ref=e444] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Beginner%27s-Guide-To-Git
+                  - listitem [ref=e445]:
+                    - link "Submitting a Pull Request" [ref=e446] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Submitting-a-Pull-Request
+                  - listitem [ref=e447]:
+                    - link "Git Cheat Sheet" [ref=e448] [cursor=pointer]:
+                      - /url: /runelite/runelite/wiki/Git-Cheat-Sheet
+              - listitem [ref=e449]:
+                - link "Using Jagex Accounts" [ref=e450] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Using-Jagex-Accounts
+              - listitem [ref=e451]:
+                - link "Working with client scripts" [ref=e452] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Working-with-client-scripts
+              - listitem [ref=e453]:
+                - link "Using the client developer tools" [ref=e454] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Using-the-client-developer-tools
+              - listitem [ref=e455]:
+                - link "VarPlayers, VarBits, and VarClients" [ref=e456] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/VarPlayers%2C-VarBits%2C-and-VarClients
+              - listitem [ref=e457]:
+                - link "Rejected or Rolled Back Features" [ref=e458] [cursor=pointer]:
+                  - /url: /runelite/runelite/wiki/Rejected-or-Rolled-Back-Features
+          - heading "Clone this wiki locally" [level=3] [ref=e459]
+          - generic [ref=e460]:
+            - textbox "Clone URL for this wiki" [ref=e461]: https://github.com/runelite/runelite.wiki.git
+            - button "Copy to clipboard" [ref=e464] [cursor=pointer]:
+              - img [ref=e465]
+  - contentinfo [ref=e469]:
+    - heading "Footer" [level=2] [ref=e470]
+    - generic [ref=e471]:
+      - generic [ref=e472]:
+        - link "GitHub Homepage" [ref=e473] [cursor=pointer]:
+          - /url: https://github.com
+          - img [ref=e474]
+        - generic [ref=e476]: © 2026 GitHub, Inc.
+      - navigation "Footer" [ref=e477]:
+        - heading "Footer navigation" [level=3] [ref=e478]
+        - list "Footer navigation" [ref=e479]:
+          - listitem [ref=e480]:
+            - link "Terms" [ref=e481] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/github-terms/github-terms-of-service
+          - listitem [ref=e482]:
+            - link "Privacy" [ref=e483] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/privacy-policies/github-privacy-statement
+          - listitem [ref=e484]:
+            - link "Security" [ref=e485] [cursor=pointer]:
+              - /url: https://github.com/security
+          - listitem [ref=e486]:
+            - link "Status" [ref=e487] [cursor=pointer]:
+              - /url: https://www.githubstatus.com/
+          - listitem [ref=e488]:
+            - link "Community" [ref=e489] [cursor=pointer]:
+              - /url: https://github.community/
+          - listitem [ref=e490]:
+            - link "Docs" [ref=e491] [cursor=pointer]:
+              - /url: https://docs.github.com/
+          - listitem [ref=e492]:
+            - link "Contact" [ref=e493] [cursor=pointer]:
+              - /url: https://support.github.com?tags=dotcom-footer
+          - listitem [ref=e494]:
+            - button "Manage cookies" [ref=e496] [cursor=pointer]
+          - listitem [ref=e497]:
+            - button "Do not share my personal information" [ref=e499] [cursor=pointer]

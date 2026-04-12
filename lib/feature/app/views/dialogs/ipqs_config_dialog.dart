@@ -53,9 +53,8 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
   Widget build(BuildContext context) {
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 450),
-      title: Text(_isConfigured
-          ? 'IPQualityScore Configuration'
-          : 'Configure IPQualityScore'),
+      title: Text(
+          _isConfigured ? 'ProxyCheck Configuration' : 'Configure ProxyCheck'),
       content: _buildContent(context),
       actions: [
         Button(
@@ -83,7 +82,7 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const ApiKeyConfiguredBanner(
-            title: 'IPQualityScore Connected',
+            title: 'ProxyCheck Connected',
             subtitle: 'IP scoring is active',
           ),
           ProcessingStatusBar(
@@ -99,20 +98,20 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Enter your IPQualityScore API key to enable IP scoring.'),
+        const Text('Enter your ProxyCheck API key to enable IP scoring.'),
         const SizedBox(height: 16),
         Obx(() => InfoLabel(
               label: 'API Key',
               child: TextBox(
                 controller: _apiKeyController,
-                placeholder: 'Enter your IPQualityScore API key',
+                placeholder: 'Enter your ProxyCheck.io API key',
                 obscureText: true,
                 enabled: !_isProcessing.value,
               ),
             )),
         const SizedBox(height: 8),
         Text(
-          'Get your API key from ipqualityscore.com',
+          'Get your free API key at proxycheck.io (1,000 free queries/day)',
           style: TextStyle(
             fontSize: 12,
             color: FluentTheme.of(context).inactiveColor,
@@ -139,7 +138,7 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
           if (outerContext.mounted) {
             showInfoBarToast(outerContext,
                 title: 'Unlinked',
-                message: 'IPQualityScore has been disconnected.',
+                message: 'ProxyCheck has been disconnected.',
                 severity: InfoBarSeverity.warning);
           }
         case Failure(:final message):
@@ -176,7 +175,7 @@ class _IpqsConfigDialogState extends State<IpqsConfigDialog> {
       if (outerContext.mounted) {
         showInfoBarToast(outerContext,
             title: 'Success',
-            message: 'IPQualityScore connected!',
+            message: 'ProxyCheck connected!',
             severity: InfoBarSeverity.success);
       }
     } catch (e) {

@@ -86,8 +86,8 @@ class OnboardingSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SetupChecklistItem(
-            title: 'Configure IPQualityScore',
-            subtitle: 'Enable IP scoring and fraud detection',
+            title: 'Configure ProxyCheck',
+            subtitle: 'Enable IP scoring and proxy detection',
             isComplete: isIpqsComplete,
             isEnabled: isWebshareComplete,
             onTap: () => IpqsOnboardingDialog.show(context),

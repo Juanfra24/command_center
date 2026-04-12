@@ -131,29 +131,42 @@ class ActionsCell extends StatelessWidget {
   Widget _buildCharacterActions(BuildContext context, bool isRunning) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: isRunning
-          ? Tooltip(
-              message: 'Stop',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          isRunning
+              ? Tooltip(
+                  message: 'Stop',
+                  child: IconButton(
+                    icon: Icon(FluentIcons.stop, size: 14, color: Colors.red),
+                    onPressed: () => controller.stopCharacter(character!.name),
+                  ),
+                )
+              : Tooltip(
+                  message: 'Start',
+                  child: IconButton(
+                    icon: Icon(FluentIcons.play, size: 14, color: Colors.green),
+                    onPressed: () async {
+                      final config = await LaunchDialog.show(context);
+                      if (config != null) {
+                        try {
+                          await controller.launchCharacter(
+                              account, character!, config);
+                        } catch (_) {}
+                      }
+                    },
+                  ),
+                ),
+          if (account.id != null)
+            Tooltip(
+              message: 'Delete Account',
               child: IconButton(
-                icon: Icon(FluentIcons.stop, size: 14, color: Colors.red),
-                onPressed: () => controller.stopCharacter(character!.name),
-              ),
-            )
-          : Tooltip(
-              message: 'Start',
-              child: IconButton(
-                icon: Icon(FluentIcons.play, size: 14, color: Colors.green),
-                onPressed: () async {
-                  final config = await LaunchDialog.show(context);
-                  if (config != null) {
-                    try {
-                      await controller.launchCharacter(
-                          account, character!, config);
-                    } catch (_) {}
-                  }
-                },
+                icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
+                onPressed: () => _confirmDelete(context),
               ),
             ),
+        ],
+      ),
     );
   }
 
@@ -229,7 +242,8 @@ class ActionsCell extends StatelessWidget {
       context: context,
       builder: (ctx) => ContentDialog(
         title: const Text('Delete Account'),
-        content: Text('Delete "${account.email}"? This cannot be undone.'),
+        content: Text(
+            'Delete "${account.email}" and all its characters? This cannot be undone.'),
         actions: [
           Button(
               onPressed: () => Navigator.pop(ctx, false),

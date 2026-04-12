@@ -46,7 +46,7 @@ class FraudAnalysis extends StatelessWidget {
           Text('Not Scored Yet', style: theme.typography.bodyStrong),
           const SizedBox(height: 4),
           Text(
-            'Run an IPQS fraud check to analyze this IP',
+            'Run a ProxyCheck analysis to score this IP',
             style: theme.typography.caption,
           ),
           const SizedBox(height: 12),

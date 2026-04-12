@@ -41,26 +41,26 @@ class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
   Widget build(BuildContext context) {
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 450),
-      title: const Text('Configure IPQualityScore'),
+      title: const Text('Configure ProxyCheck'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-              'Enter your IPQualityScore API key to enable IP scoring and fraud detection.'),
+              'Enter your ProxyCheck API key to enable IP scoring and fraud detection.'),
           const SizedBox(height: 16),
           Obx(() => InfoLabel(
                 label: 'API Key',
                 child: TextBox(
                   controller: _apiKeyController,
-                  placeholder: 'Enter your IPQualityScore API key',
+                  placeholder: 'Enter your ProxyCheck.io API key',
                   obscureText: true,
                   enabled: !_isProcessing.value,
                 ),
               )),
           const SizedBox(height: 8),
           Text(
-            'Get your free API key from ipqualityscore.com (1,000 free lookups/month)',
+            'Get your free API key at proxycheck.io (1,000 free queries/day)',
             style: TextStyle(
               fontSize: 12,
               color: FluentTheme.of(context).inactiveColor,
@@ -173,8 +173,8 @@ class _IpqsOnboardingDialogState extends State<IpqsOnboardingDialog> {
               return InfoBar(
                 title: const Text('Setup Complete'),
                 content: Text(_isCancelled.value
-                    ? 'IPQualityScore connected! Scoring was cancelled.'
-                    : 'IPQualityScore connected and all IPs scored!'),
+                    ? 'ProxyCheck connected! Scoring was cancelled.'
+                    : 'ProxyCheck connected and all IPs scored!'),
                 severity: InfoBarSeverity.success,
                 action: IconButton(
                   icon: const Icon(FluentIcons.clear),

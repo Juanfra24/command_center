@@ -8,7 +8,7 @@ class ImapConfigService extends GetxService {
   static const String _keyHost = 'imap_host';
   static const String _keyUser = 'imap_user';
   static const String _keyPass = 'imap_pass';
-  static const String _defaultHost = 'mail.privateemail.com';
+  static const String _defaultHost = 'imap.gmail.com';
 
   ConfigRepository? _configRepository;
 

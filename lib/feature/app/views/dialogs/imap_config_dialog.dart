@@ -39,10 +39,10 @@ class _ImapConfigDialogState extends State<ImapConfigDialog> {
     try {
       final service = Get.find<ImapConfigService>();
       configured = service.isConfigured.value;
-      _hostController.text = service.cachedHost ?? 'mail.privateemail.com';
+      _hostController.text = service.cachedHost ?? 'imap.gmail.com';
     } catch (_) {}
     if (_hostController.text.isEmpty) {
-      _hostController.text = 'mail.privateemail.com';
+      _hostController.text = 'imap.gmail.com';
     }
     _isConfigured = configured;
   }
@@ -113,8 +113,8 @@ class _ImapConfigDialogState extends State<ImapConfigDialog> {
         ..._buildFormFields(),
         const SizedBox(height: 8),
         Text(
-          'Uses IMAP over SSL (port 993). Your catch-all mailbox for '
-          'receiving Jagex verification emails.',
+          'Uses IMAP over SSL (port 993). For Gmail, use an App Password '
+          '(Google Account → Security → App Passwords), not your regular password.',
           style: TextStyle(
             fontSize: 12,
             color: FluentTheme.of(context).inactiveColor,
@@ -135,7 +135,7 @@ class _ImapConfigDialogState extends State<ImapConfigDialog> {
             label: 'IMAP Host',
             child: TextBox(
               controller: _hostController,
-              placeholder: 'mail.privateemail.com',
+              placeholder: 'imap.gmail.com',
               enabled: !_isProcessing.value,
             ),
           )),

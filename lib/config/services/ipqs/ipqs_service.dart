@@ -9,10 +9,10 @@ import 'package:get/get.dart';
 export 'package:command_center/config/services/ipqs/ipqs_api_client.dart'
     show IpqsResult;
 
-/// Service for IPQualityScore API integration
+/// Service for ProxyCheck.io IP scoring API.
 class IpqsService extends GetxService {
-  static const String _keyApiKey = 'ipqs_api_key';
-  static const String _keyIsSetup = 'ipqs_is_setup';
+  static const String _keyApiKey = 'proxycheck_api_key';
+  static const String _keyIsSetup = 'proxycheck_is_setup';
 
   final _apiClient = IpqsApiClient();
   ConfigRepository? _configRepository;
@@ -61,9 +61,9 @@ class IpqsService extends GetxService {
       isConfigured.value = true;
       return Result.success(null);
     } catch (e) {
-      logger.e('Error saving IPQS API key: $e');
+      logger.e('Error saving ProxyCheck API key: $e');
       return Result.failure(
-          'Failed to save IPQS API key. Check logs for details.');
+          'Failed to save ProxyCheck API key. Check logs for details.');
     }
   }
 
@@ -81,9 +81,9 @@ class IpqsService extends GetxService {
       isConfigured.value = false;
       return Result.success(null);
     } catch (e) {
-      logger.e('Error clearing IPQS API key: $e');
+      logger.e('Error clearing ProxyCheck API key: $e');
       return Result.failure(
-          'Failed to clear IPQS API key. Check logs for details.');
+          'Failed to clear ProxyCheck API key. Check logs for details.');
     }
   }
 
@@ -126,7 +126,7 @@ class IpqsService extends GetxService {
   /// When [isBatch] is true, caller owns the isLoading flag.
   Future<IpqsResult> scoreIp(String ipAddress, {bool isBatch = false}) async {
     if (apiKey == null || apiKey!.isEmpty) {
-      return IpqsResult.error('IPQS API key not configured');
+      return IpqsResult.error('ProxyCheck API key not configured');
     }
 
     if (!isBatch) {

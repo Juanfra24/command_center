@@ -5,7 +5,7 @@ class ScoredIpResult {
   final ProxyIpAddressEntity ip;
   final ProxySlotEntity slot;
 
-  /// Raw IPQS fraud score (0-100, lower is better).
+  /// Raw ProxyCheck risk score (0-100, lower is better).
   /// Higher values indicate greater fraud risk.
   final double score;
 

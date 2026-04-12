@@ -56,16 +56,13 @@ void main() {
   });
 
   group('IpqsResult', () {
-    test('fromJson parses success response', () {
+    test('fromJson parses ProxyCheck IP-level response', () {
       final result = IpqsResult.fromJson({
-        'success': true,
-        'fraud_score': 25.0,
-        'proxy': true,
-        'vpn': false,
-        'tor': false,
-        'connection_type': 'Datacenter',
-        'ISP': 'TestISP',
-        'country_code': 'US',
+        'proxy': 'yes',
+        'type': 'Data Center',
+        'risk': 25,
+        'provider': 'TestISP',
+        'isocode': 'US',
         'city': 'TestCity',
       });
 
@@ -80,7 +77,8 @@ void main() {
     test('fromJson handles missing fields gracefully', () {
       final result = IpqsResult.fromJson({});
 
-      expect(result.success, isFalse);
+      expect(result.success,
+          isTrue); // fromJson always succeeds; status check is upstream
       expect(result.fraudScore, equals(0));
       expect(result.isProxy, isFalse);
     });

@@ -3,14 +3,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:command_center/config/services/bot_engine/bot_engine.dart';
 import 'package:command_center/config/services/native_commands_service.dart';
 import 'package:command_center/config/services/notification_service.dart';
-import 'package:command_center/config/services/proxy/proxy_auto_rotation_service.dart';
 import 'package:command_center/config/services/watchdog/launch_config.dart';
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_handlers.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
 import 'package:command_center/domain/entities/notification.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
-import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/domain/repositories/account_repository.dart';
 import 'package:command_center/domain/repositories/proxy_repository.dart';
 import 'package:command_center/feature/Status/data/process_model.dart';
@@ -21,9 +19,6 @@ class MockNativeCommandsService extends Mock implements NativeCommandsService {}
 
 class MockNotificationService extends Mock implements NotificationService {}
 
-class MockProxyAutoRotationService extends Mock
-    implements ProxyAutoRotationService {}
-
 class MockAccountRepository extends Mock implements AccountRepository {}
 
 class MockProxyRepository extends Mock implements ProxyRepository {}
@@ -32,7 +27,6 @@ void main() {
   late MockBotEngine mockBotEngine;
   late MockNativeCommandsService mockNativeCommands;
   late MockNotificationService mockNotificationService;
-  late MockProxyAutoRotationService mockAutoRotation;
   late MockAccountRepository mockAccountRepo;
   late MockProxyRepository mockProxyRepo;
   late WatchdogHandlers handlers;
@@ -84,7 +78,6 @@ void main() {
     mockBotEngine = MockBotEngine();
     mockNativeCommands = MockNativeCommandsService();
     mockNotificationService = MockNotificationService();
-    mockAutoRotation = MockProxyAutoRotationService();
     mockAccountRepo = MockAccountRepository();
     mockProxyRepo = MockProxyRepository();
 
@@ -100,7 +93,6 @@ void main() {
       botEngine: mockBotEngine,
       nativeCommandsService: mockNativeCommands,
       notificationService: mockNotificationService,
-      autoRotationService: mockAutoRotation,
       accountRepository: mockAccountRepo,
       proxyRepository: mockProxyRepo,
     );
@@ -187,7 +179,7 @@ void main() {
       expect(client.pid, isNull);
     });
 
-    test('quick death reaching banEscalationThreshold sets status to banned',
+    test('quick death reaching banEscalationThreshold sets status to stopped',
         () {
       // consecutiveQuickDeaths is 2, threshold is 3 — after increment it hits 3
       final client = makeClient(
@@ -197,12 +189,14 @@ void main() {
 
       handlers.classifyDeath(client);
 
-      expect(client.status, ClientStatus.banned);
+      expect(client.status, ClientStatus.stopped);
       expect(client.consecutiveQuickDeaths,
           WatchdogService.banEscalationThreshold);
     });
 
-    test('ban escalation does not create clientFailed notification', () {
+    test(
+        'stopping after threshold sends maxRetriesReached notification, not clientFailed',
+        () {
       final client = makeClient(
         launchedAt: DateTime.now().subtract(const Duration(seconds: 5)),
         consecutiveQuickDeaths: WatchdogService.banEscalationThreshold - 1,
@@ -216,9 +210,15 @@ void main() {
             title: any(named: 'title'),
             message: any(named: 'message'),
           ));
+      verify(() => mockNotificationService.createNotification(
+            type: NotificationType.maxRetriesReached,
+            severity: NotificationSeverity.error,
+            title: 'Client Stopped',
+            message: any(named: 'message'),
+          )).called(1);
     });
 
-    test('quick death exceeding banEscalationThreshold still sets banned', () {
+    test('quick death exceeding banEscalationThreshold still sets stopped', () {
       // Already well past the threshold
       final client = makeClient(
         launchedAt: DateTime.now().subtract(const Duration(seconds: 5)),
@@ -227,7 +227,7 @@ void main() {
 
       handlers.classifyDeath(client);
 
-      expect(client.status, ClientStatus.banned);
+      expect(client.status, ClientStatus.stopped);
     });
 
     test('null launchedAt treated as zero duration (quick death)', () {
@@ -656,68 +656,25 @@ void main() {
             type: NotificationType.banDetected,
             severity: NotificationSeverity.error,
             title: 'Ban Detected',
-            message: 'BannedChar banned after 3 consecutive quick deaths.',
+            message: 'BannedChar has been marked as banned.',
           )).called(1);
     });
 
-    test('rotates proxy when proxySlotId is set', () async {
+    test('does not rotate proxy even when proxySlotId is set', () async {
       final client = makeClient(
         status: ClientStatus.banned,
         characterId: 10,
         proxySlotId: 5,
+        proxyUrl: 'socks5://old:proxy@1.1.1.1:1080',
         consecutiveQuickDeaths: 3,
       );
 
       when(() => mockAccountRepo.updateCharacterBanned(any(), any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoRotation.rotateSlot(5)).thenAnswer((_) async => true);
-
-      // Mock _buildProxyUrl dependencies
-      final now = DateTime.now();
-      when(() => mockProxyRepo.getSlotById(5))
-          .thenAnswer((_) async => ProxySlotEntity(
-                id: 5,
-                slotName: 'Slot 5',
-                slotNumber: 5,
-                username: 'user5',
-                password: 'pass5',
-                port: 80,
-                socksPort: 1080,
-                createdAt: now,
-                lastUpdated: now,
-                totalIpChanges: 0,
-                isActive: true,
-              ));
-      when(() => mockProxyRepo.getActiveIpForSlot(5))
-          .thenAnswer((_) async => ProxyIpAddressEntity(
-                id: 50,
-                ipAddress: '9.8.7.6',
-                hostname: '9.8.7.6',
-                slotId: 5,
-                isActive: true,
-                countryCode: 'US',
-                cityName: 'NYC',
-                ipTimezone: 'UTC',
-                highCountryConfidence: true,
-                asnName: 'ASN',
-                asnNumber: 1,
-                ipScore: 10,
-                scoreLevel: IpScoreLevel.excellent,
-                isVpn: false,
-                isProxy: true,
-                isDatacenter: false,
-                isTor: false,
-                fraudScore: 10,
-                assignedAt: now,
-                lastVerification: now,
-                totalDaysUsed: 1,
-                timesAssigned: 1,
-              ));
 
       await handlers.handleBan(client);
 
-      verify(() => mockAutoRotation.rotateSlot(5)).called(1);
-      expect(client.proxyUrl, 'socks5://user5:pass5@9.8.7.6:1080');
+      expect(client.proxyUrl, 'socks5://old:proxy@1.1.1.1:1080');
     });
 
     test('does not rotate proxy when proxySlotId is null', () async {
@@ -733,62 +690,7 @@ void main() {
 
       await handlers.handleBan(client);
 
-      verifyNever(() => mockAutoRotation.rotateSlot(any()));
-    });
-
-    test('does not update proxyUrl when rotation fails', () async {
-      final client = makeClient(
-        status: ClientStatus.banned,
-        characterId: 10,
-        proxySlotId: 5,
-        proxyUrl: 'socks5://old:proxy@1.1.1.1:1080',
-        consecutiveQuickDeaths: 3,
-      );
-
-      when(() => mockAccountRepo.updateCharacterBanned(any(), any()))
-          .thenAnswer((_) async {});
-      when(() => mockAutoRotation.rotateSlot(5)).thenAnswer((_) async => false);
-
-      await handlers.handleBan(client);
-
-      // proxyUrl should remain unchanged when rotation fails
-      expect(client.proxyUrl, 'socks5://old:proxy@1.1.1.1:1080');
-    });
-
-    test('does not update proxyUrl when buildProxyUrl returns null', () async {
-      final client = makeClient(
-        status: ClientStatus.banned,
-        characterId: 10,
-        proxySlotId: 5,
-        proxyUrl: 'socks5://old:proxy@1.1.1.1:1080',
-        consecutiveQuickDeaths: 3,
-      );
-
-      when(() => mockAccountRepo.updateCharacterBanned(any(), any()))
-          .thenAnswer((_) async {});
-      when(() => mockAutoRotation.rotateSlot(5)).thenAnswer((_) async => true);
-
-      // Slot has no socksPort => _buildProxyUrl returns null
-      final now = DateTime.now();
-      when(() => mockProxyRepo.getSlotById(5))
-          .thenAnswer((_) async => ProxySlotEntity(
-                id: 5,
-                slotName: 'Slot 5',
-                slotNumber: 5,
-                username: 'user5',
-                password: 'pass5',
-                port: 80,
-                socksPort: null,
-                createdAt: now,
-                lastUpdated: now,
-                totalIpChanges: 0,
-                isActive: true,
-              ));
-
-      await handlers.handleBan(client);
-
-      // proxyUrl should remain unchanged when buildProxyUrl returns null
-      expect(client.proxyUrl, 'socks5://old:proxy@1.1.1.1:1080');
+      expect(client.status, ClientStatus.awaitingAccount);
     });
   });
 }

@@ -37,15 +37,15 @@ All three integrations are required before account creation is enabled. The app 
 
 ### IMAP Email Credentials
 
-Account creation uses IMAP to poll for the Jagex verification email. Any IMAP-capable mail provider works. Recommended: [Namecheap Private Email](https://www.namecheap.com/hosting/email/) (default host pre-filled as `mail.privateemail.com`).
+Account creation uses IMAP to poll for the Jagex verification email. Default provider is Gmail (`imap.gmail.com`).
 
 | Field | Description |
 |-------|-------------|
-| Host | IMAP server hostname (e.g. `mail.privateemail.com`, `imap.gmail.com`) |
-| Username | Full email address |
-| Password | Email account password or app-specific password |
+| Host | IMAP server hostname (default: `imap.gmail.com`) |
+| Username | Full Gmail address |
+| Password | Gmail App Password (Google Account → Security → App Passwords) |
 
-> Gmail users must create an [App Password](https://myaccount.google.com/apppasswords) and enable IMAP in Gmail settings.
+> Gmail requires an [App Password](https://myaccount.google.com/apppasswords) — not your regular Gmail password. Enable IMAP in Gmail settings first (Settings → See all settings → Forwarding and POP/IMAP → Enable IMAP).
 
 ### GitHub PAT
 
