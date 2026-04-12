@@ -198,15 +198,16 @@ class JagexTokenService {
     final args = [
       _pythonRunner.scriptFile,
       'jagex-auth',
-      '--email',
-      email,
       '--profile-dir',
       jagexHomeDir(profileDir),
       if (imapHost != null) ...['--imap-host', imapHost],
     ];
     _pythonRunner.logCommand(args);
 
+    // Credentials go through environment, never argv — /proc/<pid>/cmdline is
+    // readable by any local user and the email is an account login identifier.
     final env = <String, String>{
+      'CC_ACCOUNT_EMAIL': email,
       'CC_ACCOUNT_PASS': password,
       if (imapUser != null) 'CC_IMAP_USER': imapUser,
       if (imapPass != null) 'CC_IMAP_PASS': imapPass,

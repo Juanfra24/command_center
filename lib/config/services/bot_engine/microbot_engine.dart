@@ -79,10 +79,11 @@ class MicrobotEngine implements BotEngine {
       world: config.world,
       scriptName: config.scriptName,
       scriptParams: config.scriptParams,
+      proxyUrl: proxyUrl,
     );
 
-    final args = buildLaunchArgs(
-        characterId: characterId, proxyUrl: proxyUrl, config: config);
+    final args =
+        buildLaunchArgs(characterId: characterId, config: config);
 
     logger.i('Launching Microbot for $characterName (id=$characterId)');
 
@@ -197,7 +198,6 @@ class MicrobotEngine implements BotEngine {
 
   List<String> buildLaunchArgs({
     required int characterId,
-    required String? proxyUrl,
     required LaunchConfig config,
   }) {
     final profileDir = _profileWriter.profilePath(characterId: characterId);
@@ -210,9 +210,6 @@ class MicrobotEngine implements BotEngine {
     args.addAll(['-jar', jarPath]);
     args.add('--cc-profile-dir=$profileDir');
     args.add('--status-port-file=${p.join(profileDir, 'status.port')}');
-    if (proxyUrl != null) {
-      args.add('--proxy=$proxyUrl');
-    }
     args.add('--safe-mode');
     if (config.scriptParams.isNotEmpty) {
       args.add('--script-params=${config.scriptParams}');

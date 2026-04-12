@@ -95,7 +95,6 @@ void main() {
 
       final args = engine.buildLaunchArgs(
         characterId: 42,
-        proxyUrl: 'socks5://user:pass@1.2.3.4:1080',
         config: const LaunchConfig(
           scriptName: 'Woodcutter',
           jvmArgs: '-Xmx384m -XX:+UseG1GC',
@@ -118,7 +117,8 @@ void main() {
           appFlags,
           contains(
               '--status-port-file=${p.join(expectedProfileDir, 'status.port')}'));
-      expect(appFlags, contains('--proxy=socks5://user:pass@1.2.3.4:1080'));
+      expect(appFlags.any((a) => a.contains('--proxy')), isFalse);
+      expect(appFlags.any((a) => a.contains('socks5://')), isFalse);
       expect(appFlags, contains('--safe-mode'));
       expect(appFlags, contains('-fps'));
       expect(appFlags, contains('15'));

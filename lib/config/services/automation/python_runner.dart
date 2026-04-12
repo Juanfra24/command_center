@@ -56,6 +56,56 @@ class PythonRunner {
     }
   }
 
+  /// Build a minimal environment map for Python subprocesses that explicitly
+  /// whitelists only the OS-level variables required to run Python (PATH,
+  /// HOME, TEMP, etc.), merged with the caller-supplied map. This blocks
+  /// credential bleed from the parent process: any stray env var left behind
+  /// by a prior launch or the shell that started the app never reaches Python.
+  static Map<String, String> buildSubprocessEnv(
+      [Map<String, String>? extra]) {
+    const allowed = <String>{
+      'PATH',
+      'HOME',
+      'USER',
+      'LANG',
+      'LC_ALL',
+      'LC_CTYPE',
+      'TMPDIR',
+      'TMP',
+      'TEMP',
+      'USERPROFILE',
+      'SYSTEMROOT',
+      'SYSTEMDRIVE',
+      'WINDIR',
+      'COMSPEC',
+      'PATHEXT',
+      'APPDATA',
+      'LOCALAPPDATA',
+      'PROGRAMFILES',
+      'PROGRAMFILES(X86)',
+      'PROGRAMDATA',
+      'DISPLAY',
+      'XAUTHORITY',
+      'XDG_RUNTIME_DIR',
+      'XDG_CONFIG_HOME',
+      'XDG_DATA_HOME',
+      'XDG_CACHE_HOME',
+      'SHELL',
+      'PYTHONPATH',
+      'PYTHONHOME',
+    };
+    final env = <String, String>{};
+    Platform.environment.forEach((key, value) {
+      if (allowed.contains(key.toUpperCase())) {
+        env[key] = value;
+      }
+    });
+    if (extra != null) {
+      env.addAll(extra);
+    }
+    return env;
+  }
+
   /// Redact secrets from a string (proxy creds and named flag values).
   static String redact(String input) {
     return input
@@ -85,8 +135,15 @@ class PythonRunner {
 
     // -u flag disables Python's stdout/stderr buffering so we get logs in real-time
     final python = await PythonResolver.executable;
-    _currentProcess = await Process.start(python, ['-u', ...args],
-        workingDirectory: workingDirectory, environment: environment);
+    // includeParentEnvironment: false + whitelist prevents credential bleed
+    // from the parent process (e.g. stray secrets set earlier in the session).
+    _currentProcess = await Process.start(
+      python,
+      ['-u', ...args],
+      workingDirectory: workingDirectory,
+      environment: buildSubprocessEnv(environment),
+      includeParentEnvironment: false,
+    );
 
     // We never write to stdin — close it so the script can't block
     // waiting on input() and leave the process hung past its timeout.
@@ -171,7 +228,8 @@ class PythonRunner {
       python,
       ['-u', ...args],
       workingDirectory: workingDirectory,
-      environment: environment,
+      environment: buildSubprocessEnv(environment),
+      includeParentEnvironment: false,
       mode: ProcessStartMode.detached,
     );
     _detachedSessionPids.add(process.pid);

@@ -114,6 +114,11 @@ class ActionsCell extends StatelessWidget {
     if (character == null) {
       return _buildEmptyAccountActions(context);
     }
+    // WatchdogService is registered in Phase 3 DI; before it exists, show the
+    // start button in its non-running state instead of crashing.
+    if (!Get.isRegistered<WatchdogService>()) {
+      return _buildCharacterActions(context, false);
+    }
     return Obx(() {
       final tracked =
           Get.find<WatchdogService>().trackedClients[character?.name];

@@ -17,6 +17,7 @@ class MicrobotProfileWriter {
     required String world,
     required String scriptName,
     String scriptParams = '',
+    String? proxyUrl,
   }) async {
     final dir = Directory(profilePath(characterId: characterId));
     await dir.create(recursive: true);
@@ -35,6 +36,12 @@ class MicrobotProfileWriter {
     final credentials = StringBuffer();
     credentials.writeln('email=$email');
     credentials.writeln('password=$password');
+    // Proxy URL contains user:pass and must never reach the process argv
+    // (visible via /proc/<pid>/cmdline and Task Manager). The Microbot fork
+    // reads this key from credentials.properties.
+    if (proxyUrl != null && proxyUrl.isNotEmpty) {
+      credentials.writeln('proxy=$proxyUrl');
+    }
     await File(p.join(dir.path, 'credentials.properties'))
         .writeAsString(credentials.toString());
   }

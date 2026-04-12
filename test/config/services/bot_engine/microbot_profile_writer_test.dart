@@ -112,6 +112,36 @@ void main() {
       expect(content, contains('scriptParams=1,2,3'));
     });
 
+    test('writeProfile writes proxy to credentials.properties when provided',
+        () async {
+      await writer.writeProfile(
+        characterId: 11,
+        email: 'px@test.com',
+        password: 'pass',
+        world: 'auto',
+        scriptName: 'S',
+        proxyUrl: 'socks5://user:pw@1.2.3.4:1080',
+      );
+      final creds =
+          File(p.join(tempDir.path, 'bot-11', 'credentials.properties'))
+              .readAsStringSync();
+      expect(creds, contains('proxy=socks5://user:pw@1.2.3.4:1080'));
+    });
+
+    test('writeProfile omits proxy line when proxyUrl is null', () async {
+      await writer.writeProfile(
+        characterId: 12,
+        email: 'px@test.com',
+        password: 'pass',
+        world: 'auto',
+        scriptName: 'S',
+      );
+      final creds =
+          File(p.join(tempDir.path, 'bot-12', 'credentials.properties'))
+              .readAsStringSync();
+      expect(creds, isNot(contains('proxy=')));
+    });
+
     test('profilePath returns correct directory path', () {
       expect(
           writer.profilePath(characterId: 42), p.join(tempDir.path, 'bot-42'));
