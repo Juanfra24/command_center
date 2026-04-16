@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
 import 'package:command_center/feature/Status/data/jagex_account_model.dart';
@@ -129,6 +130,7 @@ class ActionsCell extends StatelessWidget {
   }
 
   Widget _buildCharacterActions(BuildContext context, bool isRunning) {
+    final colors = StatusColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
@@ -138,21 +140,34 @@ class ActionsCell extends StatelessWidget {
               ? Tooltip(
                   message: 'Stop',
                   child: IconButton(
-                    icon: Icon(FluentIcons.stop, size: 14, color: Colors.red),
+                    icon: Icon(FluentIcons.stop, size: 14, color: colors.error),
                     onPressed: () => controller.stopCharacter(character!.name),
                   ),
                 )
               : Tooltip(
                   message: 'Start',
                   child: IconButton(
-                    icon: Icon(FluentIcons.play, size: 14, color: Colors.green),
+                    icon:
+                        Icon(FluentIcons.play, size: 14, color: colors.success),
                     onPressed: () async {
                       final config = await LaunchDialog.show(context);
                       if (config != null) {
                         try {
                           await controller.launchCharacter(
                               account, character!, config);
-                        } catch (_) {}
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          displayInfoBar(context,
+                              builder: (ctx, close) => InfoBar(
+                                    title: const Text('Launch failed'),
+                                    content: Text('$e'),
+                                    severity: InfoBarSeverity.error,
+                                    action: IconButton(
+                                      icon: const Icon(FluentIcons.clear),
+                                      onPressed: close,
+                                    ),
+                                  ));
+                        }
                       }
                     },
                   ),
@@ -161,7 +176,7 @@ class ActionsCell extends StatelessWidget {
             Tooltip(
               message: 'Delete Account',
               child: IconButton(
-                icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
+                icon: Icon(FluentIcons.delete, size: 14, color: colors.error),
                 onPressed: () => _confirmDelete(context),
               ),
             ),
@@ -171,6 +186,7 @@ class ActionsCell extends StatelessWidget {
   }
 
   Widget _buildEmptyAccountActions(BuildContext context) {
+    final colors = StatusColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
@@ -179,7 +195,7 @@ class ActionsCell extends StatelessWidget {
           Tooltip(
             message: 'Add Character',
             child: IconButton(
-              icon: Icon(FluentIcons.add, size: 14, color: Colors.green),
+              icon: Icon(FluentIcons.add, size: 14, color: colors.success),
               onPressed: () => _showAddCharacterDialog(context),
             ),
           ),
@@ -187,7 +203,7 @@ class ActionsCell extends StatelessWidget {
             Tooltip(
               message: 'Delete Account',
               child: IconButton(
-                icon: Icon(FluentIcons.delete, size: 14, color: Colors.red),
+                icon: Icon(FluentIcons.delete, size: 14, color: colors.error),
                 onPressed: () => _confirmDelete(context),
               ),
             ),
@@ -238,6 +254,7 @@ class ActionsCell extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final colors = StatusColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => ContentDialog(
@@ -245,10 +262,13 @@ class ActionsCell extends StatelessWidget {
         content: Text(
             'Delete "${account.email}" and all its characters? This cannot be undone.'),
         actions: [
-          Button(
+          FilledButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel')),
-          FilledButton(
+          Button(
+              style: ButtonStyle(
+                foregroundColor: WidgetStatePropertyAll(colors.error),
+              ),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Delete')),
         ],

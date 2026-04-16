@@ -243,3 +243,124 @@ Process management, Java installation, Python resolution, and file opening are a
 - App shell decomposed: app.dart (160 lines) + extracted title bar, navigation, lifecycle components
 - Setup flow: 4-step wizard (scripts extraction, Python/venv, Java 17, Microbot JAR) with PAT prompt, retry, progress tiles
 - Python venv: auto-created on Linux to bypass PEP 668 externally-managed-environment
+
+## UX Style Guide (ENFORCED)
+
+All UI code must follow these conventions. Violations should be fixed on sight.
+
+### Semantic Color Tokens
+
+**Never use raw `Colors.green`, `Colors.red`, `Colors.orange`, `Colors.grey`, `Colors.blue`, or hex `Color(0xFF...)` for status/state colors.** Use `StatusColors.of(context)` from `lib/config/theme/status_colors.dart`.
+
+| Token | Meaning | Usage |
+|-------|---------|-------|
+| `colors.success` | Running, active, healthy, created, add | Badges, icons, borders |
+| `colors.error` | Banned, failed permanently, danger, delete | Badges, icons, destructive buttons |
+| `colors.warning` | Restarting, retrying, poor score, caution | Badges, InfoBar, attention cards |
+| `colors.info` | Awaiting, validating, in-progress | Badges, progress containers |
+| `colors.muted` | Stopped, inactive, unscored, disabled | Badges, placeholder text |
+| `colors.fair` | Moderate score, acceptable but not ideal | Proxy health bar, score badges |
+
+Background tints: use `colors.successBg()`, `colors.errorBg()`, etc. Default alpha is 0.15.
+
+```dart
+final colors = StatusColors.of(context);
+// Badge with background
+Container(
+  decoration: BoxDecoration(color: colors.successBg()),
+  child: Text('Running', style: TextStyle(color: colors.success)),
+)
+```
+
+### Destructive Actions
+
+- **Delete/Stop confirmation**: Always show a `ContentDialog` before destructive operations (delete account, stop all bots, unlink service)
+- **Button styling**: Cancel is `FilledButton` (primary/safe). Destructive action is `Button` with red foreground:
+  ```dart
+  Button(
+    style: ButtonStyle(
+      foregroundColor: WidgetStatePropertyAll(StatusColors.of(ctx).error),
+    ),
+    onPressed: () => Navigator.pop(ctx, true),
+    child: const Text('Delete'),
+  )
+  ```
+- **Never** use `FilledButton` for destructive actions — it makes them look like the primary/safe choice
+
+### Error Handling in UI
+
+- **Never swallow errors silently**: No empty `catch (_) {}` blocks in UI code. Always surface feedback:
+  ```dart
+  catch (e) {
+    if (!context.mounted) return;
+    displayInfoBar(context, builder: (ctx, close) => InfoBar(
+      title: const Text('Launch failed'),
+      content: Text('$e'),
+      severity: InfoBarSeverity.error,
+    ));
+  }
+  ```
+- **LoadingButton**: Use `errorLabel` parameter for contextual error messages instead of generic "Failed"
+- **Error messages must include cause + recovery path** — not just "Error" or "Failed"
+
+### Form Validation
+
+- **Required fields**: Mark with `*` in the label: `InfoLabel(label: 'Slot Name *', ...)`
+- **Inline errors**: Show error text below the field, not in a distant InfoBar toast:
+  ```dart
+  InfoLabel(
+    label: 'Port *',
+    child: TextBox(controller: _portController, ...),
+  ),
+  if (_portError != null)
+    Text(_portError!, style: TextStyle(fontSize: 12, color: StatusColors.of(context).error)),
+  ```
+- **Validate on submit, clear on edit**: Run `_validate()` on submit. Clear individual field errors `onChanged`
+- **API key fields**: Use `obscureText: true` and mark as required
+
+### Interactive Elements
+
+- **No raw `GestureDetector` + `MouseRegion` for clickable text**: Use `HyperlinkButton` instead — it provides focus ring, keyboard nav, and hover/pressed states
+- **Clickable cards**: Wrap with `HoverButton` + `FocusBorder` for proper focus/keyboard support:
+  ```dart
+  HoverButton(
+    onPressed: onTap,
+    cursor: SystemMouseCursors.click,
+    builder: (context, states) => FocusBorder(
+      focused: states.isFocused,
+      child: card,
+    ),
+  )
+  ```
+
+### Typography in Data Tables
+
+- **Headers**: Use `theme.typography.caption` with `fontWeight: FontWeight.w600`
+- **Primary cell content** (names, emails): Use `theme.typography.body` (14px)
+- **Secondary cell content** (metadata, timestamps): Use `theme.typography.caption` (12px)
+- **Never hardcode `fontSize: 12`** for primary content — always use theme typography
+
+### Color-Only Information
+
+- **Never convey meaning by color alone**: Pair color with text labels, icons, or tooltips
+- **Health bars / progress bars**: Add `Tooltip` with label + count to each colored segment
+- **Status badges**: Always include text label alongside the colored dot
+
+### Empty States
+
+Every empty state must include:
+1. An icon (using `theme.resources.textFillColorSecondary` for muted color)
+2. A title ("No characters found")
+3. A description ("Create characters in the Accounts page to see them here.")
+4. A CTA when applicable (`HyperlinkButton` to navigate, or action button)
+
+### Accent Color Swatch
+
+The system accent swatch generates proper HSL lightness variants (not flat identical colors). This ensures hover, pressed, and disabled states are visually distinct. The swatch is built via `FluentAppTheme._buildAccentSwatch()`.
+
+### Toast Notifications
+
+- Use `showInfoBarToast()` from `info_bar_helper.dart` for user feedback
+- Toast severity colors derive from `StatusColors` for consistency
+- Background colors for toasts use hardcoded dark/light surface tones (not alpha-blended) for readability
+- Auto-dismiss: 5s for non-errors, persistent for errors

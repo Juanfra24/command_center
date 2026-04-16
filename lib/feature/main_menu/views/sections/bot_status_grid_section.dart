@@ -1,3 +1,4 @@
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/core/widgets/loading_button.dart';
 import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
 import 'package:command_center/feature/main_menu/views/components/bot_status_tile.dart';
@@ -53,6 +54,7 @@ class BotStatusGridSection extends StatelessWidget {
     FluentThemeData theme,
     MainMenuController controller,
   ) {
+    final colors = StatusColors.of(context);
     return Row(
       children: [
         Text('Bot Farm Status', style: theme.typography.subtitle),
@@ -61,21 +63,21 @@ class BotStatusGridSection extends StatelessWidget {
           theme,
           label: 'Running',
           count: controller.botTiles.where((t) => t.status == 'running').length,
-          color: Colors.green,
+          color: colors.success,
         ),
         const SizedBox(width: 6),
         _buildCountBadge(
           theme,
           label: 'Stopped',
           count: controller.botTiles.where((t) => t.status == 'stopped').length,
-          color: const Color(0xFF888888),
+          color: colors.muted,
         ),
         const SizedBox(width: 6),
         _buildCountBadge(
           theme,
           label: 'Banned',
           count: controller.botTiles.where((t) => t.status == 'banned').length,
-          color: Colors.red,
+          color: colors.error,
         ),
         const Spacer(),
         LoadingButton(
@@ -90,11 +92,38 @@ class BotStatusGridSection extends StatelessWidget {
           label: 'Stop All',
           loadingLabel: 'Stopping…',
           icon: FluentIcons.stop_solid,
-          onPressed: onStopAll,
+          onPressed: () => _confirmStopAll(context),
           style: LoadingButtonStyle.outline,
         ),
       ],
     );
+  }
+
+  Future<void> _confirmStopAll(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ContentDialog(
+        title: const Text('Stop All Characters'),
+        content: const Text(
+          'This will stop all running bot processes. Are you sure?',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          Button(
+            style: ButtonStyle(
+              foregroundColor:
+                  WidgetStatePropertyAll(StatusColors.of(ctx).error),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Stop All'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await onStopAll();
   }
 
   Widget _buildCountBadge(
@@ -137,6 +166,20 @@ class BotStatusGridSection extends StatelessWidget {
                 color: theme.resources.textFillColorSecondary,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Create characters in the Accounts page to see them here.',
+              style: theme.typography.caption?.copyWith(
+                color: theme.resources.textFillColorSecondary,
+              ),
+            ),
+            if (onNavigateToAccounts != null) ...[
+              const SizedBox(height: 12),
+              HyperlinkButton(
+                onPressed: onNavigateToAccounts,
+                child: const Text('Go to Accounts'),
+              ),
+            ],
           ],
         ),
       ),

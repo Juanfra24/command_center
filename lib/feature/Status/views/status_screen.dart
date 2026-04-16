@@ -1,4 +1,5 @@
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
 import 'package:command_center/feature/Status/views/components/bot_farm_summary_bar.dart';
@@ -97,8 +98,8 @@ class StatusScreen extends GetView<StatusController> {
           if (!canCreate) ...[
             const SizedBox(height: 12),
             Text('Connect Webshare first to sync proxy slots',
-                style:
-                    theme.typography.caption?.copyWith(color: Colors.orange)),
+                style: theme.typography.caption
+                    ?.copyWith(color: StatusColors.of(context).warning)),
           ],
         ],
       ),
