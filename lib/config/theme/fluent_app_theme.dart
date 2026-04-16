@@ -5,18 +5,28 @@ class FluentAppTheme {
   static AccentColor get systemAccentColor {
     try {
       final accentColor = SystemTheme.accentColor.accent;
-      return AccentColor.swatch({
-        'darkest': accentColor,
-        'darker': accentColor,
-        'dark': accentColor,
-        'normal': accentColor,
-        'light': accentColor,
-        'lighter': accentColor,
-        'lightest': accentColor,
-      });
+      return _buildAccentSwatch(accentColor);
     } catch (_) {
       return Colors.blue;
     }
+  }
+
+  /// Build a proper accent swatch with distinct shade variants so that
+  /// hover, pressed, and disabled states are visually distinguishable.
+  static AccentColor _buildAccentSwatch(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    return AccentColor.swatch({
+      'darkest':
+          hsl.withLightness((hsl.lightness - 0.20).clamp(0, 1)).toColor(),
+      'darker': hsl.withLightness((hsl.lightness - 0.14).clamp(0, 1)).toColor(),
+      'dark': hsl.withLightness((hsl.lightness - 0.08).clamp(0, 1)).toColor(),
+      'normal': base,
+      'light': hsl.withLightness((hsl.lightness + 0.08).clamp(0, 1)).toColor(),
+      'lighter':
+          hsl.withLightness((hsl.lightness + 0.14).clamp(0, 1)).toColor(),
+      'lightest':
+          hsl.withLightness((hsl.lightness + 0.20).clamp(0, 1)).toColor(),
+    });
   }
 
   static FluentThemeData lightTheme({AccentColor? accentColor}) {
@@ -154,17 +164,8 @@ class FluentAppTheme {
   }
 }
 
-// Extension to convert Color to AccentColor
-extension ColorToAccentColor on Color {
-  AccentColor toAccentColor() {
-    return AccentColor.swatch({
-      'darkest': withValues(alpha: 1.0),
-      'darker': withValues(alpha: 0.9),
-      'dark': withValues(alpha: 0.8),
-      'normal': this,
-      'light': withValues(alpha: 0.7),
-      'lighter': withValues(alpha: 0.6),
-      'lightest': withValues(alpha: 0.5),
-    });
-  }
+/// Extension to convert any [Color] to an [AccentColor] with proper shade
+/// variants derived from HSL lightness shifts.
+extension ColorToShadedAccent on Color {
+  AccentColor toShadedAccent() => FluentAppTheme._buildAccentSwatch(this);
 }

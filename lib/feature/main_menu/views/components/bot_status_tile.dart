@@ -1,3 +1,4 @@
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/feature/main_menu/data/bot_tile_data.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -48,9 +49,13 @@ class BotStatusTile extends StatelessWidget {
     );
 
     if (onTap != null) {
-      card = MouseRegion(
+      card = HoverButton(
+        onPressed: onTap,
         cursor: SystemMouseCursors.click,
-        child: GestureDetector(onTap: onTap, child: card),
+        builder: (context, states) => FocusBorder(
+          focused: states.isFocused,
+          child: card,
+        ),
       );
     }
 
@@ -138,11 +143,12 @@ class BotStatusTile extends StatelessWidget {
   }
 
   Color _statusColor(BuildContext context) {
+    final colors = StatusColors.of(context);
     return switch (tile.status) {
-      'running' => Colors.green,
-      'restarting' => Colors.orange,
-      'banned' => Colors.red,
-      _ => const Color(0xFF888888),
+      'running' => colors.success,
+      'restarting' => colors.warning,
+      'banned' => colors.error,
+      _ => colors.muted,
     };
   }
 

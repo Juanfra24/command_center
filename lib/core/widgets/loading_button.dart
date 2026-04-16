@@ -6,6 +6,7 @@ class LoadingButton extends StatefulWidget {
   final String label;
   final String? loadingLabel;
   final String? successLabel;
+  final String? errorLabel;
   final Future<void> Function()? onPressed;
   final LoadingButtonStyle style;
   final IconData? icon;
@@ -15,6 +16,7 @@ class LoadingButton extends StatefulWidget {
     required this.label,
     this.loadingLabel,
     this.successLabel,
+    this.errorLabel,
     this.onPressed,
     this.style = LoadingButtonStyle.filled,
     this.icon,
@@ -85,7 +87,7 @@ class _LoadingButtonState extends State<LoadingButton> {
   String get _currentLabel => switch (_state) {
         _ButtonState.loading => widget.loadingLabel ?? widget.label,
         _ButtonState.success => widget.successLabel ?? 'Done',
-        _ButtonState.error => 'Failed',
+        _ButtonState.error => widget.errorLabel ?? 'Failed',
         _ => widget.label,
       };
 }

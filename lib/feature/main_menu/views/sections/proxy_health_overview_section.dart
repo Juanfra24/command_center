@@ -1,3 +1,4 @@
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/feature/main_menu/controller/main_menu_controller.dart';
 import 'package:command_center/feature/main_menu/data/proxy_health_data.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -36,7 +37,7 @@ class ProxyHealthOverviewSection extends StatelessWidget {
         const SizedBox(height: 12),
         _buildHealthBar(context, health),
         const SizedBox(height: 8),
-        _buildLegend(theme, health),
+        _buildLegend(context, theme, health),
         if (health.attentionItems.isNotEmpty) ...[
           const SizedBox(height: 12),
           _buildAttentionCard(context, health),
@@ -51,15 +52,12 @@ class ProxyHealthOverviewSection extends StatelessWidget {
         Text('Proxy Health', style: theme.typography.subtitle),
         const Spacer(),
         if (onNavigateToProxies != null)
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: onNavigateToProxies,
-              child: Text(
-                'View Proxies →',
-                style: theme.typography.caption?.copyWith(
-                  color: theme.accentColor,
-                ),
+          HyperlinkButton(
+            onPressed: onNavigateToProxies,
+            child: Text(
+              'View Proxies →',
+              style: theme.typography.caption?.copyWith(
+                color: theme.accentColor,
               ),
             ),
           ),
@@ -70,6 +68,7 @@ class ProxyHealthOverviewSection extends StatelessWidget {
   Widget _buildHealthBar(BuildContext context, ProxyHealthData health) {
     final total = health.totalCount;
     if (total == 0) return const SizedBox.shrink();
+    final colors = StatusColors.of(context);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(4),
@@ -80,27 +79,42 @@ class ProxyHealthOverviewSection extends StatelessWidget {
             if (health.excellentCount > 0)
               Expanded(
                 flex: health.excellentCount,
-                child: Container(color: Colors.green),
+                child: Tooltip(
+                  message: 'Excellent: ${health.excellentCount}',
+                  child: Container(color: colors.success),
+                ),
               ),
             if (health.fairCount > 0)
               Expanded(
                 flex: health.fairCount,
-                child: Container(color: Colors.yellow),
+                child: Tooltip(
+                  message: 'Fair: ${health.fairCount}',
+                  child: Container(color: colors.fair),
+                ),
               ),
             if (health.poorCount > 0)
               Expanded(
                 flex: health.poorCount,
-                child: Container(color: Colors.orange),
+                child: Tooltip(
+                  message: 'Poor: ${health.poorCount}',
+                  child: Container(color: colors.warning),
+                ),
               ),
             if (health.badCount > 0)
               Expanded(
                 flex: health.badCount,
-                child: Container(color: Colors.red),
+                child: Tooltip(
+                  message: 'Bad: ${health.badCount}',
+                  child: Container(color: colors.error),
+                ),
               ),
             if (health.unscoredCount > 0)
               Expanded(
                 flex: health.unscoredCount,
-                child: Container(color: const Color(0xFF888888)),
+                child: Tooltip(
+                  message: 'Unscored: ${health.unscoredCount}',
+                  child: Container(color: colors.muted),
+                ),
               ),
           ],
         ),
@@ -108,22 +122,24 @@ class ProxyHealthOverviewSection extends StatelessWidget {
     );
   }
 
-  Widget _buildLegend(FluentThemeData theme, ProxyHealthData health) {
+  Widget _buildLegend(
+      BuildContext context, FluentThemeData theme, ProxyHealthData health) {
+    final colors = StatusColors.of(context);
     return Wrap(
       spacing: 12,
       runSpacing: 4,
       children: [
         if (health.excellentCount > 0)
-          _legendItem(theme, Colors.green, 'Excellent', health.excellentCount),
-        if (health.fairCount > 0)
-          _legendItem(theme, Colors.yellow, 'Fair', health.fairCount),
-        if (health.poorCount > 0)
-          _legendItem(theme, Colors.orange, 'Poor', health.poorCount),
-        if (health.badCount > 0)
-          _legendItem(theme, Colors.red, 'Bad', health.badCount),
-        if (health.unscoredCount > 0)
           _legendItem(
-              theme, const Color(0xFF888888), 'Unscored', health.unscoredCount),
+              theme, colors.success, 'Excellent', health.excellentCount),
+        if (health.fairCount > 0)
+          _legendItem(theme, colors.fair, 'Fair', health.fairCount),
+        if (health.poorCount > 0)
+          _legendItem(theme, colors.warning, 'Poor', health.poorCount),
+        if (health.badCount > 0)
+          _legendItem(theme, colors.error, 'Bad', health.badCount),
+        if (health.unscoredCount > 0)
+          _legendItem(theme, colors.muted, 'Unscored', health.unscoredCount),
       ],
     );
   }
@@ -153,25 +169,26 @@ class ProxyHealthOverviewSection extends StatelessWidget {
 
   Widget _buildAttentionCard(BuildContext context, ProxyHealthData health) {
     final theme = FluentTheme.of(context);
+    final colors = StatusColors.of(context);
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.08),
+        color: colors.warningBg(0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: colors.warningBg(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(FluentIcons.warning, size: 14, color: Colors.orange),
+              Icon(FluentIcons.warning, size: 14, color: colors.warning),
               const SizedBox(width: 6),
               Text(
                 'Needs Attention',
                 style: theme.typography.bodyStrong?.copyWith(
-                  color: Colors.orange,
+                  color: colors.warning,
                 ),
               ),
             ],
@@ -180,7 +197,7 @@ class ProxyHealthOverviewSection extends StatelessWidget {
           for (final item in health.attentionItems)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: _buildAttentionItemRow(theme, item),
+              child: _buildAttentionItemRow(context, theme, item),
             ),
         ],
       ),
@@ -188,9 +205,11 @@ class ProxyHealthOverviewSection extends StatelessWidget {
   }
 
   Widget _buildAttentionItemRow(
+    BuildContext context,
     FluentThemeData theme,
     ProxyAttentionItem item,
   ) {
+    final colors = StatusColors.of(context);
     final scoreText = item.isUnscored
         ? 'Unscored'
         : item.fraudScore != null
@@ -209,7 +228,7 @@ class ProxyHealthOverviewSection extends StatelessWidget {
         Text(
           scoreText,
           style: theme.typography.caption?.copyWith(
-            color: item.isUnscored ? const Color(0xFF888888) : Colors.red,
+            color: item.isUnscored ? colors.muted : colors.error,
             fontWeight: FontWeight.w600,
           ),
         ),

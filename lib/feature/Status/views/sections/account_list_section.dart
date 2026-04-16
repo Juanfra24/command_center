@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/feature/Status/controller/status_controller.dart';
 import 'package:command_center/feature/Status/controller/status_selection_controller.dart';
 import 'package:command_center/feature/Status/data/character_model.dart';
@@ -122,7 +123,7 @@ class AccountListSection extends StatelessWidget {
                 for (int i = 0; i < columns.length; i++)
                   Expanded(
                     flex: flexes[i],
-                    child: _buildTableHeader(columns[i]),
+                    child: _buildTableHeader(context, columns[i]),
                   ),
               ],
             ),
@@ -134,9 +135,10 @@ class AccountListSection extends StatelessWidget {
               itemBuilder: (context, index) {
                 final row = rows[index];
                 final isBanned = row.character?.banned == true;
+                final statusColors = StatusColors.of(context);
                 return Container(
                   decoration: BoxDecoration(
-                    color: isBanned ? Colors.red.withValues(alpha: 0.06) : null,
+                    color: isBanned ? statusColors.errorBg(0.06) : null,
                     border: Border(
                       bottom: BorderSide(
                         color: theme.resources.dividerStrokeColorDefault,
@@ -162,7 +164,8 @@ class AccountListSection extends StatelessWidget {
                       // Account
                       Expanded(
                         flex: flexes[1],
-                        child: _buildTableCell(row.account.accountName),
+                        child:
+                            _buildTableCell(context, row.account.accountName),
                       ),
                       // Credentials
                       Expanded(
@@ -175,7 +178,8 @@ class AccountListSection extends StatelessWidget {
                       // Character
                       Expanded(
                         flex: flexes[3],
-                        child: _buildTableCell(row.character?.name ?? '\u2014'),
+                        child: _buildTableCell(
+                            context, row.character?.name ?? '\u2014'),
                       ),
                       // Script
                       Expanded(
@@ -249,20 +253,22 @@ class AccountListSection extends StatelessWidget {
     });
   }
 
-  Widget _buildTableHeader(String text) {
+  Widget _buildTableHeader(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Text(text,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          style: FluentTheme.of(context).typography.caption?.copyWith(
+                fontWeight: FontWeight.w600,
+              )),
     );
   }
 
-  Widget _buildTableCell(String text) {
+  Widget _buildTableCell(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Text(text,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12)),
+          style: FluentTheme.of(context).typography.body),
     );
   }
 }

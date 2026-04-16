@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/watchdog/tracked_client.dart';
 import 'package:command_center/config/services/watchdog/watchdog_service.dart';
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class BotStatusBadge extends StatelessWidget {
@@ -14,7 +15,8 @@ class BotStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = _resolve();
+    final colors = StatusColors.of(context);
+    final (label, color) = _resolve(colors);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Container(
@@ -52,28 +54,28 @@ class BotStatusBadge extends StatelessWidget {
     );
   }
 
-  (String, Color) _resolve() {
+  (String, Color) _resolve(StatusColors colors) {
     switch (status) {
       case ClientStatus.running:
-        return ('Running', Colors.green);
+        return ('Running', colors.success);
       case ClientStatus.restarting:
         return (
           'Restarting $retryCount/${WatchdogService.maxRetries}',
-          Colors.orange
+          colors.warning,
         );
       case ClientStatus.failed:
         return (
           'Failed $retryCount/${WatchdogService.maxRetries}',
-          Colors.orange
+          colors.warning,
         );
       case ClientStatus.stopped:
-        return ('Stopped', Colors.grey);
+        return ('Stopped', colors.muted);
       case ClientStatus.banned:
-        return ('Banned', Colors.red);
+        return ('Banned', colors.error);
       case ClientStatus.awaitingAccount:
-        return ('Awaiting Account', Colors.blue);
+        return ('Awaiting Account', colors.info);
       case null:
-        return ('Stopped', Colors.grey);
+        return ('Stopped', colors.muted);
     }
   }
 }

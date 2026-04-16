@@ -106,7 +106,7 @@ class _WebshareConfigDialogState extends State<WebshareConfigDialog> {
         const Text('Enter your Webshare API key to sync your proxy slots.'),
         const SizedBox(height: 16),
         Obx(() => InfoLabel(
-              label: 'API Key',
+              label: 'API Key *',
               child: TextBox(
                 controller: _apiKeyController,
                 placeholder: 'Enter your Webshare API key',

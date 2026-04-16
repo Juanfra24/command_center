@@ -1,19 +1,11 @@
+import 'package:command_center/config/theme/fluent_app_theme.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-// Extension to convert ShadedColor to AccentColor
+/// Extension to convert [ShadedColor] to [AccentColor] with proper shade
+/// variants (delegates to [ColorToShadedAccent]).
 extension ShadedColorToAccent on ShadedColor {
-  AccentColor toAccentColor() {
-    return AccentColor.swatch({
-      'darkest': this,
-      'darker': this,
-      'dark': this,
-      'normal': this,
-      'light': this,
-      'lighter': this,
-      'lightest': this,
-    });
-  }
+  AccentColor toShadedAccent() => (this as Color).toShadedAccent();
 }
 
 /// Returns a color for a fraud score (0-100, lower = better).
@@ -22,7 +14,7 @@ extension ShadedColorToAccent on ShadedColor {
 /// - 61-80 → orange (poor)
 /// - 81-100 → red   (bad)
 AccentColor getScoreColor(double fraudScore, {bool hasBeenScored = true}) {
-  if (!hasBeenScored) return Colors.grey.toAccentColor();
+  if (!hasBeenScored) return Colors.grey.toShadedAccent();
   if (fraudScore <= 30) return Colors.green;
   if (fraudScore <= 60) return Colors.yellow;
   if (fraudScore <= 80) return Colors.orange;

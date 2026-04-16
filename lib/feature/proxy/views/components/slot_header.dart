@@ -1,4 +1,5 @@
 import 'package:command_center/config/services/automation/automation_service.dart';
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/domain/entities/proxy_slot.dart';
 import 'package:command_center/feature/proxy/views/components/connection_info_badges.dart';
@@ -35,6 +36,7 @@ class SlotHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final colors = StatusColors.of(context);
     final ip = currentIp;
     final highFraud = ip != null && ip.hasBeenScored && ip.fraudScore > 60;
 
@@ -43,7 +45,7 @@ class SlotHeader extends StatelessWidget {
         border: highFraud
             ? Border(
                 left: BorderSide(
-                  color: Colors.red.withValues(alpha: 0.8),
+                  color: colors.error.withValues(alpha: 0.8),
                   width: 4,
                 ),
               )
@@ -85,7 +87,7 @@ class SlotHeader extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          _buildStatusBadge(slot),
+                          _buildStatusBadge(context, slot),
                           Text(
                             '${slot.totalIpChanges} IP changes',
                             style: theme.typography.caption,
@@ -127,21 +129,18 @@ class SlotHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(ProxySlotEntity slot) {
+  Widget _buildStatusBadge(BuildContext context, ProxySlotEntity slot) {
+    final colors = StatusColors.of(context);
+    final color = slot.isActive ? colors.success : colors.muted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: slot.isActive
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.grey.withValues(alpha: 0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         slot.isActive ? 'Active' : 'Inactive',
-        style: TextStyle(
-          fontSize: 12,
-          color: slot.isActive ? Colors.green : Colors.grey,
-        ),
+        style: TextStyle(fontSize: 12, color: color),
       ),
     );
   }

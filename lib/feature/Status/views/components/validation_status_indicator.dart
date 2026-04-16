@@ -1,5 +1,6 @@
 import 'package:command_center/config/services/automation/automation_result.dart';
 import 'package:command_center/config/services/automation/automation_service.dart';
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get/get.dart';
 
@@ -24,10 +25,10 @@ class ValidationStatusIndicator extends StatelessWidget {
           valueListenable: validationResult,
           builder: (context, result, _) {
             if (validating) {
-              return _buildValidatingState(theme);
+              return _buildValidatingState(context, theme);
             }
             if (result != null) {
-              return _buildResultState(theme, result);
+              return _buildResultState(context, theme, result);
             }
             return const SizedBox.shrink();
           },
@@ -36,11 +37,12 @@ class ValidationStatusIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildValidatingState(FluentThemeData theme) {
+  Widget _buildValidatingState(BuildContext context, FluentThemeData theme) {
+    final colors = StatusColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.1),
+        color: colors.infoBg(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -81,10 +83,12 @@ class ValidationStatusIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildResultState(FluentThemeData theme, AutomationResult result) {
+  Widget _buildResultState(
+      BuildContext context, FluentThemeData theme, AutomationResult result) {
+    final colors = StatusColors.of(context);
     final isSuccess = result.isSuccess;
     final isAccountCreated = result.isAccountCreated;
-    final color = isSuccess ? Colors.green : Colors.red;
+    final color = isSuccess ? colors.success : colors.error;
     final icon = isSuccess ? FluentIcons.check_mark : FluentIcons.error_badge;
 
     String title;

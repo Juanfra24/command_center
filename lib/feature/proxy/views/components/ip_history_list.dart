@@ -1,3 +1,4 @@
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:command_center/domain/entities/proxy_ip_address.dart';
 import 'package:command_center/feature/proxy/views/components/ip_score_indicator.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -18,9 +19,17 @@ class IpHistoryList extends StatelessWidget {
             padding: const EdgeInsets.all(32),
             child: Column(
               children: [
-                const Icon(FluentIcons.history, size: 32),
+                Icon(FluentIcons.history,
+                    size: 32, color: theme.resources.textFillColorSecondary),
                 const SizedBox(height: 8),
                 Text('No IP history yet', style: theme.typography.body),
+                const SizedBox(height: 4),
+                Text(
+                  'IP changes will appear here after rotation.',
+                  style: theme.typography.caption?.copyWith(
+                    color: theme.resources.textFillColorSecondary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -41,14 +50,17 @@ class IpHistoryList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: ip.isActive ? Colors.green : Colors.grey,
-                    ),
-                  ),
+                  Builder(builder: (context) {
+                    final colors = StatusColors.of(context);
+                    return Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ip.isActive ? colors.success : colors.muted,
+                      ),
+                    );
+                  }),
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,

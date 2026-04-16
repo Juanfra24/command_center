@@ -1,3 +1,4 @@
+import 'package:command_center/config/theme/status_colors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:command_center/core/widgets/toast_data.dart';
 
@@ -14,7 +15,7 @@ class ToastCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final colors = _severityColors(theme);
+    final colors = _severityColors(context);
 
     return Container(
       width: 340,
@@ -65,39 +66,36 @@ class ToastCard extends StatelessWidget {
     );
   }
 
-  _SeverityColors _severityColors(FluentThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
+  _SeverityColors _severityColors(BuildContext context) {
+    final colors = StatusColors.of(context);
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
     return switch (toast.severity) {
       ToastSeverity.success => _SeverityColors(
           background:
               isDark ? const Color(0xFF1e3a1e) : const Color(0xFFe8f5e9),
-          border: isDark ? const Color(0xFF2d5a2d) : const Color(0xFF81c784),
-          foreground:
-              isDark ? const Color(0xFF4ade80) : const Color(0xFF2e7d32),
+          border: colors.successBg(isDark ? 0.4 : 0.6),
+          foreground: colors.success,
           icon: FluentIcons.completed,
         ),
       ToastSeverity.error => _SeverityColors(
           background:
               isDark ? const Color(0xFF3a1e1e) : const Color(0xFFffebee),
-          border: isDark ? const Color(0xFF5a2d2d) : const Color(0xFFe57373),
-          foreground:
-              isDark ? const Color(0xFFf87171) : const Color(0xFFc62828),
+          border: colors.errorBg(isDark ? 0.4 : 0.6),
+          foreground: colors.error,
           icon: FluentIcons.error_badge,
         ),
       ToastSeverity.warning => _SeverityColors(
           background:
               isDark ? const Color(0xFF3a2d1e) : const Color(0xFFFFF8E1),
-          border: isDark ? const Color(0xFF5a4a2d) : const Color(0xFFFFD54F),
-          foreground:
-              isDark ? const Color(0xFFfbbf24) : const Color(0xFFf57f17),
+          border: colors.warningBg(isDark ? 0.4 : 0.6),
+          foreground: colors.warning,
           icon: FluentIcons.warning,
         ),
       ToastSeverity.info => _SeverityColors(
           background:
               isDark ? const Color(0xFF1e2d3a) : const Color(0xFFE3F2FD),
-          border: isDark ? const Color(0xFF2d4a5a) : const Color(0xFF64B5F6),
-          foreground:
-              isDark ? const Color(0xFF60a5fa) : const Color(0xFF1565C0),
+          border: colors.infoBg(isDark ? 0.4 : 0.6),
+          foreground: colors.info,
           icon: FluentIcons.info,
         ),
     };
