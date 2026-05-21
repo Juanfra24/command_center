@@ -247,3 +247,20 @@ ios/
 macos/
 web/
 .superpowers/
+
+# Playwright MCP session recordings
+.playwright-mcp/
+
+# Browser automation runtime profiles and screenshots
+scripts/.jagex_chrome_profile/
+scripts/.jagex_patchright_profile/
+scripts/*.png
+
+# GSD tooling (local install artifacts, like .superpowers/)
+.claude/.gsd-profile
+.claude/commands/gsd/
+.claude/get-shit-done/
+.claude/gsd-file-manifest.json
+.claude/gsd-install-state.json
+.claude/package.json
+.claude/settings.json
